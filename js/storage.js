@@ -8,6 +8,8 @@
  *   awsCloudQuestBest     number — best score
  *   awsCloudQuestHistory  [{ t, score, correct, level }] — recent games, newest first
  *   awsCloudQuestStats    { [questionId]: { w, r } } — misses and hits per question
+ *   awsCloudQuestHero     "male" | "female" — chosen character
+ *   awsCloudQuestMuted    boolean — sound muted
  */
 (function (root) {
   "use strict";
@@ -16,7 +18,11 @@
     best: "awsCloudQuestBest",
     history: "awsCloudQuestHistory",
     stats: "awsCloudQuestStats",
+    hero: "awsCloudQuestHero",
+    muted: "awsCloudQuestMuted",
   });
+
+  const HEROES = Object.freeze(["male", "female"]);
 
   /** Creates a store over a localStorage-like backend (injectable for tests). */
   function createStore(getBackend) {
@@ -77,6 +83,20 @@
       },
       setStats(stats) {
         return write(KEYS.stats, stats);
+      },
+      /** Chosen character, or null if the player has not picked one yet. */
+      getHero() {
+        const hero = read(KEYS.hero, null);
+        return HEROES.includes(hero) ? hero : null;
+      },
+      setHero(hero) {
+        return HEROES.includes(hero) ? write(KEYS.hero, hero) : false;
+      },
+      getMuted() {
+        return read(KEYS.muted, false) === true;
+      },
+      setMuted(muted) {
+        return write(KEYS.muted, Boolean(muted));
       },
     });
   }

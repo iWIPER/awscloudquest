@@ -76,10 +76,17 @@ test("applyFastHit: from START_LIVES, lives climb to MAX_LIVES and never exceed 
   assert.equal(bonus, CONFIG.FULL_LIVES_BONUS, "the third round already finds lives maxed");
 });
 
-test("pushAfterWrong: +WRONG_PUSH, capped at WRONG_PUSH_CAP, never moving back", () => {
-  close(R.pushAfterWrong(0.1, CONFIG), 0.1 + CONFIG.WRONG_PUSH);
-  close(R.pushAfterWrong(0.95, CONFIG), CONFIG.WRONG_PUSH_CAP);
-  close(R.pushAfterWrong(0.99, CONFIG), 0.99);
+test("speedAfterWrong: each miss adds WRONG_SPEEDUP, capped at MAX_SPEED", () => {
+  close(R.speedAfterWrong(1, CONFIG), 1 + CONFIG.WRONG_SPEEDUP);
+  let speed = 1;
+  for (let i = 0; i < 20; i++) speed = R.speedAfterWrong(speed, CONFIG);
+  close(speed, CONFIG.MAX_SPEED);
+});
+
+test("secondsLeft: a faster monster arrives sooner", () => {
+  close(R.secondsLeft(0, 30, 1), 30);
+  close(R.secondsLeft(0.5, 30, 1), 15);
+  close(R.secondsLeft(0.5, 30, 1.5), 10);
 });
 
 test("charCount: sums question and options", () => {

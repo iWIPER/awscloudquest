@@ -32,8 +32,14 @@
     QUESTIONS_PER_LEVEL: 3,    // correct answers per level
 
     // ── Wrong answers ──────────────────────────────────────────────────
-    WRONG_PUSH: 0.08,          // each miss pushes the monster 8% of the way…
-    WRONG_PUSH_CAP: 0.97,      // …but never past 97%
+    WRONG_LOCK_SECONDS: 8,     // after a miss, the player cannot shoot for N s
+    WRONG_SPEEDUP: 0.4,        // each miss: monster +40% speed for the rest of the question…
+    MAX_SPEED: 2.5,            // …up to 2.5× its normal speed
+
+    // ── Power-ups (per game) ───────────────────────────────────────────
+    POWER_FREEZE: 2,           // "Gelo": freezes the monster inside an ice cube…
+    FREEZE_SECONDS: 10,        // …for this long
+    POWER_SKIP: 2,             // "Pular": swaps the question, no life lost, no score
 
     // ── Score: BASE + min(streak, STREAK_CAP) × PER_STREAK + fast bonus ─
     POINTS_BASE: 10,
@@ -52,6 +58,15 @@
     // ── History ────────────────────────────────────────────────────────
     HISTORY_LIMIT: 50,         // games kept in storage
     HISTORY_SHOWN: 20,         // games listed on the history screen
+
+    // ── Ambience (seconds; [min, max] are random ranges) ───────────────
+    AMBIENT_CYCLE_SECONDS: 240,       // one full day → night → day cycle
+    AMBIENT_CYCLE_START: 0.1,         // where the cycle starts (0–1; 0.55–0.8 is night)
+    AMBIENT_RAIN_EVERY: [70, 160],    // dry spell before it rains
+    AMBIENT_RAIN_LASTS: [25, 50],     // how long a rain lasts
+    AMBIENT_THUNDER_EVERY: [9, 20],   // thunder interval while raining
+    AMBIENT_BIRDS_EVERY: [7, 16],     // interval between flocks (day, no rain)
+    AMBIENT_CRITTERS_EVERY: [12, 26], // bunnies/squirrels hopping left → right (day, no rain)
 
     // ── Animation (ms) ─────────────────────────────────────────────────
     MAX_DT_MS: 50,             // max loop step (avoids jumps when the tab returns)

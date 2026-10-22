@@ -52,6 +52,22 @@ test("clearHistory: removes history and best score, keeps review stats", () => {
   assert.deepEqual(store.getStats(), { a: { w: 1, r: 0 } });
 });
 
+test("hero choice: null until chosen, only accepts known characters", () => {
+  const store = memoryStore();
+  assert.equal(store.getHero(), null);
+  assert.equal(store.setHero("wizard"), false);
+  assert.equal(store.getHero(), null);
+  store.setHero("female");
+  assert.equal(store.getHero(), "female");
+});
+
+test("muted: off by default and persisted", () => {
+  const store = memoryStore();
+  assert.equal(store.getMuted(), false);
+  store.setMuted(true);
+  assert.equal(store.getMuted(), true);
+});
+
 test("corrupted data falls back to defaults", () => {
   const backend = memoryBackend();
   backend.setItem(KEYS.best, "not-json");

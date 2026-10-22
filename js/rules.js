@@ -49,12 +49,26 @@
     return { lives, fast: 0, gainedLife: false, bonusPoints: config.FULL_LIVES_BONUS };
   }
 
-  /** Monster progress after a miss: +WRONG_PUSH, capped at WRONG_PUSH_CAP, never moving back. */
-  function pushAfterWrong(progress, config) {
-    return Math.max(progress, Math.min(config.WRONG_PUSH_CAP, progress + config.WRONG_PUSH));
+  /** Monster speed multiplier after a miss: +WRONG_SPEEDUP, capped at MAX_SPEED. */
+  function speedAfterWrong(speed, config) {
+    return Math.min(config.MAX_SPEED, speed + config.WRONG_SPEEDUP);
   }
 
-  const api = Object.freeze({ charCount, levelFor, travelSeconds, pointsFor, isFastHit, applyFastHit, pushAfterWrong });
+  /** Seconds until the monster arrives, given progress (0–1), base travel time and speed multiplier. */
+  function secondsLeft(progress, travel, speed) {
+    return ((1 - progress) * travel) / speed;
+  }
+
+  const api = Object.freeze({
+    charCount,
+    levelFor,
+    travelSeconds,
+    pointsFor,
+    isFastHit,
+    applyFastHit,
+    speedAfterWrong,
+    secondsLeft,
+  });
 
   const NS = (root.AwsCloudQuest = root.AwsCloudQuest || {});
   NS.rules = api;
