@@ -1,0 +1,38 @@
+name: Question suggestion or fix
+description: Suggest a new question, or report a wrong answer key or explanation.
+labels: [question-bank]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Type
+      options:
+        - New question
+        - Wrong answer key
+        - Wrong or unclear explanation
+        - Typo
+    validations:
+      required: true
+  - type: textarea
+    id: block
+    attributes:
+      label: Question block
+      description: Paste the question in the bank format (see docs/ADDING_QUESTIONS.md), or the id of the existing question.
+      render: js
+      placeholder: |
+        {
+          topic: "Armazenamento",
+          q: "...",
+          options: ["...", "...", "...", "..."],
+          answer: "B",
+          explanation: "..."
+        },
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Source
+      description: A link to AWS documentation that supports the answer.
+    validations:
+      required: true
