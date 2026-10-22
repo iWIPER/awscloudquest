@@ -717,4 +717,16 @@ window.QUESTIONS = [
     "answer": "B",
     "explanation": "O Personalize cria recomendações personalizadas com machine learning. Rekognition analisa imagens, Polly converte texto em voz e Comprehend extrai informações de texto."
   },
+  {
+    "id": "clf-sim01-f2-19",
+    "q": "Uma empresa está procurando um serviço de aprendizado de máquina (ML) gerenciado que possa recomendar produtos com base nos comportamentos anteriores de um cliente. Qual serviço da AWS atende a esse requisito?",
+    "options": [
+      "Amazon Comprehend",
+      "Amazon Personalize",
+      "Amazon SageMaker",
+      "Amazon Pinpoint"
+    ],
+    "answer": "B",
+    "explanation": "O Amazon Personalize recomenda produtos com base no comportamento do cliente. SageMaker serviria para construir um modelo do zero, mas não é o gerenciado pronto para isso."
+  },
 ];
