@@ -25,9 +25,14 @@ jobs:
         run: node --test "tests/*.test.js"
 
   smoke:
-    name: Headless browser smoke test
+    name: Smoke test (${{ matrix.browser }})
     runs-on: ubuntu-latest
     needs: checks
+    strategy:
+      fail-fast: false
+      matrix:
+        # WebKit is the engine of Safari and of every browser on iPhone.
+        browser: [chromium, webkit]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -35,13 +40,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
       - name: Smoke test (360 px and 1280 px)
-        run: node scripts/smoke.mjs --shots smoke-shots
+        run: node scripts/smoke.mjs --browser ${{ matrix.browser }} --shots smoke-shots
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: smoke-screenshots
+          name: smoke-screenshots-${{ matrix.browser }}
           path: smoke-shots/
           if-no-files-found: ignore

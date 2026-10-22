@@ -2,7 +2,8 @@
 /**
  * Headless smoke test (Playwright, optional dev dependency).
  *
- *   npm install && npx playwright install chromium
+ *   npm install && npx playwright install chromium   (and/or webkit)
+ *   node scripts/smoke.mjs [--browser chromium|webkit] [--shots <dir>]
  *   node scripts/smoke.mjs [--shots <dir>]
  *
  * Uses Playwright's fake clock, so whole games run in seconds. For each
@@ -15,7 +16,7 @@
 import { mkdirSync } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 import { startServer } from "./serve.mjs";
 
 const shotsArg = process.argv.indexOf("--shots");
@@ -35,7 +36,13 @@ const check = (ok, message) => {
 };
 
 const { server, url } = await startServer();
-const browser = await chromium.launch();
+// WebKit is the engine of Safari and of every browser on iPhone.
+const browserArg = process.argv.indexOf("--browser");
+const engineName = browserArg >= 0 ? process.argv[browserArg + 1] : "chromium";
+const engine = { chromium, webkit }[engineName];
+if (!engine) throw new Error(`Unknown --browser "${engineName}" (use chromium or webkit)`);
+console.log(`Engine: ${engineName}`);
+const browser = await engine.launch();
 
 /** Real-time pause so CSS animations settle before a screenshot. */
 const settle = (page) => page.waitForTimeout(700);
@@ -102,14 +109,36 @@ for (const viewport of VIEWPORTS) {
   await page.locator(`.pick-card:has(input[value="${heroChoice}"])`).click();
   check(await page.locator("#btn-play").isEnabled(), `choosing "${heroChoice}" enables Play`);
   check((await snapshot(page)).hero === heroChoice, `the ${heroChoice} character is in the field`);
+
+  // Difficulty: mobile plays Fácil, desktop plays Avançado (the default).
+  const modeChoice = viewport.name === "mobile" ? "easy" : "advanced";
+  check(await page.locator('input[name="mode"][value="advanced"]').isChecked(), "Avançado is the default mode");
+  await page.locator(`.mode-card:has(input[value="${modeChoice}"])`).click();
+  const modeConfig = await page.evaluate(() => window.AwsCloudQuest.app.config());
+  check(modeConfig.mode === modeChoice, `mode "${modeChoice}" selected`);
+  if (modeChoice === "easy") {
+    check(
+      modeConfig.POWER_FREEZE === 5 && modeConfig.POWER_SKIP === 3 && modeConfig.WRONG_LOCK_SECONDS === 5 && modeConfig.WRONG_SPEEDUP === 0.3,
+      "Fácil: 5 Gelo, 3 Pular, 5 s lockout, +30% speed"
+    );
+    check((await page.locator("#freeze-count").textContent()) === "5", "the Gelo button shows the easy-mode count");
+  }
   check(await page.locator("#start-rules").isHidden(), '"Como jogar" starts collapsed');
   await shot(page, `${viewport.name}-1-start`);
   await page.locator("#howto-toggle").click();
   check(await page.locator("#start-rules li").first().isVisible(), '"Como jogar" opens on tap');
+  check(
+    (await page.locator("#ov-start .pick").isHidden()) && (await page.locator("#ov-start .modes").isHidden()),
+    'opening "Como jogar" hides the character and mode pickers'
+  );
   check(await cardFits(page, "ov-start"), "the start card does not overflow with \"Como jogar\" open (the list scrolls inside)");
   await shot(page, `${viewport.name}-1b-start-howto`);
   await page.locator("#howto-toggle").click();
   check(await page.locator("#start-rules").isHidden(), '"Como jogar" closes again');
+  check(
+    (await page.locator("#ov-start .pick").isVisible()) && (await page.locator("#ov-start .modes").isVisible()),
+    'closing "Como jogar" brings the pickers back'
+  );
 
   // Longest question first, to check the layout with 600+ characters.
   const longId = await page.evaluate(() =>
@@ -129,7 +158,7 @@ for (const viewport of VIEWPORTS) {
   await shot(page, `${viewport.name}-2-long-question`);
 
   // A miss eliminates the option, locks all answers for WRONG_LOCK_SECONDS and speeds the monster up.
-  const lockSeconds = await page.evaluate(() => window.AwsCloudQuest.config.WRONG_LOCK_SECONDS);
+  const lockSeconds = await page.evaluate(() => window.AwsCloudQuest.app.config().WRONG_LOCK_SECONDS);
   const { wrong, right } = await optionIndexes(page);
   await clickOption(page, wrong);
   const afterMiss = await snapshot(page);
@@ -142,7 +171,8 @@ for (const viewport of VIEWPORTS) {
     return box.top >= world.top && box.bottom <= world.bottom && z("fx") > z("qpanel");
   });
   check(penaltyVisible, "the downgrade sign is inside the world and above the question balloon");
-  check(afterMiss.speed > 1, `a miss makes the monster faster (×${afterMiss.speed})`);
+  const expectedSpeed = 1 + (await page.evaluate(() => window.AwsCloudQuest.app.config().WRONG_SPEEDUP));
+  check(Math.abs(afterMiss.speed - expectedSpeed) < 1e-9, `a miss makes the monster ${Math.round((expectedSpeed - 1) * 100)}% faster (×${afterMiss.speed})`);
   check(await page.locator("#answers-lock").isVisible(), "a miss shows the lockout banner");
   check(await page.locator(`#answers .answer[data-index="${right}"]`).isDisabled(), "during the lockout no option can be shot");
   await shot(page, `${viewport.name}-2b-miss-penalty`);
@@ -252,7 +282,10 @@ for (const viewport of VIEWPORTS) {
   check(printed.called && printed.items >= 5 && printed.bars >= 1, `PDF: the printable report has the chart and ${printed.items} questions`);
   if (shotsDir && viewport.name === "desktop") {
     await page.emulateMedia({ media: "print" });
-    await page.pdf({ path: path.join(shotsDir, "report.pdf"), format: "A4", printBackground: true });
+    // page.pdf() is Chromium-only; other engines still get the print-media screenshot.
+    if (engineName === "chromium") {
+      await page.pdf({ path: path.join(shotsDir, "report.pdf"), format: "A4", printBackground: true });
+    }
     await page.screenshot({ path: path.join(shotsDir, "report-print.png"), fullPage: true });
     await page.emulateMedia({ media: "screen" });
   }
@@ -280,7 +313,7 @@ for (const viewport of VIEWPORTS) {
   await page.evaluate(() => window.AwsCloudQuest.app.start({ monsterId: "dino" }));
   await page.clock.runFor(1000);
   const { FREEZE_SECONDS: freezeSeconds, POWER_FREEZE: freezeCharges, POWER_SKIP: skipCharges } = await page.evaluate(
-    () => window.AwsCloudQuest.config
+    () => window.AwsCloudQuest.app.config()
   );
   await page.locator("#btn-freeze").click();
   const frozenAt = await snapshot(page);
