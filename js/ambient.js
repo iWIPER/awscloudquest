@@ -1,0 +1,196 @@
+/**
+ * AWS Cloud Quest — ambience: day/night cycle, rain with thunder, birds
+ * crossing the sky, bunnies and squirrels hopping along the ground, and
+ * crickets at night, each with its matching sound.
+ *
+ * Purely decorative: it never touches game rules. It is driven by the main
+ * loop through update(dt) in every phase, so the world keeps living on the
+ * start and Game Over screens too. Timings are in CONFIG (AMBIENT_*).
+ */
+(function (root) {
+  "use strict";
+
+  const BIRD_SVG =
+    '<svg viewBox="0 0 20 10" aria-hidden="true"><path class="bird-wing" d="M1 6Q5 1 10 6Q15 1 19 6" ' +
+    'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+
+  // Small ground critters. Both face right: they always run left → right,
+  // away from the hero, so they never look like a threat.
+  const CRITTERS = {
+    bunny:
+      '<svg viewBox="0 0 28 22" aria-hidden="true">' +
+      '<ellipse cx="8" cy="5" rx="2.2" ry="5.5" transform="rotate(-18 8 5)" fill="#f4eee8"/>' +
+      '<ellipse cx="12" cy="5" rx="2.2" ry="5.5" transform="rotate(8 12 5)" fill="#f4eee8"/>' +
+      '<ellipse cx="12" cy="5.5" rx="1" ry="3.6" transform="rotate(8 12 5.5)" fill="#ffb3d1"/>' +
+      '<ellipse cx="13" cy="15" rx="9" ry="6.5" fill="#f4eee8"/>' +
+      '<circle cx="20" cy="11" r="5" fill="#f4eee8"/>' +
+      '<circle cx="4.5" cy="14" r="2.6" fill="#fff"/>' +
+      '<circle cx="21.5" cy="10" r="1" fill="#3a1459"/>' +
+      '<circle cx="24.6" cy="12" r="1" fill="#ff8fd0"/>' +
+      '<ellipse cx="18" cy="21" rx="3" ry="1.2" fill="#d9cfc6"/>' +
+      "</svg>",
+    squirrel:
+      '<svg viewBox="0 0 28 22" aria-hidden="true">' +
+      '<path d="M9 17C2 17 0 9 4 4C6 1 10 2 9 6C8 9 4 9 6 13Z" fill="#b8642c"/>' +
+      '<path d="M8 6C7 9 5 10 6 12" stroke="#d98a4a" stroke-width="1.4" fill="none" stroke-linecap="round"/>' +
+      '<ellipse cx="14" cy="15.5" rx="6.5" ry="5" fill="#c97436"/>' +
+      '<circle cx="20" cy="11.5" r="4.2" fill="#c97436"/>' +
+      '<path d="M18.5 7.5l1-3 1.6 2.8z" fill="#c97436"/>' +
+      '<ellipse cx="15" cy="17" rx="3.4" ry="2.4" fill="#f0c9a0"/>' +
+      '<circle cx="21.4" cy="10.6" r="0.95" fill="#3a1459"/>' +
+      '<circle cx="24" cy="12.3" r="0.8" fill="#3a1459"/>' +
+      "</svg>",
+  };
+
+  const between = ([min, max]) => min + Math.random() * (max - min);
+
+  /**
+   * Night amount (0 = full day, 1 = full night) for a point of the cycle (0–1):
+   * day → dusk (0.45–0.55) → night → dawn (0.80–0.90) → day.
+   */
+  function nightAmount(t) {
+    if (t < 0.45) return 0;
+    if (t < 0.55) return (t - 0.45) / 0.1;
+    if (t < 0.8) return 1;
+    if (t < 0.9) return 1 - (t - 0.8) / 0.1;
+    return 0;
+  }
+
+  function create({ world, sky, critterLayer, config, sound, reducedMotion = () => false }) {
+    const state = {
+      t: config.AMBIENT_CYCLE_START,
+      night: -1,
+      rain: false,
+      rainLeft: 0,
+      nextRain: between(config.AMBIENT_RAIN_EVERY),
+      nextBird: between(config.AMBIENT_BIRDS_EVERY),
+      nextCritter: between(config.AMBIENT_CRITTERS_EVERY),
+      nextThunder: between(config.AMBIENT_THUNDER_EVERY),
+      nextCricket: 2,
+    };
+
+    function applyNight() {
+      const night = nightAmount(state.t);
+      if (Math.abs(night - state.night) < 0.005) return;
+      state.night = night;
+      world.style.setProperty("--night", night.toFixed(3));
+      world.classList.toggle("is-night", night > 0.5);
+    }
+
+    function setRain(on) {
+      state.rain = on;
+      state.rainLeft = on ? between(config.AMBIENT_RAIN_LASTS) : 0;
+      state.nextThunder = between(config.AMBIENT_THUNDER_EVERY);
+      world.classList.toggle("is-rain", on);
+      sound.setRain(on);
+    }
+
+    function spawnFlock() {
+      const height = world.clientHeight;
+      const width = world.clientWidth;
+      const leftToRight = Math.random() < 0.5;
+      const count = 1 + Math.floor(Math.random() * 3);
+      const top = height * (0.04 + Math.random() * 0.22);
+      const seconds = between([9, 15]);
+      for (let i = 0; i < count; i++) {
+        const bird = document.createElement("div");
+        bird.className = "bird";
+        bird.innerHTML = BIRD_SVG;
+        const size = 12 + Math.random() * 6;
+        bird.style.top = `${top + (i % 2) * 10 + Math.random() * 6}px`;
+        bird.style.width = `${size}px`;
+        bird.style.setProperty("--from", `${leftToRight ? -40 - i * 22 : width + 20 + i * 22}px`);
+        bird.style.setProperty("--to", `${leftToRight ? width + 40 : -60 - i * 22}px`);
+        bird.style.setProperty("--dur", `${seconds}s`);
+        bird.style.setProperty("--flap", `${0.22 + Math.random() * 0.12}s`);
+        sky.appendChild(bird);
+        setTimeout(() => bird.remove(), seconds * 1000 + 200);
+      }
+      sound.play("chirp");
+    }
+
+    /** One bunny or squirrel (sometimes a pair) hopping along the ground, left → right. */
+    function spawnCritters(kind) {
+      const type = kind || (Math.random() < 0.5 ? "bunny" : "squirrel");
+      const width = critterLayer.clientWidth;
+      const count = Math.random() < 0.3 ? 2 : 1;
+      const seconds = between(type === "bunny" ? [7, 10] : [5, 7]);
+      for (let i = 0; i < count; i++) {
+        const critter = document.createElement("div");
+        critter.className = `critter critter-${type}`;
+        critter.innerHTML = CRITTERS[type];
+        critter.style.setProperty("--from", `${-34 - i * 30}px`);
+        critter.style.setProperty("--to", `${width + 10}px`);
+        critter.style.setProperty("--dur", `${seconds}s`);
+        critterLayer.appendChild(critter);
+        setTimeout(() => critter.remove(), seconds * 1000 + 300);
+      }
+    }
+
+    function flash() {
+      if (reducedMotion()) return;
+      world.classList.remove("is-lightning");
+      void world.offsetWidth; // restart the flash animation
+      world.classList.add("is-lightning");
+    }
+
+    /** Advances the ambience by `dt` seconds. */
+    function update(dt) {
+      state.t = (state.t + dt / config.AMBIENT_CYCLE_SECONDS) % 1;
+      applyNight();
+
+      if (state.rain) {
+        state.rainLeft -= dt;
+        state.nextThunder -= dt;
+        if (state.nextThunder <= 0) {
+          state.nextThunder = between(config.AMBIENT_THUNDER_EVERY);
+          flash();
+          sound.play("thunder");
+        }
+        if (state.rainLeft <= 0) {
+          setRain(false);
+          state.nextRain = between(config.AMBIENT_RAIN_EVERY);
+        }
+      } else if ((state.nextRain -= dt) <= 0) {
+        setRain(true);
+      }
+
+      // Birds fly in daylight without rain; crickets sing at night.
+      if (state.night < 0.5 && !state.rain) {
+        if ((state.nextBird -= dt) <= 0) {
+          state.nextBird = between(config.AMBIENT_BIRDS_EVERY);
+          spawnFlock();
+        }
+        if ((state.nextCritter -= dt) <= 0) {
+          state.nextCritter = between(config.AMBIENT_CRITTERS_EVERY);
+          spawnCritters();
+        }
+      } else if (state.night >= 0.5 && (state.nextCricket -= dt) <= 0) {
+        state.nextCricket = between([1.5, 4]);
+        sound.play("cricket");
+      }
+    }
+
+    /** For tests and debugging: jump to a time of day (0–1) and/or toggle rain. */
+    function set({ time, rain, bird, critter } = {}) {
+      if (typeof time === "number") {
+        state.t = ((time % 1) + 1) % 1;
+        applyNight();
+      }
+      if (typeof rain === "boolean") setRain(rain);
+      if (bird) spawnFlock();
+      if (critter) spawnCritters(typeof critter === "string" ? critter : undefined);
+    }
+
+    applyNight();
+
+    return Object.freeze({
+      update,
+      set,
+      snapshot: () => ({ time: state.t, night: state.night, rain: state.rain }),
+    });
+  }
+
+  const NS = (root.AwsCloudQuest = root.AwsCloudQuest || {});
+  NS.ambient = Object.freeze({ create, nightAmount });
+})(typeof window !== "undefined" ? window : globalThis);
