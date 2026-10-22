@@ -61,6 +61,11 @@ test("toMarkdown: has summary, outcome table and one section per group", () => {
   assert.match(text, /não são questões oficiais da AWS/);
 });
 
+test("toMarkdown: shows the difficulty mode when present", () => {
+  assert.match(R.toMarkdown({ ...game([entry("first")]), modeLabel: "Fácil" }), /\*\*Modo:\*\* Fácil/);
+  assert.doesNotMatch(R.toMarkdown(game([entry("first")])), /Modo:/);
+});
+
 test("toMarkdown: omits empty sections", () => {
   const text = R.toMarkdown(game([entry("first")]));
   assert.doesNotMatch(text, /## Pulei/);

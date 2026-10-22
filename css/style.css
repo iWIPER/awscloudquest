@@ -1142,6 +1142,51 @@ legend.box-title {
 
 .pick-hint[hidden] { display: none; }
 
+/* With "Como jogar" open, hide the pickers so the rules get the space. */
+.card.is-howto-open > .pick,
+.card.is-howto-open > .modes { display: none; }
+
+/* Difficulty mode picker */
+.mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  clear: both;
+}
+
+.mode-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 3px solid transparent;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.mode-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mode-card:hover { background: rgba(255, 255, 255, 0.18); }
+.mode-card:has(input:checked) { border-color: var(--yellow); background: rgba(251, 213, 26, 0.22); }
+.mode-card:has(input:focus-visible) { outline: 3px solid var(--white); outline-offset: 2px; }
+.mode-name { font-weight: 800; }
+.mode-summary { font-size: 0.75rem; line-height: 1.3; opacity: 0.95; }
+
+.mode-tag {
+  margin: -4px 0 6px;
+  color: var(--yellow);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 /* "How to play": one icon per rule. */
 .rules {
   margin: 0;

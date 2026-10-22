@@ -89,6 +89,39 @@ test("secondsLeft: a faster monster arrives sooner", () => {
   close(R.secondsLeft(0.5, 30, 1.5), 10);
 });
 
+test("configFor: easy mode overrides only its own values", () => {
+  const easy = R.configFor(CONFIG, "easy");
+  assert.equal(easy.mode, "easy");
+  assert.equal(easy.modeLabel, "Fácil");
+  assert.equal(easy.POWER_FREEZE, 5);
+  assert.equal(easy.POWER_SKIP, 3);
+  assert.equal(easy.WRONG_LOCK_SECONDS, 5);
+  assert.equal(easy.WRONG_SPEEDUP, 0.3);
+  assert.equal(easy.START_LIVES, CONFIG.START_LIVES, "values not in the mode keep the base value");
+  assert.ok(Object.isFrozen(easy));
+});
+
+test("configFor: advanced is the base game; unknown modes fall back to the default", () => {
+  const advanced = R.configFor(CONFIG, "advanced");
+  for (const key of ["POWER_FREEZE", "POWER_SKIP", "WRONG_LOCK_SECONDS", "WRONG_SPEEDUP"]) {
+    assert.equal(advanced[key], CONFIG[key], key);
+  }
+  assert.equal(R.configFor(CONFIG, "nightmare").mode, CONFIG.DEFAULT_MODE);
+  assert.equal(R.configFor(CONFIG, undefined).mode, CONFIG.DEFAULT_MODE);
+});
+
+test("configFor: easy is never harder than advanced", () => {
+  const easy = R.configFor(CONFIG, "easy");
+  const advanced = R.configFor(CONFIG, "advanced");
+  assert.ok(easy.POWER_FREEZE >= advanced.POWER_FREEZE);
+  assert.ok(easy.POWER_SKIP >= advanced.POWER_SKIP);
+  assert.ok(easy.WRONG_LOCK_SECONDS <= advanced.WRONG_LOCK_SECONDS);
+  assert.ok(easy.WRONG_SPEEDUP <= advanced.WRONG_SPEEDUP);
+  const question = makeQuestion("x");
+  assert.ok(R.travelSeconds(question, 1, easy) > R.travelSeconds(question, 1, advanced), "easy gives more time per question");
+  close(R.travelSeconds(question, 1, easy) - R.travelSeconds(question, 1, advanced), easy.THINK_SECONDS - advanced.THINK_SECONDS);
+});
+
 test("charCount: sums question and options", () => {
   assert.equal(R.charCount(makeQuestion("x", { q: "abc", options: ["de", "f"] })), 6);
 });

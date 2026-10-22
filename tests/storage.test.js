@@ -71,6 +71,14 @@ test("reports: newest first, capped, cleared with the history", () => {
   assert.deepEqual(store.getReports(), []);
 });
 
+test("mode: null until chosen, only accepts known modes", () => {
+  const store = memoryStore();
+  assert.equal(store.getMode(), null);
+  assert.equal(store.setMode("nightmare"), false);
+  store.setMode("easy");
+  assert.equal(store.getMode(), "easy");
+});
+
 test("muted: off by default and persisted", () => {
   const store = memoryStore();
   assert.equal(store.getMuted(), false);

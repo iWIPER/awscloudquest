@@ -6,7 +6,7 @@
  * tested in tests/report.test.js. The printable page (saved as PDF with the
  * browser's print dialog) is rendered by renderPrintable().
  *
- * Report: { t, hero, score, correct, misses, accuracy, level, maxStreak, seconds, log }
+ * Report: { t, mode, modeLabel, hero, score, correct, misses, accuracy, level, maxStreak, seconds, log }
  * Log entry: { id, q, topic, answer, explanation, wrongPicks: [text],
  *              outcome: "first" | "late" | "lost" | "skipped", seconds }
  */
@@ -61,7 +61,7 @@
       "# AWS Cloud Quest — Relatório da partida",
       "",
       `**Data:** ${formatDate(dateOf(game))}  `,
-      `**Personagem:** ${game.hero === "female" ? "Mulher" : "Homem"}`,
+      `**Personagem:** ${game.hero === "female" ? "Mulher" : "Homem"}${game.modeLabel ? `  \n**Modo:** ${game.modeLabel}` : ""}`,
       "",
       "## Resumo",
       "",
@@ -138,7 +138,12 @@
     const header = h("header", "report-header");
     header.append(
       h("h1", "", "AWS Cloud Quest — Relatório da partida"),
-      h("p", "report-meta", `${formatDate(dateOf(game))} · Personagem: ${game.hero === "female" ? "Mulher" : "Homem"}`)
+      h(
+        "p",
+        "report-meta",
+        `${formatDate(dateOf(game))} · Personagem: ${game.hero === "female" ? "Mulher" : "Homem"}` +
+          (game.modeLabel ? ` · Modo: ${game.modeLabel}` : "")
+      )
     );
 
     const stats = h("dl", "report-stats");

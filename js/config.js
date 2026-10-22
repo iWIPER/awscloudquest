@@ -41,6 +41,24 @@
     FREEZE_SECONDS: 15,        // …for this long
     POWER_SKIP: 2,             // "Pular": swaps the question, no life lost, no score
 
+    // ── Difficulty modes ───────────────────────────────────────────────
+    // Each mode overrides some of the values above; anything not listed
+    // keeps the base value. "advanced" is the base game.
+    DEFAULT_MODE: "advanced",
+    MODES: {
+      easy: {
+        label: "Fácil",
+        POWER_FREEZE: 5,
+        POWER_SKIP: 3,
+        WRONG_LOCK_SECONDS: 5,
+        WRONG_SPEEDUP: 0.3,
+        THINK_SECONDS: 30,     // +10 s before the monster arrives, on every question
+      },
+      advanced: {
+        label: "Avançado",
+      },
+    },
+
     // ── Score: BASE + min(streak, STREAK_CAP) × PER_STREAK + fast bonus ─
     POINTS_BASE: 10,
     POINTS_PER_STREAK: 2,

@@ -10,6 +10,7 @@
  *   awsCloudQuestStats    { [questionId]: { w, r } } — misses and hits per question
  *   awsCloudQuestHero     "male" | "female" — chosen character
  *   awsCloudQuestMuted    boolean — sound muted
+ *   awsCloudQuestMode     "easy" | "advanced" — difficulty mode
  *   awsCloudQuestReports  [{ t, …report }] — per-question reports of recent games, newest first
  */
 (function (root) {
@@ -22,9 +23,11 @@
     hero: "awsCloudQuestHero",
     muted: "awsCloudQuestMuted",
     reports: "awsCloudQuestReports",
+    mode: "awsCloudQuestMode",
   });
 
   const HEROES = Object.freeze(["male", "female"]);
+  const MODES = Object.freeze(["easy", "advanced"]);
 
   /** Creates a store over a localStorage-like backend (injectable for tests). */
   function createStore(getBackend) {
@@ -103,6 +106,14 @@
       },
       setHero(hero) {
         return HEROES.includes(hero) ? write(KEYS.hero, hero) : false;
+      },
+      /** Chosen difficulty mode, or null if never chosen. */
+      getMode() {
+        const mode = read(KEYS.mode, null);
+        return MODES.includes(mode) ? mode : null;
+      },
+      setMode(mode) {
+        return MODES.includes(mode) ? write(KEYS.mode, mode) : false;
       },
       getMuted() {
         return read(KEYS.muted, false) === true;

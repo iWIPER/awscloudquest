@@ -88,6 +88,12 @@
   $("qpanel-toggle").addEventListener("click", () => game.togglePanel());
   $("btn-freeze").addEventListener("click", () => game.freeze());
   $("btn-skip").addEventListener("click", () => game.skip());
+  document.querySelectorAll('input[name="mode"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      game.setMode(input.value);
+      ui.announce(`Modo ${game.config().modeLabel} selecionado.`);
+    });
+  });
   document.querySelectorAll('input[name="hero"]').forEach((input) => {
     input.addEventListener("change", () => {
       game.setHero(input.value);

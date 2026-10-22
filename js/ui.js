@@ -44,7 +44,14 @@
 
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-  function create(config) {
+  /**
+   * @param {object} baseConfig the base CONFIG (with MODES). The effective
+   *   config of the chosen mode is set later with setConfig().
+   */
+  function create(baseConfig) {
+    let config = baseConfig;
+    const modeConfig = (mode) => root.AwsCloudQuest.rules.configFor(baseConfig, mode);
+    const modeLabel = (mode) => (baseConfig.MODES[mode] ? baseConfig.MODES[mode].label : "");
     const el = {
       app: $("app"),
       world: $("world"),
@@ -99,6 +106,8 @@
       howtoToggle.setAttribute("aria-expanded", String(open));
       $("howto").classList.toggle("is-open", open);
       $("start-rules").hidden = !open;
+      // While the rules are open, the character and mode pickers step aside to give them room.
+      el.overlays.start.querySelector(".card").classList.toggle("is-howto-open", open);
     });
 
     // ── HUD ─────────────────────────────────────────────────────────────
@@ -283,6 +292,27 @@
       return lines;
     }
 
+    /** Short summary of a mode's helps and penalties, e.g. "+6s por pergunta · 5 gelos · 3 pulos · erro: 5s, +30%". */
+    function modeSummary(mode) {
+      const c = modeConfig(mode);
+      const extra = c.THINK_SECONDS - baseConfig.THINK_SECONDS;
+      const time = extra > 0 ? `+${extra}s por pergunta · ` : "";
+      return `${time}${c.POWER_FREEZE} gelos · ${c.POWER_SKIP} pulos · erro: ${c.WRONG_LOCK_SECONDS}s, +${Math.round(c.WRONG_SPEEDUP * 100)}%`;
+    }
+
+    document.querySelectorAll("[data-mode-summary]").forEach((slot) => {
+      slot.textContent = modeSummary(slot.dataset.modeSummary);
+    });
+
+    /** Switches the effective rules (difficulty mode) shown by the UI. */
+    function setConfig(next) {
+      config = next;
+      document.querySelectorAll('input[name="mode"]').forEach((input) => (input.checked = input.value === config.mode));
+      $("start-rules").replaceChildren(
+        ...rulesFromConfig().map(([name, text]) => withIcon("li", "", name, text, { size: 18 }))
+      );
+    }
+
     /** Marks the chosen character and enables Play once there is one. */
     function setHeroChoice(hero, canPlay) {
       document.querySelectorAll('input[name="hero"]').forEach((input) => (input.checked = input.value === hero));
@@ -291,9 +321,7 @@
     }
 
     function showStart({ lastGame, best, warnings, canPlay, hero }) {
-      $("start-rules").replaceChildren(
-        ...rulesFromConfig().map(([name, text]) => withIcon("li", "", name, text, { size: 18 }))
-      );
+      setConfig(config);
       $("start-last").textContent = lastGame ? `${lastGame.score} pts` : "—";
       $("start-best").textContent = `${best} pts`;
       const warn = $("start-warn");
@@ -324,6 +352,7 @@
         : icon("skull", { size: 34 });
       title.append(data.newRecord ? " NOVO RECORDE!" : " GAME OVER");
       title.classList.toggle("is-record", data.newRecord);
+      $("over-mode").textContent = `Modo ${modeLabel(data.mode)}`;
 
       $("over-score").textContent = String(data.score);
       $("over-correct").textContent = String(data.correct);
@@ -361,7 +390,8 @@
 
       const items = history.slice(0, config.HISTORY_SHOWN).map((game, i) => {
         const li = h("li", i === 0 ? "hist-item is-latest" : "hist-item");
-        const label = `${i === 0 ? "Último · " : ""}${formatDate(game.t)} · ${plural(game.correct, "acerto", "acertos")} · nv ${game.level}`;
+        const mode = game.mode ? ` · ${modeLabel(game.mode)}` : "";
+        const label = `${i === 0 ? "Último · " : ""}${formatDate(game.t)} · ${plural(game.correct, "acerto", "acertos")} · nv ${game.level}${mode}`;
         li.append(h("span", "hist-label", label), h("span", "hist-score", `${game.score} pts`));
         if (reportTimes.has(game.t)) {
           const actions = h("span", "hist-actions");
@@ -401,6 +431,7 @@
       el,
       renderHud,
       renderPowers,
+      setConfig,
       setMuted,
       renderQuestion,
       setPanelOpen,

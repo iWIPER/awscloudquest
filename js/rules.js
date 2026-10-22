@@ -59,7 +59,19 @@
     return ((1 - progress) * travel) / speed;
   }
 
+  /**
+   * Effective configuration for a difficulty mode: the base CONFIG with the
+   * mode's overrides applied. Unknown modes fall back to DEFAULT_MODE.
+   * The result also carries `mode` (key) and `modeLabel` (shown to the player).
+   */
+  function configFor(config, mode) {
+    const key = config.MODES && config.MODES[mode] ? mode : config.DEFAULT_MODE;
+    const { label, ...overrides } = (config.MODES && config.MODES[key]) || {};
+    return Object.freeze({ ...config, ...overrides, mode: key, modeLabel: label || key });
+  }
+
   const api = Object.freeze({
+    configFor,
     charCount,
     levelFor,
     travelSeconds,

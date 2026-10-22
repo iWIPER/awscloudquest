@@ -181,6 +181,22 @@
         <p class="pick-hint" id="pick-hint">Escolha seu personagem para jogar.</p>
       </fieldset>
 
+      <fieldset class="box modes">
+        <legend class="box-title"><span data-icon="gauge" data-size="18"></span> Modo de jogo</legend>
+        <div class="mode-grid">
+          <label class="mode-card">
+            <input type="radio" name="mode" value="easy">
+            <span class="mode-name">Fácil</span>
+            <span class="mode-summary" data-mode-summary="easy"></span>
+          </label>
+          <label class="mode-card">
+            <input type="radio" name="mode" value="advanced">
+            <span class="mode-name">Avançado</span>
+            <span class="mode-summary" data-mode-summary="advanced"></span>
+          </label>
+        </div>
+      </fieldset>
+
       <section class="box howto" id="howto">
         <button class="box-title box-toggle" id="howto-toggle" type="button" aria-expanded="false" aria-controls="start-rules">
           <span data-icon="list-checks" data-size="18"></span> Como jogar
@@ -233,6 +249,7 @@
   <div class="overlay" id="ov-over" hidden>
     <div class="card" role="dialog" aria-modal="true" aria-labelledby="over-title">
       <h2 class="card-title" id="over-title"></h2>
+      <p class="mode-tag" id="over-mode"></p>
       <p class="score-big">
         <span class="icon-gold" data-icon="star" data-size="30" data-fill="currentColor"></span>
         <strong id="over-score">0</strong> <span>pontos</span>

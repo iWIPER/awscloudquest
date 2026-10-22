@@ -27,9 +27,11 @@
    *   config, questions (normalized list), store, ui, heroEl, monsterEl, fxLayer, field
    */
   function create(deps) {
-    const { config, questions, store, ui, field, monsterEl, sound, ambient } = deps;
+    const { questions, store, ui, field, monsterEl, sound, ambient } = deps;
     const Q = NS.questions;
     const R = NS.rules;
+    // Effective rules for the chosen difficulty mode (base CONFIG + mode overrides).
+    let config = R.configFor(deps.config, store.getMode() || deps.config.DEFAULT_MODE);
     const Monsters = NS.monsters;
     const hero = NS.hero.create(deps.heroEl, store.getHero() || NS.hero.DEFAULT_VARIANT);
     const fx = NS.effects.create(deps.fxLayer, { reducedMotion });
@@ -553,6 +555,8 @@
       const shots = state.correct + state.misses;
       const report = {
         t,
+        mode: config.mode,
+        modeLabel: config.modeLabel,
         hero: deps.heroEl.dataset.variant,
         score: state.score,
         correct: state.correct,
@@ -563,7 +567,7 @@
         seconds: Math.round(state.playTime),
         log: state.log.slice(),
       };
-      store.addHistory({ t, score: state.score, correct: state.correct, level: state.level }, config.HISTORY_LIMIT);
+      store.addHistory({ t, mode: config.mode, score: state.score, correct: state.correct, level: state.level }, config.HISTORY_LIMIT);
       store.addReport(report, config.REPORTS_LIMIT);
       state.lastReport = report;
       state.best = Math.max(state.best, state.score);
@@ -622,6 +626,15 @@
       if (state.current) setPanel(!state.panelOpen);
     }
 
+    /** Switches the difficulty mode ("easy" | "advanced"), remembers it and updates the UI. */
+    function setMode(mode) {
+      config = R.configFor(deps.config, mode);
+      store.setMode(config.mode);
+      state.powers = { freeze: config.POWER_FREEZE, skip: config.POWER_SKIP };
+      ui.setConfig(config);
+      syncPowers();
+    }
+
     /** Switches the playable character ("male" | "female") and remembers it. */
     function setHero(variant) {
       store.setHero(variant);
@@ -649,6 +662,7 @@
         warnings,
         canPlay: deps.canPlay,
         hero: store.getHero(),
+        mode: config.mode,
       });
     }
 
@@ -675,6 +689,7 @@
 
     function boot(warnings) {
       measure();
+      ui.setConfig(config);
       monsterEl.hidden = true;
       showStartScreen(warnings);
       root.requestAnimationFrame(frame);
@@ -693,7 +708,10 @@
       togglePanel,
       freeze,
       skip,
+      setMode,
       setHero,
+      /** Effective rules of the current mode (for the UI and tests). */
+      config: () => config,
       confirm,
       /** Data of the last finished game, for the report (null before the first Game Over). */
       lastReport: () => state.lastReport,
@@ -718,6 +736,7 @@
         frozenLeft: state.current ? state.current.frozenLeft : 0,
         powers: { ...state.powers },
         hero: deps.heroEl.dataset.variant,
+        mode: config.mode,
         misses: state.misses,
         ambient: ambient.snapshot(),
         muted: sound.isMuted(),
