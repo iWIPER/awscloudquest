@@ -53,11 +53,11 @@ The dragon attack ends with the hero falling over. Falling backwards pushed the 
 
 ## 12. "Limpar" keeps review stats
 
-Clearing the history removes the history list and the best score. Per-question `{w, r}` stats are kept, because they are what makes the game drill weak spots. There is no in-game way to reset them yet. They can be removed by clearing the site's data.
+Clearing the history removes the history list, the saved reports and the best score. Per-question `{w, r}` stats are kept, because they are what makes the game drill weak spots. There is no in-game way to reset them yet. They can be removed by clearing the site's data. The confirmation is shown inside the card instead of the browser's `confirm()`, which looked out of place, especially on phones.
 
 ## 13. Smoke test uses Playwright's fake clock
 
-Real games take minutes, since monsters walk for 25 s or more at level 1. `page.clock` drives `requestAnimationFrame` and timers, so the smoke test plays several full games in seconds and is deterministic. The game exposes `AwsCloudQuest.app.start({ questionId, monsterId })` and `snapshot()` for this purpose. Neither changes the rules.
+Real games take minutes, since monsters walk for 25 s or more at level 1. `page.clock` drives `requestAnimationFrame` and timers, so the smoke test plays several full games quickly. The fake clock also flows in real time during screenshot pauses, so timing checks read the remaining time from `snapshot()` instead of assuming it. The game exposes `AwsCloudQuest.app.start({ questionId, monsterId })`, `snapshot()` and `AwsCloudQuest.scene.set({ time, rain, bird, critter })` for this purpose. None of them changes the rules.
 
 ## 14. Imported practice questions keep their answer key
 
@@ -66,3 +66,39 @@ The 51 questions with ids `clf-sim01-*` were imported with `scripts/import-quest
 ## 15. Code and docs in English, game in Portuguese
 
 The interface text is pt-BR, matching the audience. Code, comments, commit messages and documentation are in English.
+
+## 16. A miss locks the answers and speeds the monster up (replaces the 8% push)
+
+The original spec pushed the monster 8% closer on a miss. In play-testing, guessing was still cheap: players could tap every option in a row. A miss now locks all options for `WRONG_LOCK_SECONDS` (8 s) and makes that monster `WRONG_SPEEDUP` (40%) faster, up to `MAX_SPEED`, with a visible "downgrade" sign. `WRONG_PUSH` and `WRONG_PUSH_CAP` were removed.
+
+## 17. Sound is synthesized and on by default
+
+The spec's backlog suggested sound off by default. The maintainer asked for music and ambient sound as part of the experience, so sound is on, with a mute button and the `M` key, and the choice is remembered. Everything is generated with the Web Audio API: no audio files to download or license, and the music can react to the game (tempo and heartbeat follow the monster). Audio starts on the first user gesture, as browsers require.
+
+## 18. Lucide icons, embedded
+
+Emoji render differently on every platform and looked inconsistent next to each other. The UI uses [Lucide](https://lucide.dev) icons (ISC). Only the icons used are copied into `js/icons.js` as inline SVG, so there is no runtime dependency or CDN request. License texts are in `THIRD_PARTY_NOTICES.md`. Monster names in titles keep their emoji, because they are the monster's identity.
+
+## 19. The question balloon floats over the world
+
+The question panel used to push the field down. It is now absolutely positioned over a single sky that fills the space between the HUD and the answers. The effects layer (penalty sign, balloons) sits above the balloon, so callouts are never hidden even when a long question covers most of the field.
+
+## 20. Cards never scroll as a whole
+
+Overlay cards are flex columns capped at the viewport height. The long parts (the question/answer block, the "Como jogar" list and the history list) take the leftover height and scroll inside themselves. Numbers and buttons stay on screen. "Como jogar" is a custom accordion (button + list) instead of `<details>`, because `<details>` cannot shrink as a flex item in every browser.
+
+## 21. Power-ups: 3 Gelo, 2 Pular
+
+**Gelo** freezes the monster for 15 s and cannot be stacked. **Pular** swaps the question without touching lives, score, streak or review stats, so skipping is neither a reward nor a penalty. Counts are per game and live in `CONFIG`.
+
+## 22. Reports: one game at a time, Markdown and print-to-PDF
+
+A combined report of every game would grow without bound and mix separate study sessions, so reports are per game. The Game Over card exports the game that just ended, and the history screen exports any of the last 20. PDF uses the browser's print dialog ("Salvar como PDF") on a print-only page. Generating PDF bytes in JavaScript would need a library, and the browser's output has selectable text and prints well. The outcome chart is a single 100% bar. The outcomes are states, so they use the reference status palette, with a symbol and a label in the legend so color is never the only cue. The question list doubles as the table view.
+
+## 23. Link preview from a real screenshot
+
+`assets/og-image.png` is produced by `scripts/og-image.mjs` from the actual game, at the 1200×630 size used by link previews. It is deployed with the site because preview crawlers need an absolute URL.
+
+## 24. A gorilla, and critters that run away from the hero
+
+The fifth monster, a gorilla, punches the hero on the head; the hero ends flattened with dizzy stars. The decorative bunnies and squirrels always run left to right, away from the hero, so they never read as a threat.
