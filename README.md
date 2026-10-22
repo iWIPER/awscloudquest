@@ -7,7 +7,7 @@
 [![GitHub Pages](https://img.shields.io/badge/play-GitHub%20Pages-2ea44f?logo=github)](https://iwiper.github.io/awscloudquest/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**â–¶ Play now:** <https://iwiper.github.io/awscloudquest/>
+**▶ Play now:** <https://iwiper.github.io/awscloudquest/>
 
 The game interface is in Brazilian Portuguese; the code and documentation are in English.
 
@@ -62,11 +62,11 @@ The game interface is in Brazilian Portuguese; the code and documentation are in
 
 | Action | Touch / mouse | Keyboard |
 |---|---|---|
-| Shoot an option | Tap the option | `1`â€“`6` or `A`â€“`F` |
+| Shoot an option | Tap the option | `1`–`6` or `A`–`F` |
 | Open / close the question | **Fechar** / **Abrir** | `Q` |
-| Freeze the monster (Gelo) | â„ button on the ground | `G` |
-| Skip the question (Pular) | â­ button on the ground | `P` |
-| Mute / unmute | ðŸ”Š button in the HUD | `M` |
+| Freeze the monster (Gelo) | ❄ button on the ground | `G` |
+| Skip the question (Pular) | ⏭ button on the ground | `P` |
+| Mute / unmute | 🔊 button in the HUD | `M` |
 | Start, continue, play again | Tap the button | `Enter` or `Space` |
 | Close the history | **Fechar** | `Esc` |
 
@@ -77,7 +77,7 @@ The game interface is in Brazilian Portuguese; the code and documentation are in
 5. You start with **1 life** (max. 3). Three fast hits (first try, within 15 s) earn one more.
 6. Use **Gelo** to buy time (3 per game) or **Pular** to get rid of a question (2 per game).
 
-**Score per hit:** `10 + min(streak, 10) Ã— 2 + 10 if fast`. You level up every 3 hits.
+**Score per hit:** `10 + min(streak, 10) × 2 + 10 if fast`. You level up every 3 hits.
 
 ## Running locally
 
@@ -106,10 +106,10 @@ Questions live in [`data/questions.js`](data/questions.js), a plain script that 
 {
   id: "s3-versioning",              // optional, stable id (derived from the text if missing)
   topic: "Armazenamento",           // optional, shown as a tag
-  q: "Qual recurso do Amazon S3 mantÃ©m versÃµes anteriores de um objeto?",
-  options: ["Versionamento", "ReplicaÃ§Ã£o", "Ciclo de vida", "Transfer Acceleration"],
-  answer: "A",                      // letter (Aâ€“F) or 0-based index
-  explanation: "O versionamento guarda todas as versÃµes de um objeto no mesmo bucket."
+  q: "Qual recurso do Amazon S3 mantém versões anteriores de um objeto?",
+  options: ["Versionamento", "Replicação", "Ciclo de vida", "Transfer Acceleration"],
+  answer: "A",                      // letter (A–F) or 0-based index
+  explanation: "O versionamento guarda todas as versões de um objeto no mesmo bucket."
 },
 ```
 
@@ -143,7 +143,7 @@ All gameplay rules live in one object in [`js/config.js`](js/config.js).
 | `QUESTIONS_PER_LEVEL` | `3` | Hits per level |
 | `WRONG_LOCK_SECONDS` | `8` | After a miss, no option can be shot for this long |
 | `WRONG_SPEEDUP` | `0.4` | Each miss makes the current monster this much faster (+40%) |
-| `MAX_SPEED` | `2.5` | Speed cap for a monster after many misses (Ã—2.5) |
+| `MAX_SPEED` | `2.5` | Speed cap for a monster after many misses (×2.5) |
 | `POWER_FREEZE` | `3` | **Gelo** uses per game |
 | `FREEZE_SECONDS` | `15` | How long **Gelo** keeps the monster frozen |
 | `POWER_SKIP` | `2` | **Pular** uses per game |
@@ -156,43 +156,48 @@ All gameplay rules live in one object in [`js/config.js`](js/config.js).
 | `MIN_OPTIONS` / `MAX_OPTIONS` | `2` / `6` | Allowed number of options |
 | `HISTORY_LIMIT` | `50` | Games kept in local storage |
 | `HISTORY_SHOWN` | `20` | Games listed on the history screen |
-| `AMBIENT_CYCLE_SECONDS` | `240` | Length of a full day â†’ night â†’ day cycle |
+| `AMBIENT_CYCLE_SECONDS` | `240` | Length of a full day → night → day cycle |
 | `AMBIENT_RAIN_EVERY` / `AMBIENT_RAIN_LASTS` | `[70, 160]` / `[25, 50]` | Random seconds between rains / rain duration |
 | `AMBIENT_BIRDS_EVERY` / `AMBIENT_CRITTERS_EVERY` | `[7, 16]` / `[12, 26]` | Random seconds between birds / bunnies and squirrels |
 | `MAX_DT_MS` | `50` | Largest loop step (prevents jumps after the tab was hidden) |
 | `SHOT_MS`, `DYING_MS`, `NEXT_AFTER_HIT_MS`, `HERO_BLINK_MS`, `CONFETTI_COUNT` | | Animation timings and effects |
 
-**Monster travel time** = `(THINK_SECONDS + characters / READ_CHARS_PER_SEC) Ã— max(MIN_FACTOR, 1 âˆ’ LEVEL_SPEEDUP Ã— (level âˆ’ 1))`, where *characters* counts the question and all options.
+**Monster travel time** = `(THINK_SECONDS + characters / READ_CHARS_PER_SEC) × max(MIN_FACTOR, 1 − LEVEL_SPEEDUP × (level − 1))`, where *characters* counts the question and all options.
 
 ## Project structure
 
 ```
-â”œâ”€â”€ index.html               # page markup; loads the scripts below in order
-â”œâ”€â”€ css/style.css            # all styles (design tokens in :root)
-â”œâ”€â”€ js/
-â”‚   â”œâ”€â”€ config.js            # CONFIG: every gameplay rule
-â”‚   â”œâ”€â”€ questions.js         # bank validation, normalization and deck building (pure)
-â”‚   â”œâ”€â”€ rules.js             # travel time, score, fast hits, levels (pure)
-â”‚   â”œâ”€â”€ storage.js           # localStorage: best score, history, stats, character, mute
-â”‚   â”œâ”€â”€ icons.js             # Lucide icons as inline SVG
-â”‚   â”œâ”€â”€ sound.js             # Web Audio: effects, rain, suspense music (synthesized)
-â”‚   â”œâ”€â”€ monsters.js          # monster SVGs, metadata and attack choreography
-â”‚   â”œâ”€â”€ hero.js              # the two playable characters and their end states
-â”‚   â”œâ”€â”€ effects.js           # bullet, confetti, floating text, balloons, fire, penalty sign
-â”‚   â”œâ”€â”€ ambient.js           # day/night, rain, thunder, birds, critters, crickets
-â”‚   â”œâ”€â”€ ui.js                # HUD, question balloon, answers, power-ups, overlays
-â”‚   â”œâ”€â”€ game.js              # state machine and requestAnimationFrame loop
-â”‚   â””â”€â”€ main.js              # bootstrap and input wiring
-â”œâ”€â”€ data/questions.js        # the question bank (window.QUESTIONS)
-â”œâ”€â”€ tests/                   # node:test unit tests for the pure modules
-â”œâ”€â”€ scripts/
-â”‚   â”œâ”€â”€ validate-questions.mjs
-â”‚   â”œâ”€â”€ import-questions.mjs
-â”‚   â”œâ”€â”€ check-syntax.mjs
-â”‚   â”œâ”€â”€ serve.mjs
-â”‚   â””â”€â”€ smoke.mjs            # Playwright smoke test (optional dev dependency)
-â”œâ”€â”€ docs/                    # ADDING_QUESTIONS, ARCHITECTURE, DECISIONS, images
-â””â”€â”€ .github/                 # CI, Pages deploy, issue templates
+├── index.html               # page markup; loads the scripts below in order
+├── css/style.css            # all styles (design tokens in :root)
+├── js/
+│   ├── config.js            # CONFIG: every gameplay rule
+│   ├── questions.js         # bank validation, normalization and deck building (pure)
+│   ├── rules.js             # travel time, score, fast hits, levels (pure)
+│   ├── storage.js           # localStorage: best score, history, stats, character, mute
+│   ├── icons.js             # Lucide icons as inline SVG
+│   ├── sound.js             # Web Audio: effects, rain, suspense music (synthesized)
+│   ├── monsters.js          # monster SVGs, metadata and attack choreography
+│   ├── hero.js              # the two playable characters and their end states
+│   ├── effects.js           # bullet, confetti, floating text, balloons, fire, penalty sign
+│   ├── ambient.js           # day/night, rain, thunder, birds, critters, crickets
+│   ├── report.js            # end-of-game report: Markdown export and printable PDF
+│   ├── ui.js                # HUD, question balloon, answers, power-ups, overlays
+│   ├── game.js              # state machine and requestAnimationFrame loop
+│   └── main.js              # bootstrap and input wiring
+├── data/questions.js        # the question bank (window.QUESTIONS)
+├── assets/                  # app icons and the link preview image
+├── manifest.webmanifest     # installable web app metadata
+├── sitemap.xml              # for search engines
+├── tests/                   # node:test unit tests for the pure modules
+├── scripts/
+│   ├── validate-questions.mjs
+│   ├── import-questions.mjs
+│   ├── check-syntax.mjs
+│   ├── serve.mjs
+│   ├── build-assets.mjs     # renders the icons and the link preview image
+│   └── smoke.mjs            # Playwright smoke test (optional dev dependency)
+├── docs/                    # ADDING_QUESTIONS, ARCHITECTURE, DECISIONS, images
+└── .github/                 # CI, Pages deploy, issue templates
 ```
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the game loop, the state machine and what is stored locally.
@@ -209,11 +214,16 @@ npm run ci         # all three
 npm install
 npx playwright install chromium
 npm run smoke      # add -- --shots shots/ to save screenshots
+npm run assets     # re-render icons and the link preview image
 ```
 
 Every push runs [CI](.github/workflows/ci.yml): syntax check, bank validation, unit tests and the smoke test at 360 px and 1280 px. Pushes to `main` are deployed to GitHub Pages by [pages.yml](.github/workflows/pages.yml), which re-runs the checks first and publishes only `index.html`, `css/`, `js/` and `data/`.
 
-Commits follow [Conventional Commits](https://www.conventionalcommits.org/). See [CONTRIBUTING.md](CONTRIBUTING.md).
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/). See [CONTRIBUTING.md](CONTRIBUTING.md). Dependabot keeps the GitHub Actions and the dev dependency up to date, and security reports go through [SECURITY.md](SECURITY.md).
+
+### Search and sharing
+
+The page ships what search engines and link previews look for: a descriptive title and meta description, a canonical URL, `schema.org` structured data (JSON-LD), Open Graph and Twitter Card tags with a 1200×630 preview image, a web app manifest with icons, and a `sitemap.xml`. New deploys can be announced to Bing and other IndexNow engines with the key file at the site root. `tests/seo.test.js` keeps all of this consistent.
 
 ## Technical decisions
 
@@ -241,6 +251,6 @@ Ideas for future versions. None of these are implemented yet.
 
 ## License
 
-[MIT](LICENSE) Â© Wilk. Icons by Lucide (ISC), see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[MIT](LICENSE) © Wilk Pereira Cosentino. Icons by Lucide (ISC), see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 AWS Cloud Quest is an independent study project. It is not affiliated with, endorsed by or sponsored by Amazon Web Services. AWS and related service names are trademarks of Amazon.com, Inc. or its affiliates.

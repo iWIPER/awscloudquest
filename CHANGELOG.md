@@ -25,7 +25,9 @@ First public release of the game. Earlier prototypes were never published in thi
 - Synthesized sound (Web Audio): effects, rain, birdsong, adaptive suspense music and a Game Over tune, with mute (`M`) remembered.
 - End-of-game reports per game, exported as Markdown or as a printable PDF with a results chart, from the Game Over card or from any game in the history.
 - Share button (Web Share API with copy fallback) and link preview (Open Graph image).
-- Lucide icons, embedded as inline SVG.
+- Lucide icons, embedded as inline SVG; app icon, web app manifest and favicon set.
+- Search engine metadata: canonical URL, schema.org JSON-LD, Open Graph/Twitter cards, sitemap and IndexNow key.
+- Security policy and Dependabot for GitHub Actions and the dev dependency.
 - Spaced review: questions missed more often than answered get extra copies in the next deck. Questions never repeat back to back.
 - Local history (last 50 games), best score and history screen with an in-card clear confirmation.
 - Question bank in `data/questions.js` with 8 example questions and 51 imported practice questions.
