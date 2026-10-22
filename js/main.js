@@ -57,9 +57,19 @@
   NS.scene = ambient; // idem: NS.scene.set({ time: 0.7, rain: true })
 
   // ── Sound ─────────────────────────────────────────────────────────────
-  // Audio may only start after a user gesture; the first one unlocks it.
-  const unlockAudio = () => sound.unlock();
-  ["pointerdown", "keydown"].forEach((type) => document.addEventListener(type, unlockAudio, { capture: true }));
+  // Audio may only start inside a user gesture. On touch screens iOS only counts
+  // the end of a tap (touchend/click), not pointerdown, so listen to all of them
+  // until audio is actually running.
+  const GESTURES = ["pointerdown", "pointerup", "touchend", "click", "keydown"];
+  const unlockAudio = () => {
+    sound.unlock();
+    if (sound.isRunning()) GESTURES.forEach((type) => document.removeEventListener(type, unlockAudio, true));
+  };
+  GESTURES.forEach((type) => document.addEventListener(type, unlockAudio, true));
+  // iOS may suspend audio when the tab goes to the background; the next tap resumes it.
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && !sound.isRunning()) GESTURES.forEach((type) => document.addEventListener(type, unlockAudio, true));
+  });
 
   function toggleSound() {
     const muted = !sound.isMuted();

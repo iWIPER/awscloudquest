@@ -27,6 +27,55 @@
     const rain = { gain: null, wanted: false };
     const music = { on: false, intensity: 0, timer: null, nextTime: 0, beat: 0, drone: null };
 
+    // ── iOS: play even with the ring/silent switch on ──────────────────
+    // iOS treats Web Audio as "ambient" sound, which the silent switch mutes.
+    // Asking for the "playback" audio session (Safari 17+) makes the game behave
+    // like a media player; older iOS gets the same effect while an HTML media
+    // element is playing, so a silent looping clip keeps that session active.
+    // The game's own mute button still silences everything.
+    let silentClip = null;
+
+    function silentWavUrl() {
+      const samples = 800; // 0.1 s of silence at 8 kHz, 8-bit mono
+      const buffer = new ArrayBuffer(44 + samples);
+      const view = new DataView(buffer);
+      const text = (offset, s) => [...s].forEach((c, i) => view.setUint8(offset + i, c.charCodeAt(0)));
+      text(0, "RIFF");
+      view.setUint32(4, 36 + samples, true);
+      text(8, "WAVE");
+      text(12, "fmt ");
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);      // PCM
+      view.setUint16(22, 1, true);      // mono
+      view.setUint32(24, 8000, true);   // sample rate
+      view.setUint32(28, 8000, true);   // byte rate
+      view.setUint16(32, 1, true);      // block align
+      view.setUint16(34, 8, true);      // bits per sample
+      text(36, "data");
+      view.setUint32(40, samples, true);
+      new Uint8Array(buffer, 44).fill(128); // 8-bit silence is the midpoint
+      return URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
+    }
+
+    function usePlaybackSession() {
+      try {
+        if (root.navigator && root.navigator.audioSession) {
+          root.navigator.audioSession.type = "playback";
+          return;
+        }
+      } catch {
+        /* fall back to the media element below */
+      }
+      if (isMuted || typeof root.Audio !== "function") return;
+      if (!silentClip) {
+        silentClip = new root.Audio(silentWavUrl());
+        silentClip.loop = true;
+        silentClip.setAttribute("playsinline", "");
+      }
+      if (silentClip.paused) silentClip.play().catch(() => {});
+    }
+
+    /** Creates or resumes audio. Must run inside a user gesture (tap, click, key). */
     function unlock() {
       if (!AudioCtx) return;
       if (!ctx) {
@@ -35,10 +84,14 @@
         master.gain.value = isMuted ? 0 : MASTER_VOLUME;
         master.connect(ctx.destination);
       }
-      if (ctx.state === "suspended") ctx.resume().catch(() => {});
+      usePlaybackSession();
+      if (ctx.state !== "running") ctx.resume().catch(() => {});
       if (rain.wanted) setRain(true);
       if (music.on && !music.timer) startScheduler();
     }
+
+    /** True once audio is actually running (it stays suspended until a valid gesture). */
+    const isRunning = () => ctx !== null && ctx.state === "running";
 
     const ready = () => ctx !== null && !isMuted;
 
@@ -289,10 +342,16 @@
     function setMuted(value) {
       isMuted = value;
       if (master) master.gain.setTargetAtTime(value ? 0 : MASTER_VOLUME, ctx.currentTime, 0.05);
+      if (value) {
+        if (silentClip) silentClip.pause();
+      } else if (ctx) {
+        usePlaybackSession(); // called from the mute button's click, which is a user gesture
+      }
     }
 
     return Object.freeze({
       unlock,
+      isRunning,
       play,
       setRain,
       startMusic,
