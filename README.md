@@ -43,10 +43,11 @@ The game interface is in Brazilian Portuguese; the code and documentation are in
 
 - **Learn while you play.** When you lose a life (and on Game Over) the game pauses and shows the question, the correct answer and why.
 - **Pick your hero.** Play as a man or a woman; the choice is remembered.
+- **Two difficulty modes.** *Fácil* gives more time and more help; *Avançado* is the full challenge (see the table below).
 - **Four monsters, four attacks.** A dinosaur, a dragon, a snake and an alligator, all drawn as inline SVG, each with its own attack animation.
 - **Reading time scales with the question.** Long, scenario-style questions give the monster a longer walk; every level makes it faster.
-- **Guessing is punished.** A wrong answer locks all options for 8 seconds and makes the monster 40% faster.
-- **Power-ups.** Three **Gelo** (freeze the monster in an ice cube for 15 seconds) and two **Pular** (swap the question without losing a life) per game.
+- **Guessing is punished.** A wrong answer locks all options for a few seconds and makes the monster faster.
+- **Power-ups.** **Gelo** freezes the monster in an ice cube for 15 seconds; **Pular** swaps the question without losing a life.
 - **Fast-hit bonus.** Three first-try answers within 15 seconds earn a life (up to 3), or bonus points when lives are full.
 - **A living world.** Day and night, rain with thunder, birds in the sky, bunnies and squirrels on the ground.
 - **Sound and music.** Synthesized in code (no audio files): effects, rain, birdsong, crickets and suspense music that speeds up as the monster gets closer. Mute with one tap or `M`.
@@ -70,12 +71,20 @@ The game interface is in Brazilian Portuguese; the code and documentation are in
 | Start, continue, play again | Tap the button | `Enter` or `Space` |
 | Close the history | **Fechar** | `Esc` |
 
-1. Choose your character, then a question appears and a monster starts walking from the right.
+1. Choose your character and a difficulty mode, then a question appears and a monster starts walking from the right.
 2. Shoot the correct option. A **hit** kills the monster and scores points.
-3. A **miss** eliminates that option, breaks your streak, locks all options for **8 s** and makes the monster **40% faster**. The question stays open.
+3. A **miss** eliminates that option, breaks your streak, locks all options for a few seconds and makes the monster faster. The question stays open.
 4. If the monster **reaches you**, you lose a life and see the correct answer and explanation.
 5. You start with **1 life** (max. 3). Three fast hits (first try, within 15 s) earn one more.
-6. Use **Gelo** to buy time (3 per game) or **Pular** to get rid of a question (2 per game).
+6. Use **Gelo** to buy time or **Pular** to get rid of a question.
+
+| | Fácil | Avançado |
+|---|---|---|
+| Time before the monster arrives | +10 s per question | normal |
+| Gelo (freeze 15 s) | 5 per game | 3 per game |
+| Pular (skip) | 3 per game | 2 per game |
+| Lockout after a miss | 5 s | 8 s |
+| Monster speed-up per miss | +30% | +40% |
 
 **Score per hit:** `10 + min(streak, 10) × 2 + 10 if fast`. You level up every 3 hits.
 
@@ -125,7 +134,7 @@ To bulk-import from JSON, use `node scripts/import-questions.mjs file.json --pre
 
 ## Configuration
 
-All gameplay rules live in one object in [`js/config.js`](js/config.js).
+All gameplay rules live in one object in [`js/config.js`](js/config.js). The values below are the base game (*Avançado*). `MODES` lists each difficulty mode's overrides; anything a mode does not list keeps the base value, and `DEFAULT_MODE` is the mode used until the player picks one.
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -147,6 +156,8 @@ All gameplay rules live in one object in [`js/config.js`](js/config.js).
 | `POWER_FREEZE` | `3` | **Gelo** uses per game |
 | `FREEZE_SECONDS` | `15` | How long **Gelo** keeps the monster frozen |
 | `POWER_SKIP` | `2` | **Pular** uses per game |
+| `DEFAULT_MODE` | `"advanced"` | Mode used until the player picks one |
+| `MODES.easy` | see the table in *How to play* | *Fácil*: `THINK_SECONDS` 30, `POWER_FREEZE` 5, `POWER_SKIP` 3, `WRONG_LOCK_SECONDS` 5, `WRONG_SPEEDUP` 0.3 |
 | `POINTS_BASE` | `10` | Points per hit |
 | `POINTS_PER_STREAK` | `2` | Extra points per hit already in the streak |
 | `STREAK_CAP` | `10` | Streak value at which the streak bonus stops growing |
@@ -217,7 +228,7 @@ npm run smoke      # add -- --shots shots/ to save screenshots
 npm run assets     # re-render icons and the link preview image
 ```
 
-Every push runs [CI](.github/workflows/ci.yml): syntax check, bank validation, unit tests and the smoke test at 360 px and 1280 px. Pushes to `main` are deployed to GitHub Pages by [pages.yml](.github/workflows/pages.yml), which re-runs the checks first and publishes only `index.html`, `css/`, `js/` and `data/`.
+Every push runs [CI](.github/workflows/ci.yml): syntax check, bank validation, unit tests and the smoke test at 360 px and 1280 px, in both Chromium and WebKit (the Safari / iPhone engine). Pushes to `main` are deployed to GitHub Pages by [pages.yml](.github/workflows/pages.yml), which re-runs the checks first and publishes only `index.html`, `css/`, `js/` and `data/`.
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/). See [CONTRIBUTING.md](CONTRIBUTING.md). Dependabot keeps the GitHub Actions and the dev dependency up to date, and security reports go through [SECURITY.md](SECURITY.md).
 
@@ -233,7 +244,8 @@ The page ships what search engines and link previews look for: a descriptive tit
 - **One set of validation rules.** `js/questions.js` has no DOM code, so the game, the CLI validator and the tests all run the same `normalize()`.
 - **Deterministic answers.** The game never infers, generates or fixes an answer; there are no AI or external API calls.
 - **Bank text is rendered with `textContent`**, never `innerHTML`.
-- **Sound is synthesized with the Web Audio API**, not loaded from files, so the game stays tiny and works offline. Browsers only allow audio after a tap, so it starts on the first interaction.
+- **Sound is synthesized with the Web Audio API**, not loaded from files, so the game stays tiny and works offline. Browsers only allow audio after a tap, so it starts on the first interaction. On iPhone the game requests the media playback audio session, so sound also plays with the ring/silent switch on; the in-game mute button controls it.
+- **Difficulty modes are data, not code.** A mode is a set of `CONFIG` overrides; the game, the UI and the "Como jogar" text all read the effective configuration.
 - **Icons are [Lucide](https://lucide.dev)**, embedded as inline SVG (ISC license, see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)) instead of loaded from a CDN.
 
 The full log, with alternatives considered, is in [docs/DECISIONS.md](docs/DECISIONS.md).

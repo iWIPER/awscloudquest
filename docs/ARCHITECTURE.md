@@ -80,6 +80,10 @@ A shot is ignored when the phase is not `play`, when a bullet is already in flig
 4. Only in `play`: `elapsed += dt`. If the monster is frozen, `frozenLeft` counts down and progress stands still; otherwise `progress += dt × speed / travel`. The lockout and panel timers count down, the danger vignette turns on when `progress > DANGER_AT`, and the music intensity follows the progress. At `progress ≥ 1` the attack starts.
 5. The hero and monster are positioned with `transform` only.
 
+## Difficulty modes
+
+`CONFIG.MODES` maps each mode to a set of overrides (`easy` changes `THINK_SECONDS`, `POWER_FREEZE`, `POWER_SKIP`, `WRONG_LOCK_SECONDS` and `WRONG_SPEEDUP`; `advanced` changes nothing). `rules.configFor(CONFIG, mode)` returns the frozen effective configuration. `game.js` keeps that object as its `config` and swaps it when the player picks another mode. Everything else (travel time, lockout, power-up counts, the "Como jogar" text and the mode descriptions) reads from it. The mode is saved in `localStorage` and recorded in the history and in each report.
+
 ## Monster travel time and speed
 
 ```
@@ -89,7 +93,7 @@ factor = max(MIN_FACTOR, 1 − LEVEL_SPEEDUP × (level − 1))
 travel = base × factor                              (seconds at speed 1)
 ```
 
-With the defaults, a short question (about 150 characters including the options) takes `20 + 150/25 = 26 s` at level 1. The 600-character storage scenario in the bank has five long options (1,245 characters in total) and takes `20 + 1245/25 ≈ 70 s`. From level 10 on, the factor bottoms out at `0.55`.
+With the defaults (*Avançado*), a short question (about 150 characters including the options) takes `20 + 150/25 = 26 s` at level 1. The 600-character storage scenario in the bank has five long options (1,245 characters in total) and takes `20 + 1245/25 ≈ 70 s`. From level 10 on, the factor bottoms out at `0.55`. *Fácil* raises `THINK_SECONDS` to 30, giving 10 s more per question at level 1.
 
 Each question starts at `speed = 1`. Every miss adds `WRONG_SPEEDUP` (0.4), up to `MAX_SPEED` (2.5), for the rest of that question. The time left shown in the timer chip is `(1 − progress) × travel / speed`.
 
@@ -122,7 +126,7 @@ Stats are updated once per showing. The first miss, or the monster's arrival, re
 
 `ambient.js` runs a day/night cycle of `AMBIENT_CYCLE_SECONDS` and sets `--night` (0–1) on the world, which CSS uses for the night sky, stars, sun, moon and a slightly darker field. Rain starts at random intervals and brings thunder flashes. By day without rain, small flocks of birds cross the sky and bunnies or squirrels hop along the ground from left to right, away from the hero. At night, crickets chirp.
 
-`sound.js` synthesizes everything with the Web Audio API. Effects play for shots, hits, misses, the lockout ending, lives, level-ups, power-ups, each monster's attack, life lost, Game Over and new records. The ambience drives the rain loop, birdsong, crickets and thunder. The suspense music is an A-minor bass pulse over a drone, scheduled ahead of time. Its tempo, brightness and a heartbeat follow the monster's progress, and it rests while the monster is frozen. Audio starts on the first tap or key press, as browsers require, and the mute state is saved.
+`sound.js` synthesizes everything with the Web Audio API. Effects play for shots, hits, misses, the lockout ending, lives, level-ups, power-ups, each monster's attack, life lost, Game Over and new records. The ambience drives the rain loop, birdsong, crickets and thunder. The suspense music is an A-minor bass pulse over a drone, scheduled ahead of time. Its tempo, brightness and a heartbeat follow the monster's progress, and it rests while the monster is frozen. Audio starts on the first tap or key press, as browsers require, and the mute state is saved. `main.js` listens to `pointerdown`, `pointerup`, `touchend`, `click` and `keydown` until the audio context is actually running, because on touch screens iOS only counts the end of a tap as a user gesture. iOS mutes Web Audio when the ring/silent switch is on. To avoid that, `sound.js` sets `navigator.audioSession.type = "playback"` (Safari 17+). On older iOS it plays a silent looping WAV through an `<audio>` element instead, which keeps the media playback session active. The mute button pauses that loop.
 
 ## Reports and sharing
 
@@ -144,14 +148,15 @@ The Game Over card exports the game that just ended. The history screen exports 
 | `awsCloudQuestStats` | `{ [questionId]: { w, r } }` | every recorded hit or miss |
 | `awsCloudQuestHero` | `"male"` or `"female"` | when the player picks a character |
 | `awsCloudQuestMuted` | boolean | when the sound is toggled |
+| `awsCloudQuestMode` | `"easy"` or `"advanced"` | when the player picks a difficulty mode |
 
 Every access is wrapped in `try/catch`. If storage is blocked, the game plays normally and simply doesn't remember anything. **Limpar** on the history screen asks for confirmation inside the card, then removes the history, the saved reports and the best score. Review stats are kept, so the deck keeps prioritizing your weak questions.
 
 ## Testing
 
 - `tests/*.test.js` (`node:test`): normalization, deck building (adjacency, review copies, deck rollover), travel time, scoring, fast-hit rule, life cap, miss speed-up, storage fallbacks, reports and Markdown export, and the repository bank itself.
-- `scripts/smoke.mjs` (Playwright, optional): loads the page at 360 px and 1280 px with a fake clock. It covers:
-  - the character choice and the "Como jogar" accordion;
+- `scripts/smoke.mjs` (Playwright, optional): loads the page at 360 px and 1280 px with a fake clock, in Chromium or WebKit (`--browser`). Mobile plays *Fácil* and desktop plays *Avançado*. It covers:
+  - the character and mode choice and the "Como jogar" accordion;
   - a miss with its lockout, then hits, the panel auto-close and a life gain;
   - a life loss and Game Over with the player's numbers;
   - history with per-game export and the in-card clear confirmation;

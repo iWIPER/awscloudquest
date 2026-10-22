@@ -6,7 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [2.0.0] - 2026-10-22
+## [2.1.0] - 2026-10-22
+
+### Added
+
+- Difficulty modes, chosen on the start screen and remembered. **Fácil**: +10 s per question, 5 Gelo, 3 Pular, 5 s lockout and +30% speed after a miss. **Avançado** is the original game.
+- The mode is shown on the Game Over card, in the history and in the exported reports.
+- One new practice question (Amazon Personalize).
+- The smoke test also runs in WebKit, the Safari / iPhone engine, locally (`--browser webkit`) and in CI.
+
+### Changed
+
+- Opening "Como jogar" hides the character and mode pickers, so the rules get the space.
+
+### Fixed
+
+- No sound on some iPhones: audio now unlocks on any tap (iOS only counts the end of a touch as a gesture), and the game requests the media playback audio session so sound plays with the ring/silent switch on. The in-game mute button still silences everything.
 
 First public release of the game. Earlier prototypes were never published in this repository.
 
@@ -39,5 +54,6 @@ First public release of the game. Earlier prototypes were never published in thi
 - Keyboard play, `aria-live` feedback, focus management in dialogs, AA contrast and `prefers-reduced-motion` support.
 - Documentation: README, architecture, decisions, question guide and contributing guide.
 
-[Unreleased]: https://github.com/iWIPER/awscloudquest/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/iWIPER/awscloudquest/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/iWIPER/awscloudquest/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/iWIPER/awscloudquest/releases/tag/v2.0.0

@@ -102,3 +102,16 @@ A combined report of every game would grow without bound and mix separate study 
 ## 24. A gorilla, and critters that run away from the hero
 
 The fifth monster, a gorilla, punches the hero on the head; the hero ends flattened with dizzy stars. The decorative bunnies and squirrels always run left to right, away from the hero, so they never read as a threat.
+
+## 25. Difficulty modes as configuration overrides
+
+*Fácil* and *Avançado* differ only in numbers. Each mode is therefore a list of `CONFIG` overrides, and `rules.configFor()` merges them into one frozen object that the whole game reads. Adding a mode, or tuning one, means editing `CONFIG.MODES`, with no code changes. *Avançado* stays the default because it is the game as originally designed. Players who want help pick *Fácil* once, and the choice is remembered.
+
+## 26. iPhone sound with the silent switch on
+
+An iPhone 14 played no sound while an iPhone 17 Pro Max did. There were two causes:
+
+- iOS treats Web Audio as ambient sound, which the ring/silent switch mutes. Newer iPhones replace the switch with the Action button, so they are rarely in silent mode.
+- On touch screens iOS only accepts the end of a tap as the gesture that unlocks audio, so unlocking on `pointerdown` alone could fail on some iOS versions.
+
+The game now unlocks on every gesture type until audio runs. It also asks for the media playback audio session, so sound plays with the switch on, like a video player. The in-game mute button is the player's control.
