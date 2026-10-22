@@ -1,0 +1,17 @@
+version: 2
+updates:
+  # Keep the actions used by CI and the Pages deploy up to date.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+
+  # Dev-only dependency (Playwright, for the smoke test). The game has no runtime dependencies.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: chore
