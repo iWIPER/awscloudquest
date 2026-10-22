@@ -13,6 +13,7 @@
  * monster's attack once. --shots saves screenshots along the way.
  */
 import { mkdirSync } from "node:fs";
+import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
 import { startServer } from "./serve.mjs";
@@ -25,7 +26,7 @@ const VIEWPORTS = [
   { name: "mobile", width: 360, height: 740 },
   { name: "desktop", width: 1280, height: 800 },
 ];
-const MONSTERS = ["dino", "dragon", "snake", "gator"];
+const MONSTERS = ["dino", "dragon", "snake", "gator", "gorilla"];
 
 let failures = 0;
 const check = (ok, message) => {
@@ -215,6 +216,8 @@ for (const viewport of VIEWPORTS) {
   });
   await page.locator("#btn-history-over").click();
   check(await page.locator("#hist-list li").count() === 1, "history lists the game");
+  const [histDownload] = await Promise.all([page.waitForEvent("download"), page.locator('#hist-list button[data-export="md"]').first().click()]);
+  check(/^aws-cloud-quest-relatorio-.*\.md$/.test(histDownload.suggestedFilename()), "each history row exports that game's report");
   await page.locator("#btn-history-clear").click();
   check(await page.locator("#hist-confirm").isVisible(), "Limpar asks for confirmation in the card");
   await page.locator("#btn-clear-cancel").click();
@@ -224,6 +227,40 @@ for (const viewport of VIEWPORTS) {
   check(await page.locator("#hist-list li").count() === 0, "Apagar clears the history");
   await page.locator("#btn-history-close").click();
   check(await page.locator("#ov-over:not([hidden])").isVisible(), "Fechar returns to the Game Over card");
+
+  // Report: Markdown download, printable PDF and the share button.
+  const [download] = await Promise.all([page.waitForEvent("download"), page.locator("#btn-md").click()]);
+  const markdownPath = path.join(shotsDir || process.cwd(), `${viewport.name}-report.md`);
+  await download.saveAs(markdownPath);
+  const markdown = await readFile(markdownPath, "utf8");
+  if (!shotsDir) await rm(markdownPath);
+  check(
+    /^aws-cloud-quest-relatorio-\d{4}-\d{2}-\d{2}-\d{4}\.md$/.test(download.suggestedFilename()) &&
+      markdown.includes("# AWS Cloud Quest — Relatório da partida") &&
+      markdown.includes("## Acertei de primeira") &&
+      markdown.includes("**Resposta certa:**"),
+    `the .md report downloads with the summary and the questions (${download.suggestedFilename()})`
+  );
+
+  await page.evaluate(() => (window.print = () => (window.__printed = true)));
+  await page.locator("#btn-pdf").click();
+  const printed = await page.evaluate(() => ({
+    called: window.__printed === true,
+    items: document.querySelectorAll("#report .report-item").length,
+    bars: document.querySelectorAll("#report .report-bar rect").length,
+  }));
+  check(printed.called && printed.items >= 5 && printed.bars >= 1, `PDF: the printable report has the chart and ${printed.items} questions`);
+  if (shotsDir && viewport.name === "desktop") {
+    await page.emulateMedia({ media: "print" });
+    await page.pdf({ path: path.join(shotsDir, "report.pdf"), format: "A4", printBackground: true });
+    await page.screenshot({ path: path.join(shotsDir, "report-print.png"), fullPage: true });
+    await page.emulateMedia({ media: "screen" });
+  }
+
+  await page.evaluate(() => (navigator.share = async (data) => (window.__shared = data)));
+  await page.locator("#btn-share").click();
+  const shared = await page.evaluate(() => window.__shared);
+  check(Boolean(shared && /pontos/.test(shared.text) && /^https:\/\//.test(shared.url)), "Compartilhar opens the share sheet with the score and the link");
 
   // Every monster attacks once and leaves the hero in its end state.
   for (const monsterId of MONSTERS) {
@@ -242,10 +279,12 @@ for (const viewport of VIEWPORTS) {
   // Power-ups: Gelo freezes the monster, Pular swaps the question; two of each per game.
   await page.evaluate(() => window.AwsCloudQuest.app.start({ monsterId: "dino" }));
   await page.clock.runFor(1000);
-  const freezeSeconds = await page.evaluate(() => window.AwsCloudQuest.config.FREEZE_SECONDS);
+  const { FREEZE_SECONDS: freezeSeconds, POWER_FREEZE: freezeCharges, POWER_SKIP: skipCharges } = await page.evaluate(
+    () => window.AwsCloudQuest.config
+  );
   await page.locator("#btn-freeze").click();
   const frozenAt = await snapshot(page);
-  check(frozenAt.frozenLeft > 0 && frozenAt.powers.freeze === 1, "Gelo freezes the monster and uses one charge");
+  check(frozenAt.frozenLeft > 0 && frozenAt.powers.freeze === freezeCharges - 1, "Gelo freezes the monster and uses one charge");
   check(await page.locator("#monster .m-ice").count() === 1, "the frozen monster is inside an ice cube");
   await shot(page, `${viewport.name}-8-frozen`);
   await page.clock.runFor(3000);
@@ -265,10 +304,14 @@ for (const viewport of VIEWPORTS) {
     afterSkip.questionId !== beforeSkip.questionId && afterSkip.lives === beforeSkip.lives && afterSkip.score === beforeSkip.score,
     "Pular (key P) swaps the question without losing a life or scoring"
   );
-  check(afterSkip.powers.skip === 1, "Pular uses one charge");
-  await page.keyboard.press("g");
-  await page.clock.runFor(200);
-  check((await snapshot(page)).powers.freeze === 0 && (await page.locator("#btn-freeze").isDisabled()), "Gelo runs out after two uses");
+  check(afterSkip.powers.skip === skipCharges - 1, "Pular uses one charge");
+  // Use the remaining Gelo charges (each one waits for the previous ice to melt).
+  for (let left = (await snapshot(page)).powers.freeze; left > 0; left--) {
+    await page.keyboard.press("g");
+    await page.clock.runFor(200);
+    if (left > 1) await page.clock.runFor(((await snapshot(page)).frozenLeft + 0.5) * 1000);
+  }
+  check((await snapshot(page)).powers.freeze === 0 && (await page.locator("#btn-freeze").isDisabled()), "Gelo runs out after all its charges");
 
   // Sound toggle (button and M key) and ambience: night, rain and birds.
   await page.locator("#ov-over").evaluate((el) => (el.hidden = true));

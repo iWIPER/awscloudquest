@@ -56,7 +56,7 @@ function lanAddresses() {
     .map((net) => net.address);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const lan = process.argv.includes("--lan");
   const port = Number(process.argv.slice(2).find((a) => /^\d+$/.test(a))) || 8080;
   const { server, url } = await startServer(port, lan ? "0.0.0.0" : "127.0.0.1");

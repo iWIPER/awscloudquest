@@ -32,7 +32,7 @@ jobs:
       - name: Copy only the files the game needs
         run: |
           mkdir _site
-          cp -r index.html css js data .nojekyll _site/
+          cp -r index.html css js data assets .nojekyll _site/
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
