@@ -1,0 +1,23 @@
+# Dependencies (dev only: Playwright for the smoke test)
+node_modules/
+
+# Build / deploy artifacts
+_site/
+test-results/
+playwright-report/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment and secrets
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
