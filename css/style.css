@@ -704,13 +704,38 @@ button { font: inherit; }
   animation: squeeze 0.4s ease-in-out 0.45s 3 alternate;
 }
 
+/* Bonked by the gorilla: flattened, with dizzy stars circling the head. */
+.h-stars {
+  position: absolute;
+  left: 4px;
+  top: -14px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hero.fate-bonked .h-svg {
+  transform-origin: 40% 100%;
+  transform: scale(1.08, 0.62);
+  transition: transform 0.12s ease-in;
+}
+
+.hero.fate-bonked .h-stars {
+  top: 6px;
+  opacity: 1;
+  transition: opacity 0.15s 0.1s, top 0.12s;
+  animation: dizzy 0.9s linear infinite;
+}
+
 .hero.fate-burned .h-eyes,
 .hero.fate-squeezed .h-eyes,
+.hero.fate-bonked .h-eyes,
 .hero.fate-burned .h-mouth,
-.hero.fate-squeezed .h-mouth { display: none; }
+.hero.fate-squeezed .h-mouth,
+.hero.fate-bonked .h-mouth { display: none; }
 
 .hero.fate-burned .h-eyes-x,
-.hero.fate-squeezed .h-eyes-x { display: inline; }
+.hero.fate-squeezed .h-eyes-x,
+.hero.fate-bonked .h-eyes-x { display: inline; }
 
 /* ── Monsters ───────────────────────────────────────────────────────── */
 .monster {
@@ -797,6 +822,15 @@ button { font: inherit; }
 .m-art.atk-rear { transform: rotate(12deg); transition: transform 0.3s ease-out; }
 .m-art.jaw-open .m-jaw { animation: none; transform: rotate(-22deg); transition: transform 0.2s; }
 .m-art.atk-roll { animation: roll 0.32s ease-in-out 0.3s 4 alternate; }
+
+/* Gorilla: the front arm pivots at the shoulder (60, 48 in the 120×100 box). */
+.m-arm {
+  transform-box: view-box;
+  transform-origin: 60px 48px;
+  animation: arm-swing 1.2s ease-in-out infinite alternate;
+}
+
+.m-art.atk-punch .m-arm { animation: punch 0.7s ease-in forwards; }
 
 /* ── 4. Answers ─────────────────────────────────────────────────────── */
 .answers-wrap {
@@ -1287,6 +1321,25 @@ legend.box-title {
 }
 
 .btn .icon { filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.3)); }
+
+.card-actions-small {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr; /* "Compartilhar" needs the most room */
+  margin-top: 8px;
+  gap: 8px;
+}
+
+.card-actions .btn { white-space: nowrap; }
+
+.btn-small {
+  min-height: 44px;
+  padding: 6px 10px 9px;
+  background: rgba(40, 10, 60, 0.55);
+  font-size: 0.9rem;
+  gap: 6px;
+}
+
+.btn-small:hover { background: rgba(40, 10, 60, 0.75); }
 .btn:disabled { cursor: not-allowed; opacity: 0.55; }
 .btn:active:not(:disabled) { transform: translateY(2px); }
 .btn-go { background: linear-gradient(#3f9a2c, var(--green-dark)); }
@@ -1314,11 +1367,47 @@ legend.box-title {
 
 .hist-item {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px 8px;
   padding: 6px 10px;
   border-radius: 10px;
   font-size: 0.9rem;
+}
+
+.hist-label { flex: 1 1 60%; }
+
+.hist-actions {
+  display: flex;
+  flex-basis: 100%;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.hist-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  padding: 2px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  background: rgba(40, 10, 60, 0.5);
+  color: var(--white);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hist-export:hover { background: rgba(40, 10, 60, 0.8); }
+
+/* The list scrolls inside the history card instead of growing it. */
+.card > .hist-list {
+  flex: 0 1 auto;
+  min-height: 80px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .hist-item + .hist-item { margin-top: 4px; }
@@ -1535,6 +1624,18 @@ legend.box-title {
 }
 @keyframes scurry { from { transform: translateY(0); } to { transform: translateY(-2px); } }
 @keyframes ice-in { from { transform: scale(1.3); opacity: 0; } }
+@keyframes arm-swing { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+@keyframes punch {
+  0% { transform: rotate(0); }
+  55% { transform: rotate(125deg); }   /* wind up: fist over the head */
+  72% { transform: rotate(-35deg); }   /* slam down on the hero's head */
+  100% { transform: rotate(-20deg); }
+}
+@keyframes dizzy {
+  from { transform: rotate(0) translateX(0); }
+  50% { transform: rotate(8deg) translateX(3px); }
+  to { transform: rotate(0) translateX(0); }
+}
 @keyframes ice-crack {
   30% { transform: scale(1.06) rotate(-2deg); opacity: 1; }
   100% { transform: scale(1.25); opacity: 0; }
@@ -1542,6 +1643,104 @@ legend.box-title {
 @keyframes poof {
   30% { transform: scale(1.1); opacity: 1; filter: blur(0); }
   100% { transform: translateY(-20px) scale(0.2); opacity: 0; filter: blur(4px); }
+}
+
+/* ── Printable report (Game Over → PDF) ─────────────────────────────── */
+.report { display: none; }
+
+@media print {
+  @page { margin: 14mm; }
+
+  html,
+  body {
+    height: auto;
+    overflow: visible;
+    background: #fff;
+    color: #1f1a24;
+  }
+
+  .app,
+  .overlay,
+  .sr-only,
+  .noscript { display: none !important; }
+
+  .report {
+    display: block;
+    font-family: var(--font);
+    font-size: 11pt;
+    line-height: 1.45;
+  }
+
+  .report h1 { margin: 0 0 2pt; font-size: 20pt; color: var(--ink); }
+  .report h2 { margin: 16pt 0 6pt; font-size: 13pt; color: var(--ink); }
+  .report-meta { margin: 0; color: #5b5266; }
+
+  .report-stats {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6pt;
+    margin: 12pt 0 0;
+  }
+
+  .report-stats div {
+    padding: 6pt;
+    border: 1px solid #d9d2e0;
+    border-radius: 6pt;
+    text-align: center;
+  }
+
+  .report-stats dt { font-size: 8pt; color: #5b5266; }
+  .report-stats dd { margin: 0; font-size: 14pt; font-weight: 700; }
+
+  .report-bar { display: block; width: 100%; height: auto; }
+
+  .report-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4pt 14pt;
+    margin: 8pt 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .report-swatch {
+    display: inline-grid;
+    place-items: center;
+    width: 14pt;
+    height: 14pt;
+    border-radius: 3pt;
+    color: #1f1a24;
+    font-size: 9pt;
+    font-weight: 700;
+    vertical-align: -2pt;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .report-bar rect { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .report-list { padding-left: 18pt; }
+
+  .report-item {
+    margin-bottom: 9pt;
+    break-inside: avoid;
+  }
+
+  .report-badge {
+    display: inline-block;
+    padding: 0 6pt;
+    border: 1.5pt solid;
+    border-radius: 99pt;
+    font-size: 8.5pt;
+    font-weight: 700;
+  }
+
+  .report-item p { margin: 2pt 0 0; }
+  .report-q { font-weight: 700; }
+  .report-wrong { color: #a12626; }
+  .report-a { color: #006300; font-weight: 700; }
+  .report-why { color: #3d3546; }
+  .report-footer { margin-top: 16pt; font-size: 8.5pt; color: #5b5266; }
 }
 
 /* ── Small screens ──────────────────────────────────────────────────── */
@@ -1553,6 +1752,11 @@ legend.box-title {
   .hud-icon .icon { width: 16px; height: 16px; }
   .dot { width: 8px; height: 8px; }
   .hud-btn { min-width: 32px; }
+  .card { padding: 16px 12px; }
+  .card-actions { gap: 8px; }
+  .card-actions .btn { gap: 6px; font-size: 0.95rem; padding-left: 8px; padding-right: 8px; }
+  .card-actions .btn:first-child:nth-last-child(2) { flex-grow: 1.3; } /* "Jogar de novo" beside "Histórico" */
+  .card-actions-small .btn { font-size: 0.82rem; gap: 4px; }
   .qpanel-label { letter-spacing: 0.04em; font-size: 0.9rem; }
   .qpanel-topic { display: none; }
 }
@@ -1567,6 +1771,8 @@ legend.box-title {
   .m-art.is-jolt,
   .m-art.atk-jump,
   .m-art.atk-roll,
+  .m-arm,
+  .hero.fate-bonked .h-stars,
   .m-art.atk-chomp .m-jaw,
   .hero.fate-squeezed .h-coils,
   .world.is-danger::after,

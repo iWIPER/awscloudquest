@@ -1,7 +1,7 @@
 /**
  * AWS Cloud Quest — the hero: two playable characters drawn as inline SVG
  * (67×72, facing right, gun level) plus the end states used by the attacks
- * (eaten, burned, squeezed). Both characters share the same box, eyes and
+ * (eaten, burned, squeezed, bonked). Both characters share the same box, eyes and
  * gun position, so attacks and bullets line up for either one.
  */
 (function (root) {
@@ -73,6 +73,16 @@
       <ellipse cx="25" cy="52" rx="21" ry="6" fill="none" stroke="#6cc24a" stroke-width="6"/>
     </svg>`;
 
+  // Dizzy stars circling the head after the gorilla's punch.
+  const STARS = `
+    <svg class="h-stars" viewBox="0 0 40 16" width="40" height="16" aria-hidden="true">
+      <g fill="#fbd51a" stroke="#a86a00" stroke-width=".6">
+        <path d="M6 2l1.2 2.6 2.8.3-2.1 1.9.6 2.8L6 8.2 3.5 9.6l.6-2.8L2 4.9l2.8-.3z"/>
+        <path d="M20 5l1.2 2.6 2.8.3-2.1 1.9.6 2.8L20 11.2l-2.5 1.4.6-2.8L16 7.9l2.8-.3z"/>
+        <path d="M34 2l1.2 2.6 2.8.3-2.1 1.9.6 2.8L34 8.2l-2.5 1.4.6-2.8L30 4.9l2.8-.3z"/>
+      </g>
+    </svg>`;
+
   const VARIANTS = Object.freeze(Object.keys(BODIES));
   const DEFAULT_VARIANT = "male";
 
@@ -82,12 +92,12 @@
     return `<svg class="h-svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}" aria-hidden="true">${body}</svg>`;
   }
 
-  const FATES = ["eaten", "burned", "squeezed"];
+  const FATES = ["eaten", "burned", "squeezed", "bonked"];
 
   /** Creates the hero view inside `el`. */
   function create(el, variant = DEFAULT_VARIANT) {
     function draw(v) {
-      el.innerHTML = artFor(v) + COILS;
+      el.innerHTML = artFor(v) + COILS + STARS;
       el.dataset.variant = BODIES[v] ? v : DEFAULT_VARIANT;
     }
     draw(variant);

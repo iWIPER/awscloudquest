@@ -3,7 +3,8 @@
  *
  * Every monster faces left (towards the hero) and is drawn in a 120×100 box
  * with its feet on the bottom edge. Animated parts carry classes used by
- * css/style.css: .m-jaw (mouth), .m-tongue (snake), .m-wing (dragon).
+ * css/style.css: .m-jaw (mouth), .m-tongue (snake), .m-wing (dragon),
+ * .m-arm (gorilla).
  *
  * attack(ctx) only starts the choreography; the game waits `attackMs` and
  * then moves on. `ctx` is built by game.js (see buildAttackContext there).
@@ -81,9 +82,30 @@
     ${eye(48, 51, 5)}
     <circle cx="8" cy="59" r="1.5" fill="#2a1a3a"/>`);
 
+  // The front arm (.m-arm) pivots at the shoulder (60, 48) for the punch.
+  const GORILLA = svg(`
+    <rect x="58" y="74" width="16" height="24" rx="7" fill="#3d3a44"/>
+    <rect x="80" y="74" width="16" height="24" rx="7" fill="#3d3a44"/>
+    <path d="M90 44Q108 62 100 92" stroke="#2f2c35" stroke-width="13" stroke-linecap="round" fill="none"/>
+    <ellipse cx="78" cy="58" rx="28" ry="26" fill="#4a4652"/>
+    <ellipse cx="67" cy="62" rx="15" ry="14" fill="#8b8494"/>
+    <path d="M60 58q7 4 14 0M61 66q6 3 12 0" stroke="#6f6878" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <circle cx="45" cy="34" r="17" fill="#4a4652"/>
+    <ellipse cx="38" cy="41" rx="13" ry="10" fill="#8b8494"/>
+    <path d="M27 29Q44 19 60 28V33Q44 26 27 34Z" fill="#2f2c35"/>
+    <circle cx="34" cy="32" r="2.6" fill="#fff"/><circle cx="33.3" cy="32" r="1.4" fill="#2a1a3a"/>
+    <circle cx="43" cy="32" r="2.6" fill="#fff"/><circle cx="42.3" cy="32" r="1.4" fill="#2a1a3a"/>
+    <circle cx="30" cy="40" r="1.4" fill="#2f2c35"/><circle cx="35" cy="40" r="1.4" fill="#2f2c35"/>
+    <path class="m-jaw" d="M28 46Q36 51 45 46" stroke="#2f2c35" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <g class="m-arm">
+      <path d="M60 48Q40 60 42 82" stroke="#4a4652" stroke-width="14" stroke-linecap="round" fill="none"/>
+      <circle cx="42" cy="87" r="9.5" fill="#3d3a44"/>
+      <path d="M36 84h12M36 89h12" stroke="#2f2c35" stroke-width="1.4" stroke-linecap="round"/>
+    </g>`);
+
   // ── Attacks ─────────────────────────────────────────────────────────
-  // ctx: { art, hero, fx, later, moveTo(x, ms), heroLeft, heroWidth, heroCenterX,
-  //        heroTop, size, monsterX, mouthPoint() }
+  // ctx: { art, hero, fx, later, moveTo(x, ms), shake(), heroLeft, heroWidth,
+  //        heroCenterX, heroTop, size, monsterX, mouthPoint() }
 
   function dinoAttack(ctx) {
     ctx.art.classList.add("atk-jump", "atk-chomp");
@@ -115,6 +137,17 @@
     ctx.later(() => ctx.hero.setFate("eaten"), 650);
   }
 
+  function gorillaAttack(ctx) {
+    // Steps in so the fist lands on the hero's head, winds up and punches down.
+    ctx.moveTo(ctx.heroLeft + ctx.heroWidth * 0.55 - ctx.size * 0.35, 350);
+    ctx.later(() => ctx.art.classList.add("atk-punch"), 350);
+    ctx.later(() => {
+      ctx.hero.setFate("bonked");
+      ctx.fx.popText(ctx.heroCenterX, ctx.heroTop - 6, "POW!", "pop-attack");
+      ctx.shake();
+    }, 850);
+  }
+
   /** Dragon breathes fire from a distance: clamp(28% of the field, 90, 170) px. */
   const dragonGap = (fieldWidth) => Math.min(170, Math.max(90, fieldWidth * 0.28));
 
@@ -138,6 +171,11 @@
       id: "gator", name: "Jacaré", icon: "🐊", svg: GATOR,
       lossTitle: "O jacaré te abocanhou!", attackMs: 1600, attack: gatorAttack,
       stopGap: () => 0, mouth: { x: 0.05, y: 0.68 },
+    },
+    {
+      id: "gorilla", name: "Gorila", icon: "🦍", svg: GORILLA,
+      lossTitle: "O gorila te nocauteou!", attackMs: 1700, attack: gorillaAttack,
+      stopGap: () => 0, mouth: { x: 0.3, y: 0.45 },
     },
   ]);
 

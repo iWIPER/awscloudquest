@@ -102,6 +102,14 @@
         burst({ dur: 1.4, vol: 0.18, freq: 6000, type: "highpass", at: ctx.currentTime + 0.1 });
         tone({ type: "triangle", from: 90, to: 70, dur: 1.2, vol: 0.12, at: ctx.currentTime + 0.5 });
       },
+      gorilla() {
+        // Roar, chest beats, then the punch.
+        tone({ type: "sawtooth", from: 150, to: 70, dur: 0.55, vol: 0.16 });
+        [0.15, 0.27, 0.39, 0.51].forEach((d) => tone({ type: "sine", from: 90, to: 50, dur: 0.1, vol: 0.3, at: ctx.currentTime + d }));
+        burst({ dur: 0.25, vol: 0.4, freq: 180, type: "lowpass", at: ctx.currentTime + 0.85 });
+        burst({ dur: 0.08, vol: 0.25, freq: 3000, type: "highpass", at: ctx.currentTime + 0.85 });
+        melody([1568, 1760, 1568, 1760], { type: "sine", step: 0.09, dur: 0.08, vol: 0.04 }); // birdies
+      },
       gator() {
         [0.15, 0.35, 0.55].forEach((d) => burst({ dur: 0.1, vol: 0.32, freq: 250, at: ctx.currentTime + d }));
         tone({ type: "sawtooth", from: 110, to: 50, dur: 0.9, vol: 0.14, at: ctx.currentTime + 0.6 });

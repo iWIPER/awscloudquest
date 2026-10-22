@@ -59,6 +59,8 @@
       maxStreak: 0,
       playTime: 0,
       powers: { freeze: config.POWER_FREEZE, skip: config.POWER_SKIP },
+      log: [],          // one entry per question shown (for the end-of-game report)
+      lastReport: null, // data of the last finished game
     };
 
     // Field geometry, measured every frame and on resize.
@@ -204,6 +206,7 @@
         speed: 1,      // multiplier; each miss makes this monster faster
         lockLeft: 0,   // seconds left in the post-miss lockout
         frozenLeft: 0, // seconds left frozen in ice (power-up)
+        wrongPicks: [], // texts of the wrong options shot (for the report)
         monster,
       };
 
@@ -215,6 +218,22 @@
       state.shotInFlight = false;
       state.phase = "play";
       syncPowers();
+    }
+
+    /** Closes the current question in the report log: "first" | "late" | "lost" | "skipped". */
+    function logOutcome(outcome) {
+      const cur = state.current;
+      const q = cur.question;
+      state.log.push({
+        id: q.id,
+        q: q.q,
+        topic: q.topic,
+        answer: q.options[q.answer],
+        explanation: q.explanation,
+        wrongPicks: cur.wrongPicks.slice(),
+        outcome,
+        seconds: Math.round(cur.elapsed),
+      });
     }
 
     // ── Power-ups ───────────────────────────────────────────────────────
@@ -268,6 +287,7 @@
       const cur = state.current;
       if (state.phase !== "play" || !cur || state.shotInFlight || state.powers.skip <= 0) return;
       state.powers.skip -= 1;
+      logOutcome("skipped");
       state.phase = "dying";
       cur.lockLeft = 0;
       ui.setLock(0);
@@ -354,6 +374,7 @@
       state.maxStreak = Math.max(state.maxStreak, state.streak);
       state.correct += 1;
       state.score += points;
+      logOutcome(cur.hadError ? "late" : "first");
       sound.play("hit");
       state.level = R.levelFor(state.correct, config);
       if (!cur.hadError) recordStat(cur.question.id, true);
@@ -397,6 +418,7 @@
     function onMiss(index) {
       const cur = state.current;
       cur.eliminated.add(index);
+      cur.wrongPicks.push(cur.shown[index].text);
       ui.eliminate(index);
       if (!cur.hadError) {
         cur.hadError = true;
@@ -452,6 +474,11 @@
           monsterEl.style.transition = `transform ${ms}ms ease-in`;
           placeMonster(x);
         },
+        shake() {
+          field.classList.remove("is-shaking");
+          void field.offsetWidth; // restart the animation
+          field.classList.add("is-shaking");
+        },
         mouthPoint() {
           const rect = art.getBoundingClientRect();
           const fieldRect = field.getBoundingClientRect();
@@ -472,6 +499,7 @@
       }
       state.streak = 0;
       state.lives -= 1;
+      logOutcome("lost");
       cur.lockLeft = 0;
       ui.setLock(0);
       ui.lockAnswers();
@@ -519,17 +547,13 @@
       const previous = store.getHistory()[0] || null;
       const newRecord = state.score > state.best && state.score > 0;
       if (newRecord) store.setBest(state.score);
-      store.addHistory({ t: Date.now(), score: state.score, correct: state.correct, level: state.level }, config.HISTORY_LIMIT);
-      state.best = Math.max(state.best, state.score);
 
-      sound.stopMusic();
-      sound.play(newRecord ? "record" : "gameOver");
-
-      ui.markAnswer(correctIndex(cur));
-      renderHud();
+      // One timestamp links the history row to its saved report (exported from the history screen).
+      const t = Date.now();
       const shots = state.correct + state.misses;
-      ui.showGameOver({
-        newRecord,
+      const report = {
+        t,
+        hero: deps.heroEl.dataset.variant,
         score: state.score,
         correct: state.correct,
         misses: state.misses,
@@ -537,7 +561,21 @@
         level: state.level,
         maxStreak: state.maxStreak,
         seconds: Math.round(state.playTime),
-        hero: deps.heroEl.dataset.variant,
+        log: state.log.slice(),
+      };
+      store.addHistory({ t, score: state.score, correct: state.correct, level: state.level }, config.HISTORY_LIMIT);
+      store.addReport(report, config.REPORTS_LIMIT);
+      state.lastReport = report;
+      state.best = Math.max(state.best, state.score);
+
+      sound.stopMusic();
+      sound.play(newRecord ? "record" : "gameOver");
+
+      ui.markAnswer(correctIndex(cur));
+      renderHud();
+      ui.showGameOver({
+        ...report,
+        newRecord,
         previous,
         best: state.best,
         question: cur.question,
@@ -571,6 +609,7 @@
         maxStreak: 0,
         playTime: 0,
         powers: { freeze: config.POWER_FREEZE, skip: config.POWER_SKIP },
+        log: [],
       });
       ui.hide();
       renderHud();
@@ -614,7 +653,17 @@
     }
 
     function openHistory() {
-      ui.showHistory({ history: store.getHistory(), best: store.getBest() });
+      const reports = store.getReports();
+      ui.showHistory({
+        history: store.getHistory(),
+        best: store.getBest(),
+        reportTimes: new Set(reports.map((r) => r.t)),
+      });
+    }
+
+    /** Saved report of the game finished at time `t`, or null. */
+    function reportAt(t) {
+      return store.getReports().find((r) => r.t === t) || null;
     }
 
     function clearHistory() {
@@ -646,6 +695,9 @@
       skip,
       setHero,
       confirm,
+      /** Data of the last finished game, for the report (null before the first Game Over). */
+      lastReport: () => state.lastReport,
+      reportAt,
       continueAfterLifeLost,
       openHistory,
       clearHistory,
