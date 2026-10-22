@@ -10,50 +10,101 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <!--
+    Elements with data-icon="name" are filled with the matching Lucide icon by js/ui.js
+    (optional data-size, data-fill).
+  -->
   <div class="app" id="app">
     <!-- 1. HUD -->
     <header class="hud">
       <span class="hud-title">AWS <b>Cloud Quest</b></span>
       <span class="hud-item hud-lives" id="hud-lives" role="img" title="Vidas"></span>
-      <span class="hud-item" title="Pontos">⭐ <span id="hud-score">0</span></span>
-      <span class="hud-item hud-fast" id="hud-fast" role="img" title="Acertos rápidos"></span>
+      <span class="hud-item" title="Pontos">
+        <span class="hud-icon icon-gold" data-icon="star" data-fill="currentColor"></span><span id="hud-score">0</span>
+      </span>
+      <span class="hud-item hud-fast" title="Acertos rápidos">
+        <span class="hud-icon icon-gold" data-icon="zap" data-fill="currentColor"></span><span id="hud-fast" role="img"></span>
+      </span>
       <span class="hud-item" title="Nível">Nv <span id="hud-level">1</span></span>
-      <span class="hud-item" title="Recorde">🏆 <span id="hud-best">0</span></span>
+      <span class="hud-item hud-best" id="hud-best-item" title="Recorde">
+        <span class="hud-icon icon-trophy" data-icon="trophy" data-fill="#fbd51a"></span><span id="hud-best">0</span>
+      </span>
+      <button class="hud-item hud-btn" id="btn-sound" type="button" aria-label="Desligar som" title="Som (M)"></button>
     </header>
 
-    <!-- 2. Question panel -->
-    <section class="qpanel" id="qpanel" aria-label="Pergunta">
-      <button class="qpanel-head" id="qpanel-toggle" type="button" aria-expanded="true" aria-controls="qpanel-body">
-        <span class="qpanel-label">PERGUNTA</span>
-        <span class="qpanel-topic" id="q-topic" hidden></span>
-        <span class="chip" id="q-timer">⚡ 0s</span>
-        <span class="qpanel-arrow" id="qpanel-arrow">▲ Fechar</span>
-        <span class="qpanel-bar" id="qpanel-bar"></span>
-      </button>
-      <div class="qpanel-body" id="qpanel-body">
-        <p class="qpanel-text" id="q-text" tabindex="0">Toque em “Jogar” para começar.</p>
+    <!-- The game world: one sky behind the floating question balloon and the field -->
+    <main class="world" id="world">
+      <div class="sky" id="sky" aria-hidden="true">
+        <div class="sky-night"></div>
+        <div class="stars"></div>
+        <div class="sun"></div>
+        <div class="moon"></div>
+        <div class="sky-rain"></div>
+        <div class="cloud cloud-1"></div>
+        <div class="cloud cloud-2"></div>
+        <div class="cloud cloud-3"></div>
+        <div class="cloud cloud-4"></div>
+        <span class="sprinkle s1"></span><span class="sprinkle s2"></span><span class="sprinkle s3"></span>
+        <span class="sprinkle s4"></span><span class="sprinkle s5"></span><span class="sprinkle s6"></span>
+        <span class="sprinkle s7"></span><span class="sprinkle s8"></span>
       </div>
-    </section>
 
-    <!-- 3. Playing field (decorative; everything important is also announced as text) -->
-    <section class="field" id="field" aria-hidden="true">
-      <div class="cloud cloud-1"></div>
-      <div class="cloud cloud-2"></div>
-      <div class="cloud cloud-3"></div>
-      <div class="hill hill-1"></div>
-      <div class="hill hill-2"></div>
-      <div class="hill hill-3"></div>
-      <span class="sprinkle s1"></span><span class="sprinkle s2"></span><span class="sprinkle s3"></span>
-      <span class="sprinkle s4"></span><span class="sprinkle s5"></span><span class="sprinkle s6"></span>
-      <span class="sprinkle s7"></span><span class="sprinkle s8"></span>
-      <div class="ground"></div>
-      <div class="hero" id="hero"></div>
-      <div class="monster" id="monster" hidden></div>
-      <div class="fx" id="fx"></div>
-    </section>
+      <!-- 2. Question balloon -->
+      <section class="qpanel" id="qpanel" aria-label="Pergunta">
+        <button class="qpanel-head" id="qpanel-toggle" type="button" aria-expanded="true" aria-controls="qpanel-body">
+          <span class="qpanel-label">PERGUNTA</span>
+          <span class="qpanel-topic" id="q-topic" hidden></span>
+          <span class="chip" id="q-timer"></span>
+          <span class="qpanel-arrow" id="qpanel-arrow">Fechar</span>
+          <span class="qpanel-bar" id="qpanel-bar"></span>
+        </button>
+        <div class="qpanel-body" id="qpanel-body">
+          <p class="qpanel-text" id="q-text" tabindex="0">Toque em “Jogar” para começar.</p>
+        </div>
+      </section>
+
+      <!-- 3. Playing field (decorative; everything important is also announced as text) -->
+      <section class="field" id="field" aria-hidden="true">
+        <div class="hill hill-1"></div>
+        <div class="hill hill-2"></div>
+        <div class="hill hill-3"></div>
+        <div class="critters" id="critters"></div>
+        <div class="ground"></div>
+        <div class="hero" id="hero"></div>
+        <div class="monster" id="monster" hidden></div>
+      </section>
+
+      <!-- Power-ups, on the ground strip (outside the aria-hidden field so they stay accessible) -->
+      <div class="powers" role="group" aria-label="Poderes">
+        <button class="power power-freeze" id="btn-freeze" type="button" title="Gelo (G)">
+          <span data-icon="snowflake" data-size="20"></span>
+          <span class="power-name">Gelo</span>
+          <span class="power-count" id="freeze-count">0</span>
+        </button>
+        <button class="power power-skip" id="btn-skip" type="button" title="Pular (P)">
+          <span data-icon="skip-forward" data-size="20"></span>
+          <span class="power-name">Pular</span>
+          <span class="power-count" id="skip-count">0</span>
+        </button>
+      </div>
+
+      <!-- Weather and effects sit above the question balloon so callouts are never hidden.
+           The field fills the world, so they share the same coordinates. -->
+      <div class="rain" aria-hidden="true"></div>
+      <div class="lightning" aria-hidden="true"></div>
+      <div class="fx" id="fx" aria-hidden="true"></div>
+    </main>
 
     <!-- 4. Answers -->
-    <section class="answers" id="answers" role="group" aria-label="Alternativas"></section>
+    <section class="answers-wrap">
+      <div class="answers" id="answers" role="group" aria-label="Alternativas"></div>
+      <div class="lock" id="answers-lock" hidden>
+        <span class="lock-pill">
+          <span class="lock-icon" data-icon="lock" data-size="22"></span>
+          <span>Errou! Aguarde <b id="lock-secs"></b>s</span>
+        </span>
+      </div>
+    </section>
   </div>
 
   <p class="sr-only" id="live" aria-live="polite"></p>
@@ -61,14 +112,51 @@
   <!-- 5. Overlays -->
   <div class="overlay" id="ov-start" hidden>
     <div class="card" role="dialog" aria-modal="true" aria-labelledby="start-title">
-      <h1 class="card-title" id="start-title">AWS Cloud Quest</h1>
+      <h1 class="card-title" id="start-title">AWS <span class="accent">Cloud Quest</span></h1>
       <p class="card-lead">Monstros estão chegando! Atire na alternativa certa antes que eles alcancem você.</p>
-      <ul class="rules" id="start-rules"></ul>
-      <p class="card-meta" id="start-meta"></p>
+
+      <fieldset class="box pick">
+        <legend class="box-title"><span data-icon="user" data-size="18"></span> Você é homem ou mulher?</legend>
+        <div class="pick-grid">
+          <label class="pick-card">
+            <input type="radio" name="hero" value="male">
+            <span class="pick-art" data-hero-art="male"></span>
+            <span class="pick-name">Homem</span>
+          </label>
+          <label class="pick-card">
+            <input type="radio" name="hero" value="female">
+            <span class="pick-art" data-hero-art="female"></span>
+            <span class="pick-name">Mulher</span>
+          </label>
+        </div>
+        <p class="pick-hint" id="pick-hint">Escolha seu personagem para jogar.</p>
+      </fieldset>
+
+      <section class="box howto" id="howto">
+        <button class="box-title box-toggle" id="howto-toggle" type="button" aria-expanded="false" aria-controls="start-rules">
+          <span data-icon="list-checks" data-size="18"></span> Como jogar
+          <span class="box-hint">toque para ver</span>
+          <span class="box-chevron" data-icon="chevron-down" data-size="20"></span>
+        </button>
+        <ul class="rules" id="start-rules" hidden></ul>
+      </section>
+
+      <div class="stat-row">
+        <div class="stat-tile">
+          <span class="stat-label"><span data-icon="history" data-size="16"></span> Último jogo</span>
+          <strong id="start-last">—</strong>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label"><span class="icon-trophy" data-icon="trophy" data-size="16" data-fill="#fbd51a"></span> Recorde</span>
+          <strong id="start-best">0</strong>
+        </div>
+      </div>
+
       <p class="warn" id="start-warn" hidden></p>
+
       <div class="card-actions">
-        <button class="btn btn-go" id="btn-play" type="button" data-autofocus>Jogar</button>
-        <button class="btn btn-alt" id="btn-history-start" type="button">📊 Histórico</button>
+        <button class="btn btn-go" id="btn-play" type="button" data-autofocus><span data-icon="play" data-fill="currentColor"></span> Jogar</button>
+        <button class="btn btn-alt" id="btn-history-start" type="button"><span data-icon="chart-column"></span> Histórico</button>
       </div>
     </div>
   </div>
@@ -76,19 +164,19 @@
   <div class="overlay" id="ov-life" hidden>
     <div class="card" role="dialog" aria-modal="true" aria-labelledby="life-title">
       <h2 class="card-title" id="life-title"></h2>
-      <p class="card-meta" id="life-lives"></p>
-      <div class="qa">
+      <p class="lives-left" id="life-lives"></p>
+      <div class="box qa">
         <h3>PERGUNTA</h3>
         <p id="life-q"></p>
-        <h3>RESPOSTA CERTA</h3>
+        <h3><span data-icon="circle-check" data-size="16"></span> RESPOSTA CERTA</h3>
         <p class="qa-answer" id="life-a"></p>
         <div id="life-why-wrap">
-          <h3>POR QUÊ</h3>
+          <h3><span data-icon="info" data-size="16"></span> POR QUÊ</h3>
           <p id="life-why"></p>
         </div>
       </div>
       <div class="card-actions">
-        <button class="btn btn-go" id="btn-continue" type="button" data-autofocus>Continuar</button>
+        <button class="btn btn-go" id="btn-continue" type="button" data-autofocus><span data-icon="play" data-fill="currentColor"></span> Continuar</button>
       </div>
     </div>
   </div>
@@ -96,38 +184,70 @@
   <div class="overlay" id="ov-over" hidden>
     <div class="card" role="dialog" aria-modal="true" aria-labelledby="over-title">
       <h2 class="card-title" id="over-title"></h2>
-      <p class="card-score" id="over-score"></p>
-      <p class="card-meta" id="over-meta"></p>
-      <div class="qa">
-        <h3>PERGUNTA</h3>
+      <p class="score-big">
+        <span class="icon-gold" data-icon="star" data-size="30" data-fill="currentColor"></span>
+        <strong id="over-score">0</strong> <span>pontos</span>
+      </p>
+
+      <dl class="stat-grid">
+        <div><dt><span data-icon="circle-check" data-size="16"></span> Acertos</dt><dd id="over-correct">0</dd></div>
+        <div><dt><span data-icon="circle-x" data-size="16"></span> Erros</dt><dd id="over-misses">0</dd></div>
+        <div><dt><span data-icon="target" data-size="16"></span> Precisão</dt><dd id="over-accuracy">0%</dd></div>
+        <div><dt><span data-icon="gauge" data-size="16"></span> Nível</dt><dd id="over-level">1</dd></div>
+        <div><dt><span data-icon="flame" data-size="16"></span> Sequência</dt><dd id="over-streak">0</dd></div>
+        <div><dt><span data-icon="clock" data-size="16"></span> Tempo</dt><dd id="over-time">0s</dd></div>
+      </dl>
+
+      <div class="stat-row">
+        <div class="stat-tile">
+          <span class="stat-label"><span data-icon="history" data-size="16"></span> Jogo anterior</span>
+          <strong id="over-previous">—</strong>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label"><span class="icon-trophy" data-icon="trophy" data-size="16" data-fill="#fbd51a"></span> Recorde</span>
+          <strong id="over-best">0</strong>
+        </div>
+      </div>
+
+      <div class="box qa">
+        <h3>A PERGUNTA QUE TE DERRUBOU</h3>
         <p id="over-q"></p>
-        <h3>RESPOSTA CERTA</h3>
+        <h3><span data-icon="circle-check" data-size="16"></span> RESPOSTA CERTA</h3>
         <p class="qa-answer" id="over-a"></p>
         <div id="over-why-wrap">
-          <h3>POR QUÊ</h3>
+          <h3><span data-icon="info" data-size="16"></span> POR QUÊ</h3>
           <p id="over-why"></p>
         </div>
       </div>
+
       <div class="card-actions">
-        <button class="btn btn-go" id="btn-again" type="button" data-autofocus>Jogar de novo</button>
-        <button class="btn btn-alt" id="btn-history-over" type="button">📊 Histórico</button>
+        <button class="btn btn-go" id="btn-again" type="button" data-autofocus><span data-icon="rotate-ccw"></span> Jogar de novo</button>
+        <button class="btn btn-alt" id="btn-history-over" type="button"><span data-icon="chart-column"></span> Histórico</button>
       </div>
     </div>
   </div>
 
   <div class="overlay" id="ov-history" hidden>
     <div class="card" role="dialog" aria-modal="true" aria-labelledby="hist-title">
-      <h2 class="card-title" id="hist-title">📊 Histórico</h2>
-      <dl class="hist-stats">
+      <h2 class="card-title" id="hist-title"><span data-icon="chart-column" data-size="28"></span> Histórico</h2>
+      <dl class="stat-grid stat-grid-3">
         <div><dt>Jogos</dt><dd id="hist-games">0</dd></div>
         <div><dt>Recorde</dt><dd id="hist-best">0</dd></div>
         <div><dt>Média</dt><dd id="hist-avg">0</dd></div>
       </dl>
       <p class="card-meta" id="hist-empty">Nenhum jogo ainda.</p>
       <ol class="hist-list" id="hist-list"></ol>
-      <div class="card-actions">
-        <button class="btn btn-go" id="btn-history-close" type="button" data-autofocus>Fechar</button>
+      <div class="card-actions" id="hist-actions">
+        <button class="btn btn-go" id="btn-history-close" type="button" data-autofocus><span data-icon="x"></span> Fechar</button>
         <button class="btn btn-danger" id="btn-history-clear" type="button">Limpar</button>
+      </div>
+      <!-- In-game confirmation (instead of the browser's confirm dialog) -->
+      <div class="box confirm" id="hist-confirm" role="alertdialog" aria-labelledby="hist-confirm-text" hidden>
+        <p id="hist-confirm-text">Apagar o histórico e o recorde? As estatísticas de revisão das perguntas são mantidas.</p>
+        <div class="card-actions">
+          <button class="btn btn-alt" id="btn-clear-cancel" type="button">Cancelar</button>
+          <button class="btn btn-danger" id="btn-clear-yes" type="button">Apagar</button>
+        </div>
       </div>
     </div>
   </div>
@@ -143,9 +263,12 @@
   <script src="js/questions.js"></script>
   <script src="js/rules.js"></script>
   <script src="js/storage.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/sound.js"></script>
   <script src="js/monsters.js"></script>
   <script src="js/hero.js"></script>
   <script src="js/effects.js"></script>
+  <script src="js/ambient.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>

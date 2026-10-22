@@ -27,7 +27,7 @@
   --sky-top: #8fd3ff;
   --sky-bottom: #ffd1ec;
 
-  --ground-h: 26px;
+  --ground-h: 42px; /* thick enough to hold the power-up buttons */
   --ground-border: 6px;
   --radius: 18px;
   --candy-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.25);
@@ -115,9 +115,40 @@ button { font: inherit; }
   white-space: nowrap;
 }
 
-.hud-lives { letter-spacing: 1px; }
+.icon {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+}
 
-.hud-fast::before { content: "⚡"; margin-right: 2px; }
+.hud-icon { display: inline-flex; }
+.icon-gold { color: var(--yellow); }
+.icon-trophy { color: #b77800; }
+.icon-trophy .icon,
+.icon.icon-trophy { filter: drop-shadow(0 0 3px rgba(251, 213, 26, 0.6)); }
+
+.hud-lives { gap: 2px; }
+.heart-full { color: #ff4d6d; filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.35)); }
+.heart-empty { color: rgba(255, 255, 255, 0.55); }
+
+.hud-fast { gap: 5px; }
+
+#hud-fast {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hud-btn {
+  justify-content: center;
+  min-width: 36px;
+  border: 0;
+  color: var(--white);
+  cursor: pointer;
+}
+
+.hud-btn:hover { background: rgba(0, 0, 0, 0.4); }
+.hud-btn.is-muted { color: rgba(255, 255, 255, 0.6); }
 
 .dot {
   width: 10px;
@@ -131,16 +162,225 @@ button { font: inherit; }
   box-shadow: 0 0 6px var(--yellow);
 }
 
-/* ── 2. Question panel ──────────────────────────────────────────────── */
+.hud-best .trophy {
+  display: block;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.45));
+}
+
+/* Pulses while the current score beats the best score. */
+.hud-best.is-record {
+  background: rgba(251, 213, 26, 0.28);
+  box-shadow: 0 0 0 2px var(--yellow);
+  animation: record-glow 0.9s ease-in-out infinite alternate;
+}
+
+/* ── World: one sky behind the question balloon and the field ──────── */
+.world {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 170px;
+  overflow: hidden;
+  background: linear-gradient(var(--sky-top), var(--sky-bottom));
+}
+
+.sky {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Day/night: js/ambient.js sets --night from 0 (day) to 1 (night). */
+.sky-night {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(#0b1638, #2c2160 70%, #4a2d6e);
+  opacity: var(--night, 0);
+}
+
+.stars {
+  position: absolute;
+  inset: 0 0 35% 0;
+  background:
+    radial-gradient(1.5px 1.5px at 12% 18%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 27% 42%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 41% 12%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 58% 33%, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 69% 9%, #fff6c0 50%, transparent 51%),
+    radial-gradient(1px 1px at 83% 27%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 93% 52%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 5% 60%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 35% 70%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 76% 64%, #fff 50%, transparent 51%);
+  opacity: var(--night, 0);
+  animation: twinkle 3s ease-in-out infinite alternate;
+}
+
+.sun,
+.moon {
+  position: absolute;
+  top: 9%;
+  right: 9%;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+}
+
+.sun {
+  background: radial-gradient(circle, #fff7b0 0 45%, var(--yellow) 60%);
+  box-shadow: 0 0 30px 10px rgba(251, 213, 26, 0.55);
+  opacity: calc(1 - var(--night, 0));
+  transform: translateY(calc(var(--night, 0) * 60px));
+}
+
+.moon {
+  background: transparent;
+  box-shadow: inset -11px 3px 0 0 #f4f1d0;
+  filter: drop-shadow(0 0 8px rgba(244, 241, 208, 0.6));
+  opacity: var(--night, 0);
+  transform: translateY(calc((1 - var(--night, 0)) * 60px));
+}
+
+/* Rain dims the sky and greys the clouds. */
+.sky-rain {
+  position: absolute;
+  inset: 0;
+  background: #5d6b80;
+  opacity: 0;
+  transition: opacity 2.5s;
+}
+
+.world.is-rain .sky-rain { opacity: 0.4; }
+.world.is-rain .cloud { background: #b8c0cc; }
+.world.is-rain .sun { opacity: 0; }
+.world.is-night .cloud { background: rgba(200, 200, 230, 0.35); }
+
+.rain {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 2.5s;
+}
+
+.rain::before,
+.rain::after {
+  content: "";
+  position: absolute;
+  inset: -120px 0 0 -60px;
+  background: repeating-linear-gradient(100deg, transparent 0 18px, rgba(255, 255, 255, 0.45) 18px 19px);
+  background-size: 100% 70px;
+  animation: rain-fall 0.45s linear infinite;
+}
+
+.rain::after {
+  background-size: 100% 110px;
+  opacity: 0.6;
+  animation-duration: 0.7s;
+}
+
+.world.is-rain .rain { opacity: 1; }
+
+.lightning {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: #fff;
+  opacity: 0;
+}
+
+.world.is-lightning .lightning { animation: lightning 0.6s ease-out; }
+
+/* The field (hills, hero, monsters) darkens a little at night. */
+.field { filter: brightness(calc(1 - var(--night, 0) * 0.3)); }
+
+.bird {
+  position: absolute;
+  left: 0;
+  color: var(--ink);
+  animation: fly var(--dur, 12s) linear forwards;
+}
+
+.world.is-night .bird { color: #1a1030; }
+
+/* Bunnies and squirrels run along the ground, left → right, behind the hero. */
+.critters {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--ground-h) + var(--ground-border) - 2px);
+  z-index: 1;
+  height: 24px;
+  pointer-events: none;
+}
+
+.critter {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 24px;
+  animation: run var(--dur, 8s) linear forwards;
+}
+
+.critter svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.critter-bunny svg { animation: hop-small 0.42s ease-in-out infinite; }
+.critter-squirrel { width: 22px; }
+.critter-squirrel svg { animation: scurry 0.22s ease-in-out infinite alternate; }
+
+.bird svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.bird-wing {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: flap var(--flap, 0.28s) ease-in-out infinite alternate;
+}
+
+/* Danger vignette over the whole world when the monster is close. */
+.world::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 70px 24px rgba(232, 39, 45, 0.6);
+  transition: opacity 0.3s;
+}
+
+.world.is-danger::after {
+  opacity: 1;
+  animation: danger-pulse 0.7s ease-in-out infinite alternate;
+}
+
+/* ── 2. Question balloon (floats over the sky, on top of the field) ──── */
 .qpanel {
-  flex: none;
-  margin: 8px 8px 0;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 6;
   border: 4px solid var(--yellow);
   border-radius: var(--radius);
   background: var(--cream);
   color: var(--ink);
   overflow: hidden;
-  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25);
+  box-shadow: 0 5px 0 rgba(58, 20, 89, 0.35), 0 14px 24px rgba(58, 20, 89, 0.25);
+  animation: float 3.2s ease-in-out infinite alternate;
 }
 
 .qpanel-head {
@@ -149,8 +389,8 @@ button { font: inherit; }
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 44px;
-  padding: 6px 12px 9px;
+  min-height: 50px;
+  padding: 6px 8px 9px 12px;
   border: 0;
   background: var(--orange);
   color: var(--ink);
@@ -173,6 +413,9 @@ button { font: inherit; }
 }
 
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   margin-left: auto;
   padding: 2px 8px;
   border-radius: 999px;
@@ -185,10 +428,24 @@ button { font: inherit; }
 
 .chip.is-fast { background: var(--green); }
 
+/* Big open/close pill: easy to hit with a thumb (the whole header is the button). */
 .qpanel-arrow {
-  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 4px 12px 4px 8px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--white);
+  font-size: 0.9rem;
+  font-weight: 800;
   white-space: nowrap;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.35);
 }
+
+.qpanel-head:hover .qpanel-arrow,
+.qpanel-head:focus-visible .qpanel-arrow { background: var(--ink-2); }
 
 .qpanel-bar {
   position: absolute;
@@ -222,25 +479,103 @@ button { font: inherit; }
   position: relative;
   flex: 1 1 auto;
   min-height: 170px;
-  margin-top: 8px;
   overflow: hidden;
-  background: linear-gradient(var(--sky-top), var(--sky-bottom));
 }
 
-.field::after {
-  content: "";
+.field.is-shaking { animation: shake 0.35s ease-in-out; }
+
+/* ── Power-ups on the ground strip ─────────────────────────────────── */
+.powers {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0;
-  box-shadow: inset 0 0 70px 24px rgba(232, 39, 45, 0.6);
-  transition: opacity 0.3s;
+  right: 8px;
+  bottom: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--ground-h);
 }
 
-.field.is-danger::after {
-  opacity: 1;
-  animation: danger-pulse 0.7s ease-in-out infinite alternate;
+.power {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 3px 6px 5px 10px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  color: var(--white);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-shadow: var(--text-shadow);
+  box-shadow: var(--candy-shadow);
+  cursor: pointer;
+  transition: transform 0.1s, filter 0.15s, opacity 0.2s;
 }
+
+.power-freeze { background: linear-gradient(#5ec4f2, #1d7fb8); }
+.power-skip { background: linear-gradient(#c56ac5, #7a2d8c); }
+
+.power:hover:not(:disabled) { filter: brightness(1.1); }
+.power:active:not(:disabled) { transform: translateY(2px); }
+.power:disabled { cursor: default; opacity: 0.45; filter: grayscale(0.6); }
+.power.is-active { opacity: 1; filter: none; box-shadow: 0 0 0 3px #bdeeff, var(--candy-shadow); }
+
+.power-count {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--ink);
+  font-size: 0.8rem;
+  text-shadow: none;
+}
+
+/* ── Ice cube (Gelo) ────────────────────────────────────────────────── */
+.monster.is-frozen .m-svg,
+.monster.is-frozen .m-jaw,
+.monster.is-frozen .m-wing,
+.monster.is-frozen .m-tongue { animation-play-state: paused; }
+
+.monster.is-frozen .m-art { filter: saturate(0.5) brightness(1.1) hue-rotate(160deg); }
+.monster.is-frozen::before { display: none; } /* no speed lines while frozen */
+
+.m-ice {
+  position: absolute;
+  inset: -8px -6px -4px;
+  z-index: 2;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  border-radius: 14px;
+  background:
+    linear-gradient(125deg, transparent 0 18%, rgba(255, 255, 255, 0.75) 19% 24%, transparent 25% 60%, rgba(255, 255, 255, 0.45) 61% 64%, transparent 65%),
+    linear-gradient(rgba(214, 244, 255, 0.72), rgba(140, 205, 245, 0.5));
+  box-shadow: inset 0 0 14px rgba(255, 255, 255, 0.9), 0 0 16px rgba(120, 200, 255, 0.85);
+  animation: ice-in 0.3s ease-out;
+}
+
+.m-ice.is-cracking { animation: ice-crack 0.4s ease-in forwards; }
+
+.m-ice-time {
+  position: absolute;
+  left: 50%;
+  top: -24px;
+  padding: 1px 10px;
+  border: 2px solid var(--white);
+  border-radius: 999px;
+  background: #1d7fb8;
+  color: var(--white);
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-shadow: var(--text-shadow);
+  transform: translateX(-50%);
+}
+
+.monster.is-frozen .m-speed { display: none; }
+
+/* Pular: the monster vanishes in a puff. */
+.monster.is-skipped .m-art { animation: poof 0.5s ease-in forwards; }
 
 .cloud {
   position: absolute;
@@ -260,9 +595,10 @@ button { font: inherit; }
 
 .cloud::before { width: 40px; height: 40px; left: 14px; top: -20px; }
 .cloud::after { width: 30px; height: 30px; left: 44px; top: -14px; }
-.cloud-1 { top: 14%; left: 8%; animation: drift 40s linear infinite alternate; }
-.cloud-2 { top: 26%; left: 55%; transform: scale(0.8); animation: drift 55s linear infinite alternate-reverse; }
-.cloud-3 { top: 8%; left: 80%; transform: scale(0.6); }
+.cloud-1 { top: 8%; left: 6%; animation: drift 40s linear infinite alternate; }
+.cloud-2 { top: 45%; left: 55%; animation: drift 55s linear infinite alternate-reverse; }
+.cloud-3 { top: 4%; left: 78%; animation: drift 48s linear infinite alternate; }
+.cloud-4 { top: 32%; left: 22%; opacity: 0.7; animation: drift 62s linear infinite alternate-reverse; }
 
 .hill {
   position: absolute;
@@ -304,7 +640,8 @@ button { font: inherit; }
 .fx {
   position: absolute;
   inset: 0;
-  z-index: 4;
+  z-index: 7; /* above the question balloon (6) */
+  overflow: hidden;
   pointer-events: none;
 }
 
@@ -330,6 +667,12 @@ button { font: inherit; }
 }
 
 .h-eyes-x { display: none; }
+
+.h-ponytail {
+  transform-box: fill-box;
+  transform-origin: 100% 0;
+  animation: sway 1.4s ease-in-out infinite alternate;
+}
 
 .h-coils {
   opacity: 0;
@@ -412,6 +755,43 @@ button { font: inherit; }
 
 .monster.is-dying .m-art { animation: die 0.6s ease-in forwards; }
 
+/* Enraged after a miss: red glow, faster bob, speed lines and a speed badge. */
+.monster.is-enraged .m-svg {
+  animation-duration: 0.28s;
+  filter: drop-shadow(0 0 7px rgba(232, 39, 45, 0.95));
+}
+
+.monster.is-enraged::before {
+  content: "";
+  position: absolute;
+  left: 78%;
+  top: 25%;
+  width: 45%;
+  height: 50%;
+  background: repeating-linear-gradient(transparent 0 7px, rgba(255, 255, 255, 0.85) 7px 9px);
+  border-radius: 4px;
+  animation: speed-lines 0.25s linear infinite;
+}
+
+.m-speed {
+  position: absolute;
+  left: 50%;
+  top: -22px;
+  padding: 1px 9px;
+  border: 2px solid var(--yellow);
+  border-radius: 999px;
+  background: var(--red-dark);
+  color: var(--white);
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
+  text-shadow: var(--text-shadow);
+  transform: translateX(-50%);
+  animation: badge-pop 0.35s ease-out;
+}
+
+.m-speed[hidden] { display: none; }
+
 .m-art.atk-jump { animation: jump 0.4s ease-out; }
 .m-art.atk-chomp .m-jaw { animation: chomp 0.2s ease-in-out 6 alternate; }
 .m-art.atk-rear { transform: rotate(12deg); transition: transform 0.3s ease-out; }
@@ -419,8 +799,50 @@ button { font: inherit; }
 .m-art.atk-roll { animation: roll 0.32s ease-in-out 0.3s 4 alternate; }
 
 /* ── 4. Answers ─────────────────────────────────────────────────────── */
-.answers {
+.answers-wrap {
+  position: relative;
   flex: none;
+  background: var(--ink);
+}
+
+/* Post-miss lockout: covers the options with a countdown. */
+.lock {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(58, 20, 89, 0.55);
+  font-size: 1.15rem;
+  font-weight: 800;
+  text-shadow: var(--text-shadow);
+}
+
+.lock[hidden] { display: none; }
+
+.lock-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px 10px;
+  border: 3px solid var(--yellow);
+  border-radius: 999px;
+  background: var(--red-dark);
+  box-shadow: var(--candy-shadow);
+}
+
+.lock-icon {
+  display: inline-flex;
+  color: var(--yellow);
+  animation: lock-shake 0.5s ease-in-out;
+}
+
+.answers.is-locked .answer { filter: grayscale(0.7) brightness(0.85); }
+
+.answers {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -531,23 +953,272 @@ button { font: inherit; }
 }
 
 .card-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   margin: 0 0 8px;
   font-size: clamp(1.4rem, 5vw, 2rem);
   line-height: 1.2;
 }
 
-.card-lead { margin: 0 0 10px; line-height: 1.45; }
-.card-meta { margin: 8px 0; opacity: 0.95; }
-.card-score { margin: 4px 0; font-size: 1.25rem; font-weight: 700; }
+.card-title .accent { color: var(--yellow); }
+.card-title.is-record .icon { animation: record-glow 0.9s ease-in-out infinite alternate; }
 
-.rules {
-  margin: 0 0 8px;
-  padding-left: 1.2em;
-  line-height: 1.45;
+.card-lead { margin: 0 0 12px; line-height: 1.45; }
+.card-meta { margin: 8px 0; opacity: 0.95; }
+
+/* Boxes group related content inside a card. */
+.box {
+  margin: 0 0 12px;
+  padding: 10px 12px 12px;
+  border: 0;
+  border-radius: 18px;
+  background: rgba(40, 10, 60, 0.45);
   text-align: left;
 }
 
-.rules li + li { margin-top: 4px; }
+.box-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  color: var(--yellow);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+legend.box-title {
+  float: left; /* lets the legend sit inside the box padding like a heading */
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+/* "Como jogar" accordion: a button that opens a list. */
+.box-toggle {
+  width: 100%;
+  min-height: 36px;
+  border: 0;
+  background: none;
+  text-align: left;
+  text-shadow: inherit;
+  cursor: pointer;
+}
+
+.box-hint {
+  margin-left: auto;
+  color: var(--white);
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.box-chevron {
+  display: inline-flex;
+  color: var(--white);
+  transition: transform 0.2s;
+}
+
+.howto.is-open .box-chevron { margin-left: auto; transform: rotate(180deg); }
+.howto.is-open .box-hint { display: none; }
+.howto .rules[hidden] { display: none; }
+
+/* When open, the box takes the card's leftover height and the list scrolls
+   inside it, so the purple card never grows past the screen. */
+.card > .howto.is-open {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 140px;
+}
+
+.howto .rules {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 8px;
+  padding-right: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: card-in 0.2s ease-out;
+}
+
+/* Visible, thin scrollbars for the inner scroll areas. */
+.howto .rules,
+.card > .qa,
+.qpanel-body {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(251, 213, 26, 0.7) transparent;
+}
+
+/* Character picker */
+.pick-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  clear: both;
+}
+
+.pick-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px 8px;
+  border: 3px solid transparent;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.pick-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pick-card:hover { background: rgba(255, 255, 255, 0.18); }
+
+.pick-card:has(input:checked) {
+  border-color: var(--yellow);
+  background: rgba(251, 213, 26, 0.22);
+  transform: translateY(-2px);
+}
+
+.pick-card:has(input:focus-visible) { outline: 3px solid var(--white); outline-offset: 2px; }
+
+.pick-art .h-svg {
+  position: static;
+  display: block;
+  width: 72px;
+  height: 78px;
+}
+
+.pick-card:has(input:checked) .pick-art .h-svg { animation: hop 0.5s ease-out; }
+
+.pick-hint {
+  margin: 8px 0 0;
+  color: var(--yellow);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.pick-hint[hidden] { display: none; }
+
+/* "How to play": one icon per rule. */
+.rules {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  line-height: 1.4;
+}
+
+.rules li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+.rules li + li { margin-top: 6px; }
+.rules .icon { flex: none; margin-top: 2px; color: var(--yellow); }
+
+/* Small labelled numbers: last game, best score. */
+.stat-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 6px;
+  border-radius: 16px;
+  background: rgba(40, 10, 60, 0.45);
+}
+
+.stat-tile strong { font-size: 1.15rem; }
+
+/* Cards are flex columns: the question/answer block takes the leftover
+   height and scrolls inside, so numbers and buttons fit without scrolling. */
+.card {
+  display: flex;
+  flex-direction: column;
+}
+
+.card > * { flex: none; }
+
+.card > .qa {
+  flex: 0 1 auto;
+  min-height: 90px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.stat-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  opacity: 0.95;
+}
+
+/* Game Over / history numbers. */
+.score-big {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 4px 0 12px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.score-big strong { font-size: 2.4rem; line-height: 1; }
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.stat-grid div {
+  padding: 6px 4px;
+  border-radius: 14px;
+  background: rgba(40, 10, 60, 0.45);
+}
+
+.stat-grid dt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.stat-grid dt .icon { color: var(--yellow); }
+.stat-grid dd { margin: 2px 0 0; font-size: 1.3rem; font-weight: 800; }
+
+.lives-left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  font-weight: 700;
+}
+
+.lives-hearts { display: inline-flex; gap: 2px; }
 
 .warn {
   padding: 8px 10px;
@@ -557,20 +1228,19 @@ button { font: inherit; }
   font-weight: 700;
 }
 
-.qa {
-  margin: 12px 0;
-  padding: 10px 14px;
-  border-radius: 16px;
-  background: rgba(40, 10, 60, 0.45);
-  text-align: left;
-}
+.qa { margin: 0 0 12px; }
 
 .qa h3 {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin: 8px 0 2px;
   color: var(--yellow);
   font-size: 0.8rem;
   letter-spacing: 0.1em;
 }
+
+.qa h3:first-child { margin-top: 0; }
 
 .qa p {
   margin: 0;
@@ -588,10 +1258,14 @@ button { font: inherit; }
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
-  margin-top: 14px;
+  margin-top: 4px;
 }
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   min-width: 140px;
   min-height: 48px;
   padding: 10px 22px 13px;
@@ -605,30 +1279,34 @@ button { font: inherit; }
   cursor: pointer;
 }
 
+.card-actions .btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.btn .icon { filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.3)); }
 .btn:disabled { cursor: not-allowed; opacity: 0.55; }
 .btn:active:not(:disabled) { transform: translateY(2px); }
 .btn-go { background: linear-gradient(#3f9a2c, var(--green-dark)); }
 .btn-alt { background: var(--ink-2); }
 .btn-danger { background: var(--red-dark); }
 
-.hist-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin: 8px 0;
+.confirm {
+  margin: 0;
+  border: 3px solid var(--yellow);
+  text-align: center;
+  animation: card-in 0.2s ease-out;
 }
 
-.hist-stats div {
-  padding: 8px 4px;
-  border-radius: 14px;
-  background: rgba(40, 10, 60, 0.45);
-}
+.confirm[hidden],
+.card-actions[hidden] { display: none; }
 
-.hist-stats dt { font-size: 0.8rem; }
-.hist-stats dd { margin: 0; font-size: 1.3rem; font-weight: 800; }
+.confirm p { margin: 0 0 10px; font-weight: 700; line-height: 1.4; }
 
 .hist-list {
-  margin: 8px 0 0;
+  margin: 8px 0 12px;
   padding: 0;
   list-style: none;
   text-align: left;
@@ -689,13 +1367,17 @@ button { font: inherit; }
 
 .pop-points { color: var(--yellow); }
 .pop-miss { color: var(--red); font-size: 2rem; }
+.pop-skip { color: #f0c8ff; }
 .pop-attack { color: var(--yellow); font-size: 1.6rem; letter-spacing: 0.04em; }
 
 .balloon {
   position: absolute;
-  top: 12px;
   left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   max-width: 90%;
+  white-space: nowrap;
   padding: 8px 16px;
   border: 3px solid var(--yellow);
   border-radius: 999px;
@@ -704,6 +1386,60 @@ button { font: inherit; }
   text-align: center;
   text-shadow: var(--text-shadow);
   animation: balloon 2.3s ease-out forwards;
+}
+
+.muzzle {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 20%, var(--yellow) 45%, rgba(247, 147, 30, 0) 70%);
+  animation: flash 0.16s ease-out forwards;
+}
+
+/* "Downgrade" sign after a miss. */
+.penalty {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transform: translate(-50%, -50%);
+  animation: penalty 1.7s ease-out forwards;
+}
+
+.balloon-icon-heart { color: #ff4d6d; }
+.balloon-icon-star { color: var(--yellow); }
+
+.penalty-title,
+.penalty-speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.penalty-title {
+  padding: 4px 16px;
+  border: 3px solid var(--white);
+  border-radius: 999px;
+  background: var(--red-dark);
+  font-size: 1.5rem;
+  font-weight: 900;
+  text-shadow: var(--text-shadow);
+  box-shadow: var(--candy-shadow);
+}
+
+.penalty-speed {
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--yellow);
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  animation: arrow-up 0.5s ease-in-out 3 alternate;
 }
 
 .fire {
@@ -757,14 +1493,68 @@ button { font: inherit; }
 @keyframes fire-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes flicker { from { opacity: 0.85; } to { opacity: 1; } }
 @keyframes card-in { from { transform: scale(0.92); opacity: 0; } }
+@keyframes float { from { transform: translateY(0); } to { transform: translateY(-4px); } }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(2px); }
+}
+@keyframes record-glow { from { transform: scale(1); } to { transform: scale(1.08); } }
+@keyframes speed-lines { from { transform: translateX(0); opacity: 0.9; } to { transform: translateX(14px); opacity: 0.4; } }
+@keyframes badge-pop { from { transform: translateX(-50%) scale(0.4); } 70% { transform: translateX(-50%) scale(1.15); } }
+@keyframes lock-shake { 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
+@keyframes flash { from { transform: scale(0.4); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+@keyframes penalty {
+  0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+  12% { transform: translate(-50%, -50%) scale(1.12); opacity: 1; }
+  22% { transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; }
+  100% { transform: translate(-50%, -80%) scale(0.95); opacity: 0; }
+}
+@keyframes arrow-up { from { transform: translateY(0); } to { transform: translateY(-4px); } }
+@keyframes sway { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+@keyframes hop { 40% { transform: translateY(-8px); } }
+@keyframes twinkle { from { filter: brightness(0.8); } to { filter: brightness(1.3); } }
+@keyframes rain-fall { to { transform: translate(-12px, 70px); } }
+@keyframes lightning { 0%, 30% { opacity: 0.75; } 15%, 45% { opacity: 0.1; } 100% { opacity: 0; } }
+@keyframes fly {
+  from { transform: translateX(var(--from)); }
+  to { transform: translateX(var(--to)); }
+}
+@keyframes flap { from { transform: scaleY(1); } to { transform: scaleY(0.35); } }
+@keyframes run {
+  from { transform: translateX(var(--from)); }
+  to { transform: translateX(var(--to)); }
+}
+@keyframes hop-small {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  40% { transform: translateY(-9px) rotate(-8deg); }
+  70% { transform: translateY(-3px) rotate(4deg); }
+}
+@keyframes scurry { from { transform: translateY(0); } to { transform: translateY(-2px); } }
+@keyframes ice-in { from { transform: scale(1.3); opacity: 0; } }
+@keyframes ice-crack {
+  30% { transform: scale(1.06) rotate(-2deg); opacity: 1; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+@keyframes poof {
+  30% { transform: scale(1.1); opacity: 1; filter: blur(0); }
+  100% { transform: translateY(-20px) scale(0.2); opacity: 0; filter: blur(4px); }
+}
 
 /* ── Small screens ──────────────────────────────────────────────────── */
 @media (max-width: 480px) {
   .hud-title { display: none; }
   .hud { justify-content: space-between; gap: 4px; }
-  .hud-item { padding: 2px 7px; font-size: 0.88rem; }
-  .qpanel-arrow { font-size: 0; }
-  .qpanel-arrow::first-letter { font-size: 0.9rem; }
+  .hud-item { gap: 3px; padding: 2px 6px; font-size: 0.86rem; }
+  .hud-lives .icon { width: 15px; height: 15px; }
+  .hud-icon .icon { width: 16px; height: 16px; }
+  .dot { width: 8px; height: 8px; }
+  .hud-btn { min-width: 32px; }
+  .qpanel-label { letter-spacing: 0.04em; font-size: 0.9rem; }
+  .qpanel-topic { display: none; }
 }
 
 /* ── Reduced motion: no bobbing, tremors or confetti; the game stays playable ── */
@@ -779,6 +1569,19 @@ button { font: inherit; }
   .m-art.atk-roll,
   .m-art.atk-chomp .m-jaw,
   .hero.fate-squeezed .h-coils,
-  .field.is-danger::after { animation: none; }
+  .world.is-danger::after,
+  .qpanel,
+  .field.is-shaking,
+  .monster.is-enraged::before,
+  .h-ponytail,
+  .hud-best.is-record,
+  .card-title .trophy,
+  .penalty-speed,
+  .lock-icon,
+  .stars,
+  .bird-wing,
+  .critter svg,
+  .rain::before,
+  .rain::after { animation: none; }
   .card { animation: none; }
 }

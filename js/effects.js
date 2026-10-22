@@ -7,6 +7,7 @@
   "use strict";
 
   const COLORS = ["#e8272d", "#f7931e", "#fbd51a", "#6cc24a", "#2b9fdc", "#a64ca6", "#ff8fd0"];
+  const icon = (...args) => root.AwsCloudQuest.icons.icon(...args);
 
   /** Creates the effects API bound to the field's effect layer. */
   function create(layer, { reducedMotion = () => false } = {}) {
@@ -55,9 +56,30 @@
         spawn(`pop ${variant}`.trim(), { left: `${x}px`, top: `${y}px` }, 1100, text);
       },
 
-      /** Animated balloon at the top of the field. */
-      balloon(text) {
-        spawn("balloon", {}, 2300, text);
+      /** Muzzle flash at the tip of the gun. */
+      muzzle(x, y) {
+        spawn("muzzle", { left: `${x}px`, top: `${y}px` }, 160);
+      },
+
+      /** "Downgrade" sign after a miss: [x] ERROU! / [↑] VELOCIDADE +N%. */
+      penalty(x, y, speedText) {
+        const el = spawn("penalty", { left: `${x}px`, top: `${y}px` }, 1700);
+        const title = document.createElement("span");
+        title.className = "penalty-title";
+        title.innerHTML = icon("x", { size: 22, strokeWidth: 3 });
+        title.append(" ERROU!");
+        const speed = document.createElement("span");
+        speed.className = "penalty-speed";
+        speed.innerHTML = icon("arrow-up", { size: 18, strokeWidth: 3 });
+        speed.append(` ${speedText}`);
+        el.append(title, speed);
+      },
+
+      /** Animated balloon centered horizontally, with its top edge at `y`. */
+      balloon(text, y, iconName) {
+        const el = spawn("balloon", { top: `${y}px` }, 2300);
+        if (iconName) el.innerHTML = icon(iconName, { size: 18, fill: "currentColor", className: `balloon-icon-${iconName}` });
+        el.append(` ${text}`);
       },
 
       /** Fire jet from the mouth (fromX) to the hero (toX), at height y. */

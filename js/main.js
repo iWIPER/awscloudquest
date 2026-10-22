@@ -23,15 +23,29 @@
   }
 
   // ── Wiring ────────────────────────────────────────────────────────────
+  const store = NS.storage.store;
   const ui = NS.ui.create(config);
   const field = $("field");
   const ground = field.querySelector(".ground");
+  const reducedMotion = () => (root.matchMedia ? root.matchMedia("(prefers-reduced-motion: reduce)").matches : false);
+
+  const sound = NS.sound.create({ muted: store.getMuted() });
+  const ambient = NS.ambient.create({
+    world: $("world"),
+    sky: $("sky"),
+    critterLayer: $("critters"),
+    config,
+    sound,
+    reducedMotion,
+  });
 
   const game = NS.game.create({
     config,
     questions,
-    store: NS.storage.store,
+    store,
     ui,
+    sound,
+    ambient,
     field,
     heroEl: $("hero"),
     monsterEl: $("monster"),
@@ -39,23 +53,48 @@
     groundHeight: () => ground.offsetHeight,
     canPlay: questions.length > 0,
   });
-  NS.app = game; // handy for debugging and the smoke test
+  NS.app = game;      // handy for debugging and the smoke test
+  NS.scene = ambient; // idem: NS.scene.set({ time: 0.7, rain: true })
+
+  // ── Sound ─────────────────────────────────────────────────────────────
+  // Audio may only start after a user gesture; the first one unlocks it.
+  const unlockAudio = () => sound.unlock();
+  ["pointerdown", "keydown"].forEach((type) => document.addEventListener(type, unlockAudio, { capture: true }));
+
+  function toggleSound() {
+    const muted = !sound.isMuted();
+    sound.setMuted(muted);
+    store.setMuted(muted);
+    ui.setMuted(muted);
+    ui.announce(muted ? "Som desligado." : "Som ligado.");
+  }
+  ui.setMuted(sound.isMuted());
+  $("btn-sound").addEventListener("click", toggleSound);
 
   $("answers").addEventListener("click", (event) => {
     const button = event.target.closest("button.answer");
     if (button) game.shoot(Number(button.dataset.index));
   });
   $("qpanel-toggle").addEventListener("click", () => game.togglePanel());
+  $("btn-freeze").addEventListener("click", () => game.freeze());
+  $("btn-skip").addEventListener("click", () => game.skip());
+  document.querySelectorAll('input[name="hero"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      game.setHero(input.value);
+      ui.setHeroChoice(input.value, questions.length > 0);
+    });
+  });
   $("btn-play").addEventListener("click", () => game.start());
   $("btn-continue").addEventListener("click", () => game.continueAfterLifeLost());
   $("btn-again").addEventListener("click", () => game.start());
   $("btn-history-start").addEventListener("click", () => game.openHistory());
   $("btn-history-over").addEventListener("click", () => game.openHistory());
   $("btn-history-close").addEventListener("click", () => ui.closeHistory());
-  $("btn-history-clear").addEventListener("click", () => {
-    if (root.confirm("Apagar o histórico e o recorde? As estatísticas de revisão das perguntas são mantidas.")) {
-      game.clearHistory();
-    }
+  $("btn-history-clear").addEventListener("click", () => ui.setClearConfirm(true));
+  $("btn-clear-cancel").addEventListener("click", () => ui.setClearConfirm(false));
+  $("btn-clear-yes").addEventListener("click", () => {
+    game.clearHistory();
+    ui.announce("Histórico apagado.");
   });
 
   // ── Keyboard ──────────────────────────────────────────────────────────
@@ -63,8 +102,16 @@
     if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return;
     const key = event.key;
 
+    if (key === "m" || key === "M") {
+      toggleSound();
+      return;
+    }
+
     if (ui.isOpen("history")) {
-      if (key === "Escape") ui.closeHistory();
+      if (key === "Escape") {
+        if (ui.isClearConfirmOpen()) ui.setClearConfirm(false);
+        else ui.closeHistory();
+      }
       return; // Enter/Space never act behind the history screen
     }
 
@@ -77,8 +124,11 @@
 
     if (ui.anyOpen()) return;
 
-    if (key === "q" || key === "Q") {
-      game.togglePanel();
+    const lower = key.toLowerCase();
+    if (lower === "q" || lower === "g" || lower === "p") {
+      if (lower === "q") game.togglePanel();
+      if (lower === "g") game.freeze();
+      if (lower === "p") game.skip();
       event.preventDefault();
       return;
     }
