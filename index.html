@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>AWS Cloud Quest — quiz para estudar AWS</title>
+  <meta name="description" content="Jogo de quiz em tempo real para treinar para certificações AWS: atire na alternativa certa antes que o monstro chegue.">
+  <meta name="theme-color" content="#3a1459">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%98%81%EF%B8%8F%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- 1. HUD -->
+    <header class="hud">
+      <span class="hud-title">AWS <b>Cloud Quest</b></span>
+      <span class="hud-item hud-lives" id="hud-lives" role="img" title="Vidas"></span>
+      <span class="hud-item" title="Pontos">⭐ <span id="hud-score">0</span></span>
+      <span class="hud-item hud-fast" id="hud-fast" role="img" title="Acertos rápidos"></span>
+      <span class="hud-item" title="Nível">Nv <span id="hud-level">1</span></span>
+      <span class="hud-item" title="Recorde">🏆 <span id="hud-best">0</span></span>
+    </header>
+
+    <!-- 2. Question panel -->
+    <section class="qpanel" id="qpanel" aria-label="Pergunta">
+      <button class="qpanel-head" id="qpanel-toggle" type="button" aria-expanded="true" aria-controls="qpanel-body">
+        <span class="qpanel-label">PERGUNTA</span>
+        <span class="qpanel-topic" id="q-topic" hidden></span>
+        <span class="chip" id="q-timer">⚡ 0s</span>
+        <span class="qpanel-arrow" id="qpanel-arrow">▲ Fechar</span>
+        <span class="qpanel-bar" id="qpanel-bar"></span>
+      </button>
+      <div class="qpanel-body" id="qpanel-body">
+        <p class="qpanel-text" id="q-text" tabindex="0">Toque em “Jogar” para começar.</p>
+      </div>
+    </section>
+
+    <!-- 3. Playing field (decorative; everything important is also announced as text) -->
+    <section class="field" id="field" aria-hidden="true">
+      <div class="cloud cloud-1"></div>
+      <div class="cloud cloud-2"></div>
+      <div class="cloud cloud-3"></div>
+      <div class="hill hill-1"></div>
+      <div class="hill hill-2"></div>
+      <div class="hill hill-3"></div>
+      <span class="sprinkle s1"></span><span class="sprinkle s2"></span><span class="sprinkle s3"></span>
+      <span class="sprinkle s4"></span><span class="sprinkle s5"></span><span class="sprinkle s6"></span>
+      <span class="sprinkle s7"></span><span class="sprinkle s8"></span>
+      <div class="ground"></div>
+      <div class="hero" id="hero"></div>
+      <div class="monster" id="monster" hidden></div>
+      <div class="fx" id="fx"></div>
+    </section>
+
+    <!-- 4. Answers -->
+    <section class="answers" id="answers" role="group" aria-label="Alternativas"></section>
+  </div>
+
+  <p class="sr-only" id="live" aria-live="polite"></p>
+
+  <!-- 5. Overlays -->
+  <div class="overlay" id="ov-start" hidden>
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="start-title">
+      <h1 class="card-title" id="start-title">AWS Cloud Quest</h1>
+      <p class="card-lead">Monstros estão chegando! Atire na alternativa certa antes que eles alcancem você.</p>
+      <ul class="rules" id="start-rules"></ul>
+      <p class="card-meta" id="start-meta"></p>
+      <p class="warn" id="start-warn" hidden></p>
+      <div class="card-actions">
+        <button class="btn btn-go" id="btn-play" type="button" data-autofocus>Jogar</button>
+        <button class="btn btn-alt" id="btn-history-start" type="button">📊 Histórico</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ov-life" hidden>
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="life-title">
+      <h2 class="card-title" id="life-title"></h2>
+      <p class="card-meta" id="life-lives"></p>
+      <div class="qa">
+        <h3>PERGUNTA</h3>
+        <p id="life-q"></p>
+        <h3>RESPOSTA CERTA</h3>
+        <p class="qa-answer" id="life-a"></p>
+        <div id="life-why-wrap">
+          <h3>POR QUÊ</h3>
+          <p id="life-why"></p>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-go" id="btn-continue" type="button" data-autofocus>Continuar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ov-over" hidden>
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="over-title">
+      <h2 class="card-title" id="over-title"></h2>
+      <p class="card-score" id="over-score"></p>
+      <p class="card-meta" id="over-meta"></p>
+      <div class="qa">
+        <h3>PERGUNTA</h3>
+        <p id="over-q"></p>
+        <h3>RESPOSTA CERTA</h3>
+        <p class="qa-answer" id="over-a"></p>
+        <div id="over-why-wrap">
+          <h3>POR QUÊ</h3>
+          <p id="over-why"></p>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-go" id="btn-again" type="button" data-autofocus>Jogar de novo</button>
+        <button class="btn btn-alt" id="btn-history-over" type="button">📊 Histórico</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ov-history" hidden>
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="hist-title">
+      <h2 class="card-title" id="hist-title">📊 Histórico</h2>
+      <dl class="hist-stats">
+        <div><dt>Jogos</dt><dd id="hist-games">0</dd></div>
+        <div><dt>Recorde</dt><dd id="hist-best">0</dd></div>
+        <div><dt>Média</dt><dd id="hist-avg">0</dd></div>
+      </dl>
+      <p class="card-meta" id="hist-empty">Nenhum jogo ainda.</p>
+      <ol class="hist-list" id="hist-list"></ol>
+      <div class="card-actions">
+        <button class="btn btn-go" id="btn-history-close" type="button" data-autofocus>Fechar</button>
+        <button class="btn btn-danger" id="btn-history-clear" type="button">Limpar</button>
+      </div>
+    </div>
+  </div>
+
+  <noscript><p class="noscript">O AWS Cloud Quest precisa de JavaScript para funcionar.</p></noscript>
+
+  <!--
+    Classic scripts, in dependency order (no bundler, works from file://).
+    The question bank comes first; everything else hangs off window.AwsCloudQuest.
+  -->
+  <script src="data/questions.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/questions.js"></script>
+  <script src="js/rules.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/monsters.js"></script>
+  <script src="js/hero.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
