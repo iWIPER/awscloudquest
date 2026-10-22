@@ -29,10 +29,11 @@ jobs:
           node scripts/check-syntax.mjs
           node scripts/validate-questions.mjs
           node --test "tests/*.test.js"
-      - name: Copy only the files the game needs
+      - name: Copy only the files the site needs
         run: |
           mkdir _site
-          cp -r index.html css js data assets .nojekyll _site/
+          # Game, icons/preview image, PWA manifest, sitemap and the IndexNow key file (*.txt)
+          cp -r index.html manifest.webmanifest sitemap.xml ./*.txt css js data assets .nojekyll _site/
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

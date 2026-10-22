@@ -4,7 +4,8 @@
   "private": true,
   "description": "Real-time quiz game to practice for AWS certifications. Plain HTML/CSS/JS, no build step.",
   "license": "MIT",
-  "author": "Wilk",
+  "author": "Wilk Pereira Cosentino (https://github.com/iWIPER)",
+  "keywords": ["aws", "quiz", "game", "cloud-practitioner", "clf-c02", "study", "github-pages"],
   "repository": {
     "type": "git",
     "url": "https://github.com/iWIPER/awscloudquest.git"
@@ -20,6 +21,7 @@
     "import": "node scripts/import-questions.mjs",
     "serve": "node scripts/serve.mjs",
     "smoke": "node scripts/smoke.mjs",
+    "assets": "node scripts/build-assets.mjs",
     "ci": "npm run check && npm run validate && npm test"
   },
   "devDependencies": {
