@@ -31,7 +31,10 @@ export function startServer(port = 0, host = "127.0.0.1") {
       const file = path.join(ROOT, urlPath.endsWith("/") ? `${urlPath}index.html` : urlPath);
       if (!file.startsWith(ROOT + path.sep)) throw Object.assign(new Error("forbidden"), { code: "EACCES" });
       const body = await readFile(file);
-      res.writeHead(200, { "Content-Type": TYPES[path.extname(file)] || "application/octet-stream" });
+      res.writeHead(200, {
+        "Content-Type": TYPES[path.extname(file)] || "application/octet-stream",
+        "Cache-Control": "no-store", // always serve the latest files while developing
+      });
       res.end(body);
     } catch (error) {
       res.writeHead(error.code === "EACCES" ? 403 : 404, { "Content-Type": "text/plain" });
