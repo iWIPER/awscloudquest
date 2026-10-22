@@ -338,7 +338,19 @@
       show("over");
     }
 
-    function showHistory({ history, best }) {
+    /** Small icon button that exports one game's report (handled by main.js through data-export). */
+    function exportButton(kind, t, when) {
+      const button = h("button", "hist-export");
+      button.type = "button";
+      button.dataset.export = kind;
+      button.dataset.t = String(t);
+      button.innerHTML = icon(kind === "pdf" ? "file-text" : "download", { size: 16 });
+      button.append(kind === "pdf" ? " PDF" : " .md");
+      button.setAttribute("aria-label", `Exportar relatório de ${when} em ${kind === "pdf" ? "PDF" : "Markdown"}`);
+      return button;
+    }
+
+    function showHistory({ history, best, reportTimes = new Set() }) {
       // Re-rendering (after "Apagar") must keep the original screen to go back to.
       if (openOverlay !== "history") historyReturnTo = openOverlay;
       const games = history.length;
@@ -351,6 +363,11 @@
         const li = h("li", i === 0 ? "hist-item is-latest" : "hist-item");
         const label = `${i === 0 ? "Último · " : ""}${formatDate(game.t)} · ${plural(game.correct, "acerto", "acertos")} · nv ${game.level}`;
         li.append(h("span", "hist-label", label), h("span", "hist-score", `${game.score} pts`));
+        if (reportTimes.has(game.t)) {
+          const actions = h("span", "hist-actions");
+          actions.append(exportButton("pdf", game.t, formatDate(game.t)), exportButton("md", game.t, formatDate(game.t)));
+          li.append(actions);
+        }
         return li;
       });
       $("hist-list").replaceChildren(...items);

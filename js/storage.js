@@ -10,6 +10,7 @@
  *   awsCloudQuestStats    { [questionId]: { w, r } } — misses and hits per question
  *   awsCloudQuestHero     "male" | "female" — chosen character
  *   awsCloudQuestMuted    boolean — sound muted
+ *   awsCloudQuestReports  [{ t, …report }] — per-question reports of recent games, newest first
  */
 (function (root) {
   "use strict";
@@ -20,6 +21,7 @@
     stats: "awsCloudQuestStats",
     hero: "awsCloudQuestHero",
     muted: "awsCloudQuestMuted",
+    reports: "awsCloudQuestReports",
   });
 
   const HEROES = Object.freeze(["male", "female"]);
@@ -72,10 +74,20 @@
         write(KEYS.history, list);
         return list;
       },
-      /** Clears history and best score. Review stats are kept. */
+      /** Clears history, saved reports and best score. Review stats are kept. */
       clearHistory() {
         remove(KEYS.history);
+        remove(KEYS.reports);
         remove(KEYS.best);
+      },
+      /** Saved game reports (newest first). `t` matches the history entry's timestamp. */
+      getReports() {
+        const list = read(KEYS.reports, []);
+        return Array.isArray(list) ? list.filter((r) => isRecord(r) && Array.isArray(r.log)) : [];
+      },
+      /** Saves a report on top and keeps the `limit` most recent. Returns false if storage is full or blocked. */
+      addReport(report, limit) {
+        return write(KEYS.reports, [report, ...this.getReports()].slice(0, limit));
       },
       getStats() {
         const stats = read(KEYS.stats, {});

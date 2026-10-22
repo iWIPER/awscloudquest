@@ -37,8 +37,8 @@
     MAX_SPEED: 2.5,            // …up to 2.5× its normal speed
 
     // ── Power-ups (per game) ───────────────────────────────────────────
-    POWER_FREEZE: 2,           // "Gelo": freezes the monster inside an ice cube…
-    FREEZE_SECONDS: 10,        // …for this long
+    POWER_FREEZE: 3,           // "Gelo": freezes the monster inside an ice cube…
+    FREEZE_SECONDS: 15,        // …for this long
     POWER_SKIP: 2,             // "Pular": swaps the question, no life lost, no score
 
     // ── Score: BASE + min(streak, STREAK_CAP) × PER_STREAK + fast bonus ─
@@ -58,6 +58,7 @@
     // ── History ────────────────────────────────────────────────────────
     HISTORY_LIMIT: 50,         // games kept in storage
     HISTORY_SHOWN: 20,         // games listed on the history screen
+    REPORTS_LIMIT: 20,         // games whose full per-question report is kept for export
 
     // ── Ambience (seconds; [min, max] are random ranges) ───────────────
     AMBIENT_CYCLE_SECONDS: 240,       // one full day → night → day cycle

@@ -61,6 +61,16 @@ test("hero choice: null until chosen, only accepts known characters", () => {
   assert.equal(store.getHero(), "female");
 });
 
+test("reports: newest first, capped, cleared with the history", () => {
+  const store = memoryStore();
+  for (let t = 1; t <= 25; t++) store.addReport({ t, score: t, log: [] }, 20);
+  const reports = store.getReports();
+  assert.equal(reports.length, 20);
+  assert.equal(reports[0].t, 25);
+  store.clearHistory();
+  assert.deepEqual(store.getReports(), []);
+});
+
 test("muted: off by default and persisted", () => {
   const store = memoryStore();
   assert.equal(store.getMuted(), false);

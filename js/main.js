@@ -97,6 +97,87 @@
     ui.announce("Histórico apagado.");
   });
 
+  // ── Report and sharing (Game Over card) ───────────────────────────────
+  const SITE_URL = "https://iwiper.github.io/awscloudquest/";
+  const shareUrl = () => (/^https?:$/.test(root.location.protocol) && !/^(localhost|127\.|192\.168\.)/.test(root.location.hostname) ? root.location.href.split("#")[0] : SITE_URL);
+
+  /** Briefly swaps a button's label to confirm an action. */
+  function flashLabel(button, text) {
+    const label = button.querySelector(".btn-label") || button.lastElementChild;
+    const original = label.textContent;
+    label.textContent = text;
+    setTimeout(() => (label.textContent = original), 1800);
+  }
+
+  /** Copies text; falls back to a hidden textarea where the Clipboard API is unavailable (plain http). */
+  async function copyText(text) {
+    if (navigator.clipboard && root.isSecureContext) return navigator.clipboard.writeText(text);
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    area.remove();
+    if (!ok) throw new Error("copy failed");
+  }
+
+  $("btn-share").addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    const report = game.lastReport();
+    const text = report
+      ? `Fiz ${report.score} pontos e acertei ${report.correct} perguntas no AWS Cloud Quest! Consegue me superar?`
+      : "Estude AWS jogando no AWS Cloud Quest!";
+    const data = { title: "AWS Cloud Quest", text, url: shareUrl() };
+    try {
+      if (navigator.share) {
+        await navigator.share(data);
+        return;
+      }
+      await copyText(`${text} ${data.url}`);
+      flashLabel(button, "Link copiado!");
+      ui.announce("Link copiado para a área de transferência.");
+    } catch (error) {
+      if (error && error.name === "AbortError") return; // the player closed the share sheet
+      flashLabel(button, "Não deu");
+      ui.announce("Não foi possível compartilhar.");
+    }
+  });
+
+  function exportMarkdown(report) {
+    if (!report) return;
+    const blob = new Blob([NS.report.toMarkdown(report)], { type: "text/markdown;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `aws-cloud-quest-relatorio-${NS.report.stamp(report)}.md`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    ui.announce("Relatório em Markdown baixado.");
+  }
+
+  function exportPdf(report) {
+    if (!report) return;
+    NS.report.renderPrintable($("report"), report);
+    // The print dialog offers "Salvar como PDF"; css/style.css shows only the report when printing.
+    root.print();
+  }
+
+  // Game Over: the game that just ended.
+  $("btn-md").addEventListener("click", () => exportMarkdown(game.lastReport()));
+  $("btn-pdf").addEventListener("click", () => exportPdf(game.lastReport()));
+
+  // History: any saved game, one at a time.
+  $("hist-list").addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-export]");
+    if (!button) return;
+    const report = game.reportAt(Number(button.dataset.t));
+    if (button.dataset.export === "pdf") exportPdf(report);
+    else exportMarkdown(report);
+  });
+
   // ── Keyboard ──────────────────────────────────────────────────────────
   document.addEventListener("keydown", (event) => {
     if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return;
