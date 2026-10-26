@@ -2,7 +2,13 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { loadBank } = require("../scripts/load-bank.js");
+const { loadBank, loadGuide } = require("../scripts/load-bank.js");
+
+test("data/questions.js: every topic written in the bank exists in the study guide", () => {
+  const { topics } = loadGuide();
+  const unknown = loadBank().questions.filter((q) => q.topic && !topics[q.topic]).map((q) => `${q.id}: ${q.topic}`);
+  assert.deepEqual(unknown, []);
+});
 
 test("data/questions.js: the repository bank is valid", () => {
   const { questions, problems } = loadBank();

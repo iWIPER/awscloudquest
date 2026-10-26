@@ -15,6 +15,8 @@
  *     multi-answer questions are not supported yet (see README roadmap).
  *   - Questions whose id or text already exist in the bank are skipped.
  *   - `aviso` is kept as `note` (not shown in the game) so it can be reviewed later.
+ *   - Each new question gets a `topic` from the automatic classifier (js/topics.js),
+ *     listed at the end so it can be reviewed.
  *   - Every new item is validated with the game's rules before anything is written.
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -24,7 +26,12 @@ import path from "node:path";
 const require = createRequire(import.meta.url);
 const CONFIG = require("../js/config.js");
 const Questions = require("../js/questions.js");
-const { readRawBank, DEFAULT_BANK, ROOT } = require("./load-bank.js");
+const { readRawBank, loadGuide, DEFAULT_BANK, ROOT } = require("./load-bank.js");
+const Topics = require("../js/topics.js");
+
+// New questions get a topic from the classifier (see js/topics.js) unless they bring a valid one.
+const guide = loadGuide();
+const compiledTopics = Topics.compile(guide);
 
 const args = process.argv.slice(2);
 const input = args.find((a) => !a.startsWith("--"));
@@ -57,7 +64,7 @@ function convert(item, position) {
   const answerIndex = letters.indexOf(correct[0]);
   if (answerIndex < 0) return { skip: `${label}: correct letter "${correct[0]}" not found among the options` };
 
-  const out = { id: `${prefix}-${String(item.numero ?? position + 1).padStart(2, "0")}`, q: item.pergunta, options, answer: Questions.LETTERS[answerIndex] };
+  const out = { id: `${prefix}-${String(item.numero ?? position + 1).padStart(2, "0")}`, topic: "", q: item.pergunta, options, answer: Questions.LETTERS[answerIndex] };
   if (item.explicacao) out.explanation = item.explicacao;
   if (item.aviso) out.note = item.aviso;
   return { item: out };
@@ -70,11 +77,18 @@ const existingTexts = new Set(existing.map((q) => q && typeof q.q === "string" &
 const added = [];
 const skipped = [];
 const flagged = [];
+const classified = [];
 source.forEach((raw, position) => {
   const { item, skip } = convert(raw, position);
   if (skip) return skipped.push(skip);
 
   const label = item.id || `#${position + 1}`;
+  if (!item.topic || !guide.topics[item.topic]) {
+    const answer = Questions.parseAnswer(item.answer, Array.isArray(item.options) ? item.options.length : 0);
+    item.topic = (answer >= 0 && Topics.classify({ ...item, answer }, compiledTopics)) || "";
+    if (!item.topic) delete item.topic; // no keyword matched: leave it for review
+    classified.push(`${label} → ${item.topic || "(sem tema: revisar)"}`);
+  }
   const problems = Questions.checkItem(item, CONFIG);
   if (problems.length) return skipped.push(`${label}: ${problems.join("; ")}`);
   if (item.id && existingIds.has(item.id)) return skipped.push(`${label}: id already in the bank`);
@@ -92,6 +106,12 @@ skipped.forEach((s) => console.log(`  - ${s}`));
 if (flagged.length) {
   console.log(`Imported with a note (review the answer key):`);
   flagged.forEach((s) => console.log(`  - ${s}`));
+}
+const newIds = new Set(added.map((q) => q.id));
+const classifiedNew = classified.filter((line) => newIds.has(line.split(" → ")[0]));
+if (classifiedNew.length) {
+  console.log("Topics assigned automatically (review; edit `topic` in data/questions.js to change):");
+  classifiedNew.forEach((s) => console.log(`  - ${s}`));
 }
 
 if (dryRun || added.length === 0) {

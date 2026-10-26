@@ -40,7 +40,7 @@ window.QUESTIONS = [
   },
   {
     id: "root-user-mfa",
-    topic: "Segurança",
+    topic: "IAM e identidade",
     q: "Qual é a prática recomendada para o usuário-raiz (root) de uma conta da AWS?",
     options: [
       "Usá-lo nas tarefas do dia a dia, porque ele tem todas as permissões.",
@@ -74,7 +74,7 @@ window.QUESTIONS = [
   },
   {
     id: "security-group-stateful",
-    topic: "Redes",
+    topic: "Segurança de rede",
     q: "Qual afirmação sobre os security groups de uma VPC está correta?",
     options: [
       "Atuam no nível da sub-rede.",
@@ -87,7 +87,7 @@ window.QUESTIONS = [
   },
   {
     id: "cloudtrail-api-audit",
-    topic: "Auditoria",
+    topic: "Governança e auditoria",
     q: "Uma auditoria precisa saber qual usuário apagou um bucket do S3, quando e de qual endereço IP. Qual serviço registra essas chamadas de API na conta?",
     options: ["Amazon CloudWatch", "AWS CloudTrail", "AWS Config", "Amazon Inspector"],
     answer: "B",
@@ -95,7 +95,7 @@ window.QUESTIONS = [
   },
   {
     id: "spot-batch-cost",
-    topic: "Custos",
+    topic: "Preços e compras",
     q: "Um processamento em lote é tolerante a falhas, pode ser interrompido e retomado a qualquer momento e não tem previsão de uso contínuo. Qual opção de compra do EC2 costuma ter o MENOR custo para esse caso?",
     options: ["Instâncias sob demanda", "Instâncias reservadas", "Instâncias spot", "Hosts dedicados"],
     answer: "C",
@@ -103,6 +103,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-03",
+    "topic": "Governança e auditoria",
     "q": "Qual serviço da AWS pode identificar quando uma instância Amazon EC2 foi encerrada?",
     "options": [
       "AWS CloudTrail",
@@ -115,6 +116,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-04",
+    "topic": "Banco de dados",
     "q": "Uma empresa tem um banco de dados MySQL rodando em uma única instância Amazon EC2. A empresa agora requer maior disponibilidade em caso de interrupção. Qual conjunto de tarefas atenderia a esse requisito?",
     "options": [
       "Configurar a Recuperação Automática do EC2 para mover a instância para outra Zona de Disponibilidade",
@@ -127,6 +129,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-05",
+    "topic": "Responsabilidade compartilhada",
     "q": "Qual opção é uma responsabilidade do cliente sob o modelo de responsabilidade compartilhada da AWS?",
     "options": [
       "Manutenção de componentes da VPC",
@@ -139,6 +142,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-06",
+    "topic": "Segurança de rede",
     "q": "Qual serviço ou recurso da AWS uma empresa pode usar para aplicar regras de segurança a instâncias específicas do Amazon EC2?",
     "options": [
       "Listas de Controle de Acesso de Rede (ACLs)",
@@ -151,6 +155,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-07",
+    "topic": "Governança e auditoria",
     "q": "Uma empresa deseja lançar várias cargas de trabalho na AWS. Cada carga de trabalho está relacionada a uma unidade de negócios diferente. A empresa deseja separar e rastrear os custos de cada unidade de negócios. Qual solução atenderá a esses requisitos com o menor overhead operacional?",
     "options": [
       "Usar o console de faturamento da AWS para atribuir proprietários a recursos e rastrear custos",
@@ -163,6 +168,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-09",
+    "topic": "Análise de dados",
     "q": "Uma empresa tem 5 TB de dados armazenados no Amazon S3. A empresa planeja ocasionalmente executar consultas nos dados para análise. Qual serviço da AWS a empresa deve usar para executar essas consultas da maneira mais econômica?",
     "options": [
       "Amazon Kinesis",
@@ -175,6 +181,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-10",
+    "topic": "Migração e CAF",
     "q": "Qual opção é uma perspectiva que inclui capacidades fundamentais do AWS Cloud Adoption Framework (AWS CAF)?",
     "options": [
       "Confiabilidade",
@@ -187,6 +194,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-13",
+    "topic": "Gestão de custos",
     "q": "Uma empresa está executando uma carga de trabalho na AWS Cloud. Qual prática recomendada da AWS garante a arquitetura mais econômica para a carga de trabalho?",
     "options": [
       "Acoplamento Fraco",
@@ -199,6 +207,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-14",
+    "topic": "Suporte e parceiros",
     "q": "Uma empresa precisa contratar consultores terceirizados para ajudar a manter e apoiar seu ambiente da AWS e as necessidades de negócios da empresa. Qual serviço ou recurso da AWS atenderá a esses requisitos?",
     "options": [
       "Suporte da AWS",
@@ -211,6 +220,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-15",
+    "topic": "Proteção de dados",
     "q": "Qual serviço da AWS fornece criptografia em repouso para volumes Amazon RDS e Amazon Elastic Block Store (Amazon EBS)?",
     "options": [
       "AWS Key Management Service (AWS KMS)",
@@ -223,6 +233,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-17",
+    "topic": "Migração e CAF",
     "q": "Qual perspectiva do AWS Cloud Adoption Framework (AWS CAF) inclui uma capacidade para arquitetura de dados e análises bem projetada?",
     "options": [
       "Segurança",
@@ -235,6 +246,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-19",
+    "topic": "Well-Architected",
     "q": "Uma empresa migrou suas cargas de trabalho para a AWS. A empresa quer adotar a AWS em escala e operar de forma mais eficiente e segura. Qual serviço ou framework da AWS a empresa deve usar para suporte operacional?",
     "options": [
       "AWS Cloud Adoption Framework (AWS CAF)",
@@ -248,6 +260,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-20",
+    "topic": "Well-Architected",
     "q": "Uma empresa está lançando um aplicativo móvel. A empresa quer que os clientes possam usar o aplicativo sem atualizar seus dispositivos móveis. Qual pilar do AWS Well-Architected Framework representa esse objetivo?",
     "options": [
       "Sustentabilidade",
@@ -261,6 +274,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-21",
+    "topic": "Infraestrutura global",
     "q": "A sede de uma empresa está localizada em um continente diferente de onde a maioria dos clientes da empresa vive. A empresa deseja configurar um ambiente na AWS Cloud que forneça a menor latência para os clientes. Qual serviço da AWS fornece essa funcionalidade?",
     "options": [
       "EC2 Image Builder",
@@ -274,6 +288,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-22",
+    "topic": "IAM e identidade",
     "q": "Uma empresa deseja uma lista de todos os usuários em sua conta da AWS, o status de todas as chaves de acesso dos usuários e se a autenticação multifator (MFA) foi configurada. Qual serviço ou recurso da AWS atenderá a esses requisitos?",
     "options": [
       "Amazon CloudWatch",
@@ -286,6 +301,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-23",
+    "topic": "Computação",
     "q": "Qual serviço da AWS deve ser usado quando uma empresa precisa fornecer desktops virtuais para seus funcionários remotos?",
     "options": [
       "Gerenciamento de Identidade e Acesso da Amazon (IAM)",
@@ -298,6 +314,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-24",
+    "topic": "Migração e CAF",
     "q": "Uma empresa deseja monitorar o desempenho de sua carga de trabalho. A empresa quer garantir que os serviços em nuvem sejam entregues em um nível que atenda às suas necessidades de negócios. Qual perspectiva do AWS Cloud Adoption Framework (AWS CAF) atenderá a esses requisitos?",
     "options": [
       "Operações",
@@ -310,6 +327,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-25",
+    "topic": "IAM e identidade",
     "q": "Uma empresa quer verificar se a autenticação multifator (MFA) está habilitada para todos os usuários dentro de suas contas da AWS. Qual serviço ou recurso da AWS atenderá a esse requisito?",
     "options": [
       "Relatórios do Amazon CloudFront",
@@ -322,6 +340,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-26",
+    "topic": "Infraestrutura global",
     "q": "Uma empresa deseja que suas instâncias Amazon EC2 compartilhem a mesma área geográfica, mas usem múltiplas fontes de energia subjacentes independentes. Qual solução atinge esse objetivo?",
     "options": [
       "Usar instâncias EC2 em uma única Zona de Disponibilidade",
@@ -334,6 +353,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-27",
+    "topic": "Computação",
     "q": "Qual serviço da AWS usa o AWS Compute Optimizer para fornecer recomendações de dimensionamento com base em métricas de carga de trabalho?",
     "options": [
       "Amazon Lightsail",
@@ -346,6 +366,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-28",
+    "topic": "Proteção de dados",
     "q": "Uma empresa deseja definir uma política central de proteção de dados que funcione em todos os serviços da AWS para recursos de computação, armazenamento e banco de dados. Qual serviço da AWS atenderá a esse requisito?",
     "options": [
       "AWS Elastic Disaster Recovery",
@@ -358,6 +379,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-29",
+    "topic": "Migração e CAF",
     "q": "Uma empresa deseja um serviço da AWS para coletar e processar 10 TB de dados localmente e transferir os dados para a AWS. A empresa tem conectividade intermitente. Qual serviço da AWS atenderá a esses requisitos?",
     "options": [
       "Serviço de Migração de Banco de Dados da AWS (AWS DMS)",
@@ -370,6 +392,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-30",
+    "topic": "Infraestrutura global",
     "q": "Uma empresa deseja usar a AWS Cloud para implantar uma aplicação globalmente. Qual modelo de implantação de arquitetura a empresa deve usar para atender a esse requisito?",
     "options": [
       "Multi-Região",
@@ -382,6 +405,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-31",
+    "topic": "Migração e CAF",
     "q": "Qual serviço da AWS fornece um único local para rastrear o progresso das migrações de aplicativos?",
     "options": [
       "AWS Service Catalog",
@@ -394,6 +418,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-32",
+    "topic": "Detecção de ameaças e vulnerabilidades",
     "q": "Uma empresa precisa de um serviço de gerenciamento de vulnerabilidades automatizado que escaneie continuamente as cargas de trabalho da AWS em busca de vulnerabilidades de software. Qual serviço da AWS atenderá a esses requisitos?",
     "options": [
       "AWS Security Hub",
@@ -406,6 +431,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-33",
+    "topic": "Detecção de ameaças e vulnerabilidades",
     "q": "Uma empresa deseja um processo automatizado para escanear continuamente suas instâncias Amazon EC2 em busca de vulnerabilidades de software. Qual serviço da AWS atenderá a esses requisitos?",
     "options": [
       "Amazon GuardDuty",
@@ -418,6 +444,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-34",
+    "topic": "Armazenamento",
     "q": "Qual serviço da AWS oferece armazenamento de objetos?",
     "options": [
       "Amazon DynamoDB",
@@ -430,6 +457,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-36",
+    "topic": "Suporte e parceiros",
     "q": "Uma empresa está avaliando seu plano de Suporte Empresarial da AWS para determinar se o plano ainda atende às necessidades da empresa. A empresa está considerando mudar para o AWS Enterprise Support. Qual benefício adicional a empresa receberá com o AWS Enterprise Support?",
     "options": [
       "Uma revisão consultiva e orientação de arquitetura para as aplicações da empresa",
@@ -442,6 +470,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-37",
+    "topic": "IAM e identidade",
     "q": "Uma empresa precisa configurar a autenticação de usuários para um novo aplicativo. Os usuários devem poder fazer login diretamente com um nome de usuário e senha, ou através de um provedor de terceiros. Qual serviço da AWS a empresa deve usar para atender a esses requisitos?",
     "options": [
       "Centro de Identidade AWS (AWS Single Sign-On)",
@@ -454,6 +483,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-38",
+    "topic": "Infraestrutura global",
     "q": "Uma empresa deseja projetar um aplicativo web confiável hospedado no Amazon EC2. Qual abordagem alcançará esse objetivo?",
     "options": [
       "Distribuir instâncias EC2 por mais de um grupo de segurança",
@@ -466,6 +496,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-40",
+    "topic": "Proteção de dados",
     "q": "Um desenvolvedor deseja usar um bucket do Amazon S3 para armazenar logs de aplicativos que contêm dados sensíveis. Qual serviço ou recurso da AWS o desenvolvedor deve usar para restringir o acesso de leitura e escrita ao bucket S3?",
     "options": [
       "AWS CloudTrail",
@@ -479,6 +510,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-42",
+    "topic": "Gestão de custos",
     "q": "Uma empresa precisa categorizar e rastrear os custos de uso da AWS com base em categorias de negócios. Qual serviço ou recurso da AWS a empresa deve usar para atender a esses requisitos?",
     "options": [
       "Tags de Alocação de Custos",
@@ -491,6 +523,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-44",
+    "topic": "Responsabilidade compartilhada",
     "q": "Qual serviço da AWS exige que o cliente seja totalmente responsável pela aplicação de patches no sistema operacional?",
     "options": [
       "Amazon DynamoDB",
@@ -503,6 +536,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-45",
+    "topic": "IAM e identidade",
     "q": "Qual tarefa só pode ser realizada pelo usuário root da conta AWS?",
     "options": [
       "Exclusão de recursos da AWS",
@@ -515,6 +549,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-46",
+    "topic": "Migração e CAF",
     "q": "Uma empresa planeja migrar para a AWS Cloud. A empresa deseja usar o AWS Cloud Adoption Framework (AWS CAF) para definir e rastrear os resultados de negócios como parte de sua jornada de transformação em nuvem. Qual capacidade da perspectiva de governança do AWS CAF atenderá a esses requisitos?",
     "options": [
       "Gerenciamento de portfólio de aplicações",
@@ -527,6 +562,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-47",
+    "topic": "Armazenamento",
     "q": "Qual classe de armazenamento do Amazon S3 é a mais econômica para armazenamento de longo prazo?",
     "options": [
       "S3 One Zone-Infrequent Access (S3 One Zone-IA)",
@@ -539,6 +575,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-48",
+    "topic": "Well-Architected",
     "q": "Qual serviço ou ferramenta da AWS ajuda as empresas a medir o impacto ambiental do uso da AWS?",
     "options": [
       "Ferramenta de pegada de carbono do cliente da AWS",
@@ -551,6 +588,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-49",
+    "topic": "Responsabilidade compartilhada",
     "q": "Uma empresa deseja migrar um banco de dados de um ambiente local para o Amazon RDS. Após a migração estar completa, por qual tarefa de gerenciamento a empresa ainda será responsável?",
     "options": [
       "Gerenciamento do Ciclo de Vida do Hardware",
@@ -563,6 +601,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-50",
+    "topic": "Migração e CAF",
     "q": "Uma empresa está movendo um data center local para a AWS Cloud. A empresa deve migrar 50 petabytes de dados de armazenamento de arquivos para a AWS com o menor possível overhead operacional. Qual serviço ou recurso da AWS a empresa deve usar para atender a esses requisitos?",
     "options": [
       "AWS Snowmobile",
@@ -575,6 +614,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-51",
+    "topic": "Computação",
     "q": "Uma empresa precisa implantar aplicativos na AWS Cloud o mais rápido possível. A empresa também precisa minimizar a complexidade relacionada ao gerenciamento de recursos da AWS. Qual serviço da AWS a empresa deve usar para atender a esses requisitos?",
     "options": [
       "AWS Config",
@@ -587,6 +627,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-52",
+    "topic": "IAM e identidade",
     "q": "Uma empresa está construindo uma aplicação na AWS Cloud. A empresa quer usar credenciais temporárias para a aplicação acessar outros recursos da AWS. Qual serviço da AWS atenderá a esses requisitos?",
     "options": [
       "AWS CloudHSM",
@@ -599,6 +640,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-53",
+    "topic": "Benefícios da nuvem",
     "q": "Qual benefício da AWS Cloud descreve a capacidade de adquirir recursos conforme necessário e liberar recursos quando não são mais necessários?",
     "options": [
       "Agilidade",
@@ -611,6 +653,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-55",
+    "topic": "Computação",
     "q": "A aplicação de uma empresa tem alto uso de clientes durante certos horários do dia. A empresa quer reduzir o número de instâncias Amazon EC2 que estão em execução quando o uso da aplicação é baixo. Qual serviço ou opção de compra de instância da AWS a empresa deve usar para atender a esse requisito?",
     "options": [
       "Instâncias Reservadas",
@@ -623,6 +666,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-57",
+    "topic": "Banco de dados",
     "q": "Uma empresa deseja um serviço de banco de dados de séries temporais que facilite o armazenamento e a análise de trilhões de eventos a cada dia. Qual serviço da AWS atenderá a esse requisito?",
     "options": [
       "Amazon DocumentDB (com compatibilidade com MongoDB)",
@@ -635,6 +679,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-58",
+    "topic": "Banco de dados",
     "q": "Uma empresa precisa de um serviço de banco de dados gráfico que seja escalável e altamente disponível. Qual serviço da AWS atende a esses requisitos?",
     "options": [
       "Amazon Aurora",
@@ -647,6 +692,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-60",
+    "topic": "Análise de dados",
     "q": "Uma empresa está considerando a migração para a AWS Cloud. A empresa quer um serviço ou recurso totalmente gerenciado que possa transferir dados de streaming de várias fontes para um bucket do Amazon S3. Qual serviço ou recurso da AWS a empresa deve usar para atender a esses requisitos?",
     "options": [
       "Amazon Kinesis Data Firehose",
@@ -659,6 +705,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-61",
+    "topic": "Proteção de dados",
     "q": "Uma empresa hospeda uma grande quantidade de dados na AWS. A empresa deseja identificar se algum desses dados deve ser considerado sensível. Qual serviço da AWS atenderá a esse requisito?",
     "options": [
       "Amazon CloudWatch",
@@ -671,6 +718,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-62",
+    "topic": "Suporte e parceiros",
     "q": "Como a equipe de Concierge do AWS Enterprise Support ajuda os usuários?",
     "options": [
       "Suporte ao Desenvolvimento de Aplicações",
@@ -683,6 +731,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-63",
+    "topic": "IA e machine learning",
     "q": "Uma empresa precisa procurar texto em documentos que estão armazenados no Amazon S3. Qual serviço da AWS atenderá a esses requisitos?",
     "options": [
       "Amazon Lex",
@@ -695,6 +744,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-64",
+    "topic": "Governança e auditoria",
     "q": "Qual serviço da AWS uma empresa pode usar para encontrar relatórios de segurança e conformidade, incluindo relatórios da Organização Internacional para Padronização (ISO)?",
     "options": [
       "AWS Audit Manager",
@@ -707,6 +757,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-65",
+    "topic": "IA e machine learning",
     "q": "Uma empresa deseja um serviço da AWS para fornecer recomendações de produtos com base nos dados de seus clientes. Qual serviço da AWS atenderá a esse requisito?",
     "options": [
       "Amazon Rekognition",
@@ -719,6 +770,7 @@ window.QUESTIONS = [
   },
   {
     "id": "clf-sim01-f2-19",
+    "topic": "IA e machine learning",
     "q": "Uma empresa está procurando um serviço de aprendizado de máquina (ML) gerenciado que possa recomendar produtos com base nos comportamentos anteriores de um cliente. Qual serviço da AWS atende a esse requisito?",
     "options": [
       "Amazon Comprehend",
