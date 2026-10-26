@@ -14,7 +14,7 @@
  * monster's attack once. --shots saves screenshots along the way.
  */
 import { mkdirSync } from "node:fs";
-import { readFile, rm } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium, webkit } from "playwright";
 import { startServer } from "./serve.mjs";
@@ -27,7 +27,7 @@ const VIEWPORTS = [
   { name: "mobile", width: 360, height: 740 },
   { name: "desktop", width: 1280, height: 800 },
 ];
-const MONSTERS = ["dino", "dragon", "snake", "gator", "gorilla"];
+const MONSTERS = ["dino", "dragon", "snake", "gator", "gorilla", "wolf", "spider"];
 
 let failures = 0;
 const check = (ok, message) => {
@@ -80,18 +80,36 @@ async function clickOption(page, index) {
   await page.clock.runFor(400); // bullet flight + resolution
 }
 
+/**
+ * Runs the clock until a question is on screen again: scripted moments (the
+ * cheering visitor, the boss announcement) can appear between questions.
+ */
+async function waitPlay(page) {
+  for (let i = 0; i < 40 && (await snapshot(page)).phase !== "play"; i++) await page.clock.runFor(500);
+}
+
 /** Answers correctly and waits for the next question. */
 async function hit(page) {
+  await waitPlay(page);
   const { right } = await optionIndexes(page);
   await clickOption(page, right);
   await page.clock.runFor(1000);
+  await waitPlay(page);
 }
 
-/** Lets the current monster reach the hero and finish its attack. */
+/** Lets the current monster reach the hero and finish its attack (and the dark Game Over screen, if it was the last life). */
 async function letMonsterArrive(page) {
-  const { travel, progress } = await snapshot(page);
-  await page.clock.runFor(Math.ceil((1 - progress) * travel * 1000) + 2500);
+  await waitPlay(page);
+  const { travel, progress, speed } = await snapshot(page);
+  await page.clock.runFor(Math.ceil(((1 - progress) * travel * 1000) / speed) + 2500);
+  if ((await snapshot(page)).phase === "dead") {
+    const deathMs = await page.evaluate(() => window.AwsCloudQuest.app.config().DEATH_SCREEN_MS);
+    await page.clock.runFor(deathMs + 300);
+  }
 }
+
+/** Starts a game straight on a question (tests skip the "READY? GO!" intro). */
+const startGame = (page, options = {}) => page.evaluate((o) => window.AwsCloudQuest.app.start({ skipIntro: true, ...o }), options);
 
 for (const viewport of VIEWPORTS) {
   console.log(`\n— ${viewport.name} (${viewport.width}×${viewport.height})`);
@@ -104,18 +122,31 @@ for (const viewport of VIEWPORTS) {
   await page.clock.install();
   await page.goto(url);
   await page.locator("#ov-start:not([hidden])").waitFor();
-  check(await page.locator("#btn-play").isDisabled(), "Play is disabled until a character is chosen");
+  check(await page.locator("#start-rules").isHidden(), '"Como jogar" starts collapsed');
+  await shot(page, `${viewport.name}-1-start`);
+  await page.locator("#howto-toggle").click();
+  check(await page.locator("#start-rules li").first().isVisible(), '"Como jogar" opens on tap');
+  check(await cardFits(page, "ov-start"), "the start card does not overflow with \"Como jogar\" open (the list scrolls inside)");
+  await shot(page, `${viewport.name}-1b-start-howto`);
+  await page.locator("#howto-toggle").click();
+  check(await page.locator("#start-rules").isHidden(), '"Como jogar" closes again');
+
+  // "Jogar" opens "Antes de começar" with nothing pre-selected.
+  await page.locator("#btn-play").click();
+  check(await page.locator("#ov-setup:not([hidden])").isVisible(), '"Jogar" opens the character and mode picker');
+  check((await page.locator("#ov-setup input:checked").count()) === 0, "nothing comes pre-selected");
+  check(await page.locator("#btn-begin").isDisabled(), "Começar is disabled until both choices are made");
   const heroChoice = viewport.name === "mobile" ? "female" : "male";
   await page.locator(`.pick-card:has(input[value="${heroChoice}"])`).click();
-  check(await page.locator("#btn-play").isEnabled(), `choosing "${heroChoice}" enables Play`);
   check((await snapshot(page)).hero === heroChoice, `the ${heroChoice} character is in the field`);
+  check(await page.locator("#btn-begin").isDisabled(), "a character alone does not enable Começar");
 
-  // Difficulty: mobile plays Fácil, desktop plays Avançado (the default).
+  // Difficulty: mobile plays Fácil, desktop plays Avançado.
   const modeChoice = viewport.name === "mobile" ? "easy" : "advanced";
-  check(await page.locator('input[name="mode"][value="advanced"]').isChecked(), "Avançado is the default mode");
   await page.locator(`.mode-card:has(input[value="${modeChoice}"])`).click();
   const modeConfig = await page.evaluate(() => window.AwsCloudQuest.app.config());
   check(modeConfig.mode === modeChoice, `mode "${modeChoice}" selected`);
+  check(await page.locator("#btn-begin").isEnabled(), "character and mode enable Começar");
   if (modeChoice === "easy") {
     check(
       modeConfig.POWER_FREEZE === 5 && modeConfig.POWER_SKIP === 3 && modeConfig.WRONG_LOCK_SECONDS === 5 && modeConfig.WRONG_SPEEDUP === 0.3,
@@ -123,28 +154,29 @@ for (const viewport of VIEWPORTS) {
     );
     check((await page.locator("#freeze-count").textContent()) === "5", "the Gelo button shows the easy-mode count");
   }
-  check(await page.locator("#start-rules").isHidden(), '"Como jogar" starts collapsed');
-  await shot(page, `${viewport.name}-1-start`);
-  await page.locator("#howto-toggle").click();
-  check(await page.locator("#start-rules li").first().isVisible(), '"Como jogar" opens on tap');
+  check(await cardFits(page, "ov-setup"), "the picker card fits on screen");
+  await shot(page, `${viewport.name}-1c-setup`);
+
+  // "Começar" shows "READY? / GO!" before the first question, and the sound balloon.
+  await page.locator("#btn-begin").click();
+  await page.clock.runFor(200);
   check(
-    (await page.locator("#ov-start .pick").isHidden()) && (await page.locator("#ov-start .modes").isHidden()),
-    'opening "Como jogar" hides the character and mode pickers'
+    (await snapshot(page)).phase === "event" && (await page.locator("#banner").textContent()) === "READY?",
+    '"Começar" starts with the READY? banner'
   );
-  check(await cardFits(page, "ov-start"), "the start card does not overflow with \"Como jogar\" open (the list scrolls inside)");
-  await shot(page, `${viewport.name}-1b-start-howto`);
-  await page.locator("#howto-toggle").click();
-  check(await page.locator("#start-rules").isHidden(), '"Como jogar" closes again');
-  check(
-    (await page.locator("#ov-start .pick").isVisible()) && (await page.locator("#ov-start .modes").isVisible()),
-    'closing "Como jogar" brings the pickers back'
-  );
+  check(await page.locator("#sound-hint").isVisible(), "a balloon points at the sound button");
+  await shot(page, `${viewport.name}-1d-ready`);
+  const introMs = await page.evaluate(() => window.AwsCloudQuest.app.config().INTRO_MS);
+  await page.clock.runFor(introMs);
+  check((await snapshot(page)).phase === "play", "after READY? / GO! the first question starts");
+  await page.clock.runFor(5200);
+  check(await page.locator("#sound-hint").isHidden(), "the sound balloon closes by itself");
 
   // Longest question first, to check the layout with 600+ characters.
   const longId = await page.evaluate(() =>
     window.QUESTIONS.reduce((a, b) => (b.q.length > a.q.length ? b : a)).id
   );
-  await page.evaluate((id) => window.AwsCloudQuest.app.start({ questionId: id, monsterId: "dino" }), longId);
+  await startGame(page, { questionId: longId, monsterId: "dino" });
   await page.clock.runFor(1500);
   const layout = await page.evaluate(() => ({
     overflowX: document.documentElement.scrollWidth > window.innerWidth,
@@ -220,8 +252,13 @@ for (const viewport of VIEWPORTS) {
   s = await snapshot(page);
   check(s.phase === "play" && s.lives === 1, "Continue resumes the game with one life less");
 
-  // Last life → Game Over with the answer and the history entry.
-  await letMonsterArrive(page);
+  // Last life → dark "GAME OVER" screen, then the Game Over card with the answer and the history entry.
+  await waitPlay(page);
+  s = await snapshot(page);
+  await page.clock.runFor(Math.ceil(((1 - s.progress) * s.travel * 1000) / s.speed) + 2500);
+  check((await snapshot(page)).phase === "dead" && (await page.locator("#curtain").isVisible()), "losing the last life shows the dark GAME OVER screen first");
+  check(await page.locator("#ov-over").isHidden(), "the summary card waits for the dark screen");
+  await page.locator("#curtain").click(); // a tap skips the dark screen
   check(await page.locator("#ov-over:not([hidden])").isVisible(), "losing the last life shows Game Over");
   check((await page.locator("#over-a").textContent()).length > 0, "Game Over shows the right answer");
   check(await cardFits(page, "ov-over"), "the Game Over card fits on screen (long text scrolls inside)");
@@ -272,23 +309,38 @@ for (const viewport of VIEWPORTS) {
     `the .md report downloads with the summary and the questions (${download.suggestedFilename()})`
   );
 
-  await page.evaluate(() => (window.print = () => (window.__printed = true)));
+  // PDF: a real file to view or download, with no print dialog.
+  page.once("dialog", (d) => {
+    errors.push(`unexpected print/browser dialog: ${d.message()}`);
+    d.dismiss();
+  });
   await page.locator("#btn-pdf").click();
-  const printed = await page.evaluate(() => ({
-    called: window.__printed === true,
-    items: document.querySelectorAll("#report .report-item").length,
-    bars: document.querySelectorAll("#report .report-bar rect").length,
-  }));
-  check(printed.called && printed.items >= 5 && printed.bars >= 1, `PDF: the printable report has the chart and ${printed.items} questions`);
+  check(await page.locator("#ov-pdf:not([hidden])").isVisible(), "PDF opens the view / download card");
+  const pdfInfo = await page.evaluate(async () => {
+    const link = document.getElementById("pdf-download");
+    const bytes = new Uint8Array(await (await fetch(link.href)).arrayBuffer());
+    return {
+      blob: link.href.startsWith("blob:"),
+      file: link.download,
+      view: document.getElementById("pdf-view").href === link.href,
+      header: String.fromCharCode(...bytes.slice(0, 8)),
+      size: bytes.length,
+    };
+  });
+  check(
+    pdfInfo.blob && /^aws-cloud-quest-relatorio-.*\.pdf$/.test(pdfInfo.file) && pdfInfo.view && pdfInfo.header.startsWith("%PDF-1.4") && pdfInfo.size > 3000,
+    `the PDF is generated in the browser (${pdfInfo.file}, ${Math.round(pdfInfo.size / 1024)} KB)`
+  );
   if (shotsDir && viewport.name === "desktop") {
-    await page.emulateMedia({ media: "print" });
-    // page.pdf() is Chromium-only; other engines still get the print-media screenshot.
-    if (engineName === "chromium") {
-      await page.pdf({ path: path.join(shotsDir, "report.pdf"), format: "A4", printBackground: true });
-    }
-    await page.screenshot({ path: path.join(shotsDir, "report-print.png"), fullPage: true });
-    await page.emulateMedia({ media: "screen" });
+    const pdfBytes = await page.evaluate(async () => [...new Uint8Array(await (await fetch(document.getElementById("pdf-download").href)).arrayBuffer())]);
+    await writeFile(path.join(shotsDir, "report.pdf"), Buffer.from(pdfBytes));
   }
+  await page.locator("#btn-pdf-close").click();
+  check(await page.locator("#ov-over:not([hidden])").isVisible(), "Voltar returns from the PDF card to Game Over");
+  await page.locator("#btn-home").click();
+  check(await page.locator("#ov-leave:not([hidden])").isVisible(), "Início asks to download the report before leaving");
+  await page.locator("#btn-leave-cancel").click();
+  check(await page.locator("#ov-over:not([hidden])").isVisible(), "Cancelar keeps the Game Over card");
 
   await page.evaluate(() => (navigator.share = async (data) => (window.__shared = data)));
   await page.locator("#btn-share").click();
@@ -297,7 +349,7 @@ for (const viewport of VIEWPORTS) {
 
   // Every monster attacks once and leaves the hero in its end state.
   for (const monsterId of MONSTERS) {
-    await page.evaluate((id) => window.AwsCloudQuest.app.start({ monsterId: id }), monsterId);
+    await startGame(page, { monsterId });
     await page.clock.runFor(200);
     check((await snapshot(page)).monsterId === monsterId, `${monsterId} walks in`);
     await letMonsterArrive(page);
@@ -309,8 +361,8 @@ for (const viewport of VIEWPORTS) {
     }
   }
 
-  // Power-ups: Gelo freezes the monster, Pular swaps the question; two of each per game.
-  await page.evaluate(() => window.AwsCloudQuest.app.start({ monsterId: "dino" }));
+  // Power-ups: Gelo freezes the monster, Pular swaps the question.
+  await startGame(page, { monsterId: "dino" });
   await page.clock.runFor(1000);
   const { FREEZE_SECONDS: freezeSeconds, POWER_FREEZE: freezeCharges, POWER_SKIP: skipCharges } = await page.evaluate(
     () => window.AwsCloudQuest.app.config()
@@ -346,6 +398,70 @@ for (const viewport of VIEWPORTS) {
   }
   check((await snapshot(page)).powers.freeze === 0 && (await page.locator("#btn-freeze").isDisabled()), "Gelo runs out after all its charges");
 
+  // Mystery box: swaps the weapon.
+  await startGame(page);
+  await waitPlay(page);
+  const weaponBefore = (await snapshot(page)).weapon;
+  await page.evaluate(() => window.AwsCloudQuest.app.trigger("box"));
+  check(await page.locator("#weapon-box").isVisible(), "the mystery box appears next to the hero");
+  await page.keyboard.press("x");
+  await page.clock.runFor(500);
+  const armed = await snapshot(page);
+  check(armed.weapon !== weaponBefore && !armed.boxReady, `opening the box swaps the weapon (${weaponBefore} → ${armed.weapon})`);
+  await page.clock.runFor(1500); // let the "new weapon" balloon fade
+  await shot(page, `${viewport.name}-8-new-weapon`);
+
+  // Cheering visitor: questions hidden while the sign is up, then the game goes on.
+  await page.evaluate(() => window.AwsCloudQuest.app.trigger("cheer"));
+  const visit = await page.evaluate(() => window.AwsCloudQuest.visitor.TIMING);
+  await page.clock.runFor(visit.raise + 600);
+  check(
+    (await snapshot(page)).phase === "event" && (await page.locator(".visitor .v-sign").isVisible()),
+    "the visitor stops and raises the sign"
+  );
+  check(await page.locator("#answers").isHidden(), "the answers are hidden during the visit");
+  await shot(page, `${viewport.name}-9-visitor`);
+  await page.clock.runFor(visit.end - visit.raise);
+  await waitPlay(page);
+  check((await snapshot(page)).phase === "play" && (await page.locator(".visitor").count()) === 0, "the visitor leaves and the questions come back");
+
+  // Boss won: two hits out of three rounds.
+  const bossConfig = await page.evaluate(() => window.AwsCloudQuest.app.config());
+  const beforeBoss = await snapshot(page);
+  await page.evaluate(() => window.AwsCloudQuest.app.trigger("boss"));
+  await waitPlay(page);
+  const bossOn = await snapshot(page);
+  check(bossOn.isBoss && bossOn.boss.hp === bossConfig.BOSS_HP, "the boss walks in with its hearts");
+  await shot(page, `${viewport.name}-10-boss`);
+  for (let i = 0; i < bossConfig.BOSS_HP; i++) await hit(page);
+  const afterBoss = await snapshot(page);
+  check(
+    afterBoss.boss === null && afterBoss.lives > beforeBoss.lives && afterBoss.score >= beforeBoss.score + bossConfig.BOSS_BONUS,
+    `beating the boss gives +${bossConfig.BOSS_BONUS} points and +1 life`
+  );
+
+  // Boss lost: rocks on each timeout do not take lives; the final smash does.
+  await page.evaluate(() => window.AwsCloudQuest.app.trigger("boss"));
+  await waitPlay(page);
+  const livesInFight = (await snapshot(page)).lives;
+  for (let i = 0; i < 120 && ((await snapshot(page)).boss || {}).round === 1; i++) await page.clock.runFor(1000);
+  check((await snapshot(page)).lives === livesInFight, "a boss rock does not take a life");
+  for (let i = 0; i < 200 && !["modal", "dead"].includes((await snapshot(page)).phase); i++) await page.clock.runFor(1000);
+  const lost = await snapshot(page);
+  check(lost.lives === livesInFight - 1 && lost.boss === null, "losing the boss fight costs one life");
+  if (lost.phase === "modal") await page.locator("#btn-continue").click();
+  else await page.clock.runFor(bossConfig.DEATH_SCREEN_MS + 300);
+
+  // Scenery: changes after SCENE_EVERY correct answers (boss and visitors may show up on the way).
+  await startGame(page);
+  for (let i = 0; i < bossConfig.SCENE_EVERY; i++) await hit(page);
+  const sceneNow = await snapshot(page);
+  check(
+    sceneNow.scene !== "field" && (await page.locator("#world").getAttribute("data-scene")) === sceneNow.scene,
+    `after ${bossConfig.SCENE_EVERY} hits the scenery changes (${sceneNow.scene})`
+  );
+  await shot(page, `${viewport.name}-11-scene-${sceneNow.scene}`);
+
   // Sound toggle (button and M key) and ambience: night, rain and birds.
   await page.locator("#ov-over").evaluate((el) => (el.hidden = true));
   await page.evaluate(() => document.getElementById("app").removeAttribute("inert"));
@@ -370,6 +486,14 @@ for (const viewport of VIEWPORTS) {
   const scene = (await snapshot(page)).ambient;
   check(scene.night === 1 && scene.rain === true, "night and rain can happen");
   check(await page.locator("#world.is-night.is-rain").count() === 1, "the world shows night and rain");
+  const speedLinesInRain = await page.evaluate(() => {
+    const monster = document.getElementById("monster");
+    monster.classList.add("is-enraged");
+    const shown = getComputedStyle(monster, "::before").display !== "none";
+    monster.classList.remove("is-enraged");
+    return shown;
+  });
+  check(!speedLinesInRain, "speed lines are hidden while it rains");
   await shot(page, `${viewport.name}-7-night-rain`);
   await page.evaluate(() => window.AwsCloudQuest.scene.set({ time: 0.1, rain: false }));
 
