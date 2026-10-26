@@ -6,6 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-26
+
+### Added
+
+- **Desempenho por área**: hits and misses per CLF-C02 domain and topic, with strengths, weak areas, what to study and links to AWS documentation. Shown in the game and included in the PDF and Markdown reports.
+- Study guide in `data/study-guide.js` (4 domains, 18 topics) and a keyword classifier that assigns a topic to any question without one, including imported questions.
+- PDF reports built in the browser by a small PDF writer, with **Ver** and **Baixar** options. No print dialog.
+- Boss fight every 15 hits (first at 12): four looks (stone golem, lava golem, ice giant, giant robot), 3 hearts and 4 questions. Winning gives +100 points and +1 life; losing costs a life. Rocks only stagger the hero.
+- Mystery box every 6–8 questions that swaps the weapon: pistol, bow, slingshot or magic wand (`X`).
+- Two monsters: wolf and giant spider.
+- Four sceneries that change every 15 hits (field, forest, desert, city), each with its own music, critters and backdrop.
+- Cheering visitor with a dog and a sign at milestones (first after 5–7 hits, then 25, 50, 100 and 200).
+- "READY? / GO!" intro, a dark "GAME OVER" screen with its own tune, and a heartbeat when the screen turns red.
+- Long reads (question and options of 500+ characters) get +30 s, with an on-screen notice.
+- Balloon pointing at the sound button when a game starts.
+- **Antes de começar** dialog: character and mode are chosen after **Jogar**, with nothing pre-selected.
+- **Início** on Game Over, with a reminder to download the report before leaving.
+- `scripts/responsive.mjs`: layout checks on 10 screen sizes, from 320 px phones to Full HD.
+
+### Changed
+
+- Rain is 75% quieter. Speed lines are hidden while it rains.
+- The dragon breathes fire from closer.
+- The page is pinned to the visible viewport, so mobile browser bars no longer push the HUD or the answers off screen. The answer list got more room.
+- Game Over buttons: Desempenho and Histórico on one row, Jogar de novo and Início on the next.
+- Gelo and Pular are disabled during boss fights.
+
+### Fixed
+
+- Music could freeze the page after a long pause (hidden tab, busy phone) by scheduling every missed beat at once.
+
+### Removed
+
+- Print-to-PDF report and its print stylesheet, replaced by the in-browser PDF.
+
 ## [2.1.0] - 2026-10-22
 
 ### Added
@@ -22,6 +57,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - No sound on some iPhones: audio now unlocks on any tap (iOS only counts the end of a touch as a gesture), and the game requests the media playback audio session so sound plays with the ring/silent switch on. The in-game mute button still silences everything.
+
+## [2.0.0] - 2026-10-22
 
 First public release of the game. Earlier prototypes were never published in this repository.
 
@@ -54,6 +91,7 @@ First public release of the game. Earlier prototypes were never published in thi
 - Keyboard play, `aria-live` feedback, focus management in dialogs, AA contrast and `prefers-reduced-motion` support.
 - Documentation: README, architecture, decisions, question guide and contributing guide.
 
-[Unreleased]: https://github.com/iWIPER/awscloudquest/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/iWIPER/awscloudquest/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/iWIPER/awscloudquest/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/iWIPER/awscloudquest/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/iWIPER/awscloudquest/releases/tag/v2.0.0

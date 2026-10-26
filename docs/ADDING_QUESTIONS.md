@@ -7,7 +7,7 @@ All questions live in [`data/questions.js`](../data/questions.js). It is a plain
 ```js
 {
   id: "vpc-nacl-stateless",        // optional
-  topic: "Redes",                  // optional
+  topic: "Segurança de rede",      // optional
   q: "As network ACLs de uma VPC são stateful ou stateless?",
   options: ["Stateful", "Stateless"],
   answer: "B",
@@ -22,11 +22,26 @@ All questions live in [`data/questions.js`](../data/questions.js). It is a plain
 | `options` | yes | 2 to 6 options. The order does not matter: options are shuffled every time the question is shown. |
 | `answer` | yes | The correct option, as a letter (`"A"`–`"F"`, any case) or a 0-based index (`0` = first option). |
 | `explanation` | no | Why the answer is right. Shown when a life is lost and on Game Over. Strongly recommended. |
-| `topic` | no | Short label shown as a tag above the question. |
+| `topic` | no | One of the 18 topics in [`data/study-guide.js`](../data/study-guide.js). Leave it out and the classifier picks one (see below). |
 | `id` | no | Stable identifier. If missing, one is derived from the question text. Per-question review stats are keyed by id, so set one if you expect to edit the text later. |
 | `note` | no | Maintainer note (for example, "answer key under review"). The game ignores it. |
 
 The game **never** changes, infers or generates answers. What is in this file is exactly what the player sees.
+
+## Topics
+
+**Desempenho por área** groups results by the CLF-C02 domains and topics in [`data/study-guide.js`](../data/study-guide.js):
+
+| Domain | Topics |
+|---|---|
+| Conceitos de nuvem | Benefícios da nuvem, Well-Architected, Migração e CAF |
+| Segurança e conformidade | Responsabilidade compartilhada, IAM e identidade, Proteção de dados, Detecção de ameaças e vulnerabilidades, Governança e auditoria, Segurança de rede |
+| Tecnologia e serviços de nuvem | Computação, Armazenamento, Banco de dados, Infraestrutura global, Análise de dados, IA e machine learning |
+| Faturamento, preços e suporte | Preços e compras, Gestão de custos, Suporte e parceiros |
+
+You do not have to set `topic`. When it is missing, `js/topics.js` matches the question against each topic's keywords (answer × 3, question × 2, explanation × 1) and picks the best score. The importer does the same and writes the topic into the file. `npm run validate` lists the questions it classified automatically, so you can review them, and rejects a `topic` that is not in the guide.
+
+To add a topic or improve matching, edit `data/study-guide.js`: each topic has a `domain`, `keywords`, `study` notes and `links`.
 
 ## Adding a question on github.com
 
@@ -39,7 +54,7 @@ The game **never** changes, infers or generates answers. What is in this file is
 
 ```bash
 node scripts/validate-questions.mjs
-# ✔ 59 valid questions in data/questions.js (58 with 4 options, 1 with 5 options)
+# ✔ 60 valid questions in data/questions.js (59 with 4 options, 1 with 5 options)
 ```
 
 It runs the same `normalize()` the game uses and exits with code 1 if anything is wrong:
@@ -67,7 +82,7 @@ Two input formats are accepted:
 - **The game's own format:** a JSON array of `{ id?, topic?, q, options, answer, explanation? }`.
 - **Practice-exam export:** `{ "perguntas": [ { "numero", "pergunta", "alternativas": [{ "letra", "texto" }], "corretas": ["B"], "explicacao", "aviso" } ] }`. Ids become `<prefix>-<numero>`, and `aviso` is kept as `note`.
 
-The importer copies answer keys exactly as given. It skips questions with more than one correct answer (not supported yet, see the roadmap), questions whose id or text is already in the bank, and anything that fails validation. Imported items that carry a note are listed at the end so you can review their answer keys.
+The importer copies answer keys exactly as given and assigns a topic to each question. It skips questions with more than one correct answer (not supported yet, see the roadmap), questions whose id or text is already in the bank, and anything that fails validation. Imported items that carry a note are listed at the end so you can review their answer keys.
 
 ## Common mistakes
 

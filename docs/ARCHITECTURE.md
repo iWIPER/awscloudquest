@@ -1,167 +1,159 @@
 # Architecture
 
-AWS Cloud Quest is a static page: one HTML file, one stylesheet and a set of classic scripts loaded in order. There is no build step, nothing is fetched at runtime, and there are no audio or image files besides the link preview image.
+AWS Cloud Quest is a static page: one HTML file, one stylesheet and a set of classic scripts loaded in order. There is no build step, and nothing is fetched at runtime. Graphics are inline SVG, and sound is synthesized.
 
 ## Loading order
 
 ```
-data/questions.js   → window.QUESTIONS (the only loose global)
-js/config.js        → AwsCloudQuest.config
-js/questions.js     → AwsCloudQuest.questions   (pure)
-js/rules.js         → AwsCloudQuest.rules       (pure)
-js/storage.js       → AwsCloudQuest.storage     (pure, backend injected)
-js/icons.js         → AwsCloudQuest.icons
-js/sound.js         → AwsCloudQuest.sound
-js/monsters.js      → AwsCloudQuest.monsters
-js/hero.js          → AwsCloudQuest.hero
-js/effects.js       → AwsCloudQuest.effects
-js/ambient.js       → AwsCloudQuest.ambient
-js/report.js        → AwsCloudQuest.report      (Markdown builder is pure)
-js/ui.js            → AwsCloudQuest.ui
-js/game.js          → AwsCloudQuest.game
-js/main.js          → validates the bank, creates everything, wires input, boots
+data/questions.js     → window.QUESTIONS
+data/study-guide.js   → window.STUDY_GUIDE
+js/config.js          → AwsCloudQuest.config       (pure)
+js/questions.js       → AwsCloudQuest.questions    (pure)
+js/topics.js          → AwsCloudQuest.topics       (pure)
+js/rules.js           → AwsCloudQuest.rules        (pure)
+js/storage.js         → AwsCloudQuest.storage      (pure, backend injected)
+js/icons.js           → AwsCloudQuest.icons
+js/sound.js           → AwsCloudQuest.sound
+js/monsters.js        → AwsCloudQuest.monsters
+js/hero.js            → AwsCloudQuest.hero
+js/effects.js         → AwsCloudQuest.effects
+js/ambient.js         → AwsCloudQuest.ambient
+js/visitor.js         → AwsCloudQuest.visitor
+js/pdf.js             → AwsCloudQuest.pdf          (pure)
+js/report.js          → AwsCloudQuest.report       (builders are pure)
+js/ui.js              → AwsCloudQuest.ui
+js/game.js            → AwsCloudQuest.game
+js/main.js            → validates the bank, classifies topics, creates everything, wires input, boots
 ```
 
-Each file is an IIFE that attaches its API to `window.AwsCloudQuest`. The pure files (`config`, `questions`, `rules`, `storage`, `report`) also set `module.exports` when present, so Node can `require()` them for the tests and the CLI scripts without a bundler.
+Each file is an IIFE that attaches its API to `window.AwsCloudQuest`. Pure files also set `module.exports`, so Node runs the same code in tests and CLI scripts.
 
-## Module responsibilities
+## Modules
 
-| Module | Knows about | Does not know about |
+| Module | Responsibility | Does not touch |
 |---|---|---|
-| `questions` | bank format, validation, deck building, option shuffling, `{w, r}` stats | DOM, storage, time |
-| `rules` | travel time, score, levels, fast hits, miss speed-up | DOM, storage |
-| `storage` | localStorage keys and shapes; failures fall back to defaults | game rules |
-| `icons` | Lucide SVG markup | everything else |
-| `sound` | Web Audio synthesis: effects, rain loop, music | game state (it is told what to play) |
-| `monsters` / `hero` | SVG art, attack choreography, hero end states | score, lives |
-| `effects` | short-lived DOM effects that remove themselves | game state |
-| `ambient` | day/night, weather, birds, critters, crickets | game rules |
-| `report` | turning a game log into Markdown or a printable page | DOM outside the report section |
-| `ui` | DOM elements, text in Portuguese, focus, overlays, power-up buttons | rules (it only shows what it receives) |
-| `game` | state machine, loop, timers, power-ups, game log | DOM ids beyond what `main` passes in |
-| `main` | bootstrapping, events, keyboard, sound unlock, export and share | rules |
+| `questions` | Bank validation, normalization, deck building, option shuffling, `{w, r}` stats | DOM, storage, time |
+| `topics` | Keyword classifier: question → study-guide topic | DOM |
+| `rules` | Travel time, score, levels, fast hits, mode config, event schedule, boss rewards | DOM, storage |
+| `storage` | localStorage keys and shapes; failures fall back to defaults | Game rules |
+| `sound` | Web Audio effects, rain, heartbeat, music themes per scenery | Game state (it is told what to play) |
+| `monsters` / `hero` | SVG art, attacks, boss looks, weapons, hero end states | Score, lives |
+| `effects` | Short-lived DOM effects that remove themselves | Game state |
+| `ambient` | Sceneries, day/night, weather, birds, critters | Game rules |
+| `visitor` | The cheering visitor's walk, sign and timing | Game rules |
+| `pdf` | PDF 1.4 writer: pages, text, wrapping, boxes, links | DOM |
+| `report` | Areas analysis, Markdown and PDF reports, areas screen markup | Storage |
+| `ui` | DOM, Portuguese text, focus, dialogs, power-up buttons | Rules (it shows what it receives) |
+| `game` | State machine, main loop, timers, events, game log | DOM ids beyond what `main` passes in |
+| `main` | Bootstrap, events, keyboard, sound unlock, export and share | Rules |
 
 ## State machine
 
 ```mermaid
 stateDiagram-v2
     [*] --> idle
-    idle --> play: Jogar
-    play --> dying: correct shot
-    play --> dying: Pular (skip)
-    dying --> play: next question (650 ms)
-    play --> play: wrong shot (8 s lockout, monster +40%)
-    play --> play: Gelo (monster frozen 15 s)
-    play --> attack: monster reaches the hero (progress = 1)
+    idle --> event: Começar (READY? / GO!)
+    event --> play: next question
+    play --> dying: hit or Pular
+    dying --> play: next question
+    dying --> event: boss, visitor or new scenery due
+    play --> play: miss (lockout, monster faster) / Gelo
+    play --> attack: monster arrives (boss: rock throw, no damage)
     attack --> modal: lives left
-    attack --> over: no lives left
-    modal --> play: Continuar → hero blinks 1.3 s → next question
-    over --> play: Jogar de novo
+    attack --> dead: no lives left
+    modal --> play: Continuar
+    dead --> over: dark screen ends or tap
+    over --> event: Jogar de novo
+    over --> idle: Início
 ```
 
 | Phase | What happens |
 |---|---|
-| `idle` | Start screen. The loop and the ambience run, but nothing in the game moves. |
-| `play` | The only phase that advances game time: monster progress, the fast-hit timer, the post-miss lockout, the freeze timer and the panel auto-close timer. Shots and power-ups are accepted. |
-| `dying` | After a hit, the monster spins and shrinks with confetti and "+points". After a skip, it vanishes in a puff. The next question comes after `NEXT_AFTER_HIT_MS`. |
-| `attack` | The monster's own attack runs for its `attackMs` (1500–2000 ms). Answers and power-ups are locked. |
-| `modal` | "Life lost" card with the question, the right answer and the explanation. After **Continuar**, the hero blinks for `HERO_BLINK_MS`, still in this phase, then a new question starts. |
-| `over` | Game Over card with the player's numbers. The hero stays in its final state (eaten, burned, squeezed or bonked). |
+| `idle` | Start screen. The ambience runs; nothing else moves. |
+| `event` | A scripted moment: intro, boss announcement, visitor, boss defeated. Questions and power-ups are hidden. |
+| `play` | The only phase that advances game time. Shots and power-ups are accepted. |
+| `dying` | The monster dies with confetti (hit) or vanishes (skip). |
+| `attack` | The monster's attack plays. Answers are locked. |
+| `modal` | "Life lost" card with the answer and the explanation. |
+| `dead` | Dark "GAME OVER" screen for `DEATH_SCREEN_MS`. |
+| `over` | Game Over card. |
 
-A shot is ignored when the phase is not `play`, when a bullet is already in flight, during the post-miss lockout, or when the option is eliminated. The bullet takes `SHOT_MS`. If the monster arrives during the flight, the shot is dropped.
+After each question, `questionDone()` decides what comes next, in this order: mystery box (if due), boss fight, visitor, next question. The scenery is checked when a question starts.
 
 ## Main loop
 
-`game.js` runs one `requestAnimationFrame` loop for the whole session:
+One `requestAnimationFrame` loop runs for the whole session:
 
-1. `dt = min(now − lastFrame, MAX_DT_MS)`. The cap means a hidden tab, a debugger pause or a slow frame can never teleport the monster. On `visibilitychange` the clock is reset, so the first frame after returning has `dt = 0`.
-2. The field is measured (`clientWidth`/`clientHeight`) every frame, and again on `resize`. All positions are computed in pixels from that, so rotating a phone simply re-lays everything out.
+1. `dt = min(now − lastFrame, MAX_DT_MS)`. A hidden tab or a slow frame cannot teleport the monster.
+2. The field is measured every frame. Positions are computed in pixels from that, so rotation and resizing just work.
 3. `ambient.update(dt)` runs in every phase.
-4. Only in `play`: `elapsed += dt`. If the monster is frozen, `frozenLeft` counts down and progress stands still; otherwise `progress += dt × speed / travel`. The lockout and panel timers count down, the danger vignette turns on when `progress > DANGER_AT`, and the music intensity follows the progress. At `progress ≥ 1` the attack starts.
-5. The hero and monster are positioned with `transform` only.
+4. Only in `play`: progress advances (`dt × speed / travel`), and the lockout, freeze and panel timers count down. The red vignette and the music intensity follow the progress.
+5. The hero and monsters move with `transform` only.
 
-## Difficulty modes
+All game timeouts go through `later()`, which tracks them so a new game or **Início** cancels everything at once.
 
-`CONFIG.MODES` maps each mode to a set of overrides (`easy` changes `THINK_SECONDS`, `POWER_FREEZE`, `POWER_SKIP`, `WRONG_LOCK_SECONDS` and `WRONG_SPEEDUP`; `advanced` changes nothing). `rules.configFor(CONFIG, mode)` returns the frozen effective configuration. `game.js` keeps that object as its `config` and swaps it when the player picks another mode. Everything else (travel time, lockout, power-up counts, the "Como jogar" text and the mode descriptions) reads from it. The mode is saved in `localStorage` and recorded in the history and in each report.
-
-## Monster travel time and speed
+## Travel time
 
 ```
 chars  = length(question) + Σ length(options)
-base   = THINK_SECONDS + chars / READ_CHARS_PER_SEC
 factor = max(MIN_FACTOR, 1 − LEVEL_SPEEDUP × (level − 1))
-travel = base × factor                              (seconds at speed 1)
+travel = (THINK_SECONDS + chars / READ_CHARS_PER_SEC) × factor
+       + LONG_READ_BONUS if chars ≥ LONG_READ_CHARS
 ```
 
-With the defaults (*Avançado*), a short question (about 150 characters including the options) takes `20 + 150/25 = 26 s` at level 1. The 600-character storage scenario in the bank has five long options (1,245 characters in total) and takes `20 + 1245/25 ≈ 70 s`. From level 10 on, the factor bottoms out at `0.55`. *Fácil* raises `THINK_SECONDS` to 30, giving 10 s more per question at level 1.
+A short question (150 characters) takes 26 s at level 1. The longest one in the bank (1,245 characters) takes about 100 s. Each miss adds `WRONG_SPEEDUP` to the speed, up to `MAX_SPEED`.
 
-Each question starts at `speed = 1`. Every miss adds `WRONG_SPEEDUP` (0.4), up to `MAX_SPEED` (2.5), for the rest of that question. The time left shown in the timer chip is `(1 − progress) × travel / speed`.
+## Events
 
-The monster's left edge moves from the right border of the field (`progress = 0`) to the hero (`progress = 1`). The dragon stops earlier, at `clamp(28% of the field width, 90 px, 170 px)` from the hero, because it attacks with fire.
-
-## Misses, fast hits and lives
-
-A **miss** eliminates the option, resets the streak, locks every option for `WRONG_LOCK_SECONDS` (8 s, with a countdown banner) and makes the monster faster. A "✖ ERROU! ⬆ VELOCIDADE +40%" sign appears, the field shakes and the monster gets a red glow, speed lines and a speed badge.
-
-A hit is **fast** when it is the first answer to that question (no miss yet) and comes within `FAST_SECONDS`. The timer chip shows ⚡ and the remaining seconds while a fast hit is still possible, then turns grey and shows a clock with the time until the monster arrives. Every fast hit lights a ⚡ dot. At `FAST_NEEDED` dots the player gets +1 life, or `FULL_LIVES_BONUS` points if lives are already at `MAX_LIVES`, and the dots reset.
-
-## Power-ups
-
-Each game starts with `POWER_FREEZE` (3) **Gelo** and `POWER_SKIP` (2) **Pular**, used with the buttons on the ground strip or the `G` / `P` keys, only during `play`.
-
-- **Gelo** traps the monster in an ice cube for `FREEZE_SECONDS` (15 s). Progress stops, animations pause, and a countdown sits on the cube. It cannot be stacked: the button is disabled while the monster is frozen. The fast-hit timer keeps running.
-- **Pular** swaps the question: no life lost, no points, streak and per-question stats untouched. The question is logged as skipped in the report.
-
-## Deck and review
-
-`buildDeck()` takes the normalized questions and the per-question stats:
-
-- Each question goes in once. If `REVIEW_MISSED` is on and a question has `w > r` (more misses than hits), it gets `min(REVIEW_MAX_COPIES, w − r)` extra copies.
-- Copies are arranged so the same question is never adjacent, and the new deck never starts with the last question of the previous deck. A copy that cannot be placed without breaking that rule is dropped.
-- The deck is consumed from the front and rebuilt with fresh stats when it runs out.
-
-Stats are updated once per showing. The first miss, or the monster's arrival, records `w + 1` once, no matter how many wrong shots follow. A hit records `r + 1` only if there was no miss on that showing.
-
-## Ambience and sound
-
-`ambient.js` runs a day/night cycle of `AMBIENT_CYCLE_SECONDS` and sets `--night` (0–1) on the world, which CSS uses for the night sky, stars, sun, moon and a slightly darker field. Rain starts at random intervals and brings thunder flashes. By day without rain, small flocks of birds cross the sky and bunnies or squirrels hop along the ground from left to right, away from the hero. At night, crickets chirp.
-
-`sound.js` synthesizes everything with the Web Audio API. Effects play for shots, hits, misses, the lockout ending, lives, level-ups, power-ups, each monster's attack, life lost, Game Over and new records. The ambience drives the rain loop, birdsong, crickets and thunder. The suspense music is an A-minor bass pulse over a drone, scheduled ahead of time. Its tempo, brightness and a heartbeat follow the monster's progress, and it rests while the monster is frozen. Audio starts on the first tap or key press, as browsers require, and the mute state is saved. `main.js` listens to `pointerdown`, `pointerup`, `touchend`, `click` and `keydown` until the audio context is actually running, because on touch screens iOS only counts the end of a tap as a user gesture. iOS mutes Web Audio when the ring/silent switch is on. To avoid that, `sound.js` sets `navigator.audioSession.type = "playback"` (Safari 17+). On older iOS it plays a silent looping WAV through an `<audio>` element instead, which keeps the media playback session active. The mute button pauses that loop.
-
-## Reports and sharing
-
-Every question shown is logged as `first`, `late`, `lost` or `skipped`, with the wrong options picked. At Game Over the log and the game's numbers are saved as a report, under the same timestamp `t` as the history row. The last `REPORTS_LIMIT` (20) reports are kept.
-
-- **.md**: `report.toMarkdown()` builds a Markdown file (summary table, outcome counts, then each question grouped by outcome) and the browser downloads it.
-- **PDF**: `report.renderPrintable()` fills a hidden `<article>` that only print CSS shows. It has a summary, a 100% bar of outcomes (status colors plus a legend with symbols and counts) and every question. `window.print()` opens the print dialog, where the player picks "Salvar como PDF".
-- **Compartilhar** uses the Web Share API, and copies the link where that is unavailable. Open Graph tags plus `assets/og-image.png` (a real screenshot made by `scripts/og-image.mjs`) give the link a preview card.
-
-The Game Over card exports the game that just ended. The history screen exports any saved game, one at a time.
-
-## What is stored in localStorage
-
-| Key | Shape | Written when |
+| Event | When | Rule |
 |---|---|---|
-| `awsCloudQuestBest` | number | Game Over with a new best score |
-| `awsCloudQuestHistory` | `[{ t, score, correct, level }]`, newest first, at most `HISTORY_LIMIT` (50) | every Game Over |
-| `awsCloudQuestReports` | `[{ t, hero, score, …, log }]`, newest first, at most `REPORTS_LIMIT` (20) | every Game Over |
-| `awsCloudQuestStats` | `{ [questionId]: { w, r } }` | every recorded hit or miss |
-| `awsCloudQuestHero` | `"male"` or `"female"` | when the player picks a character |
-| `awsCloudQuestMuted` | boolean | when the sound is toggled |
-| `awsCloudQuestMode` | `"easy"` or `"advanced"` | when the player picks a difficulty mode |
+| Mystery box | Every `WEAPON_BOX_EVERY` (6–8) finished questions | `rules.nextBoxAt` |
+| Boss fight | At `BOSS_FIRST` (12) hits, then every `BOSS_EVERY` (15) | `rules.isBossDue` |
+| Visitor | First at `CHEER_FIRST` (5–7) hits, then at each `CHEERS` milestone | `rules.cheerMilestones` |
+| Scenery | Every `SCENE_EVERY` (15) hits, cycling | `rules.sceneFor` |
 
-Every access is wrapped in `try/catch`. If storage is blocked, the game plays normally and simply doesn't remember anything. **Limpar** on the history screen asks for confirmation inside the card, then removes the history, the saved reports and the best score. Review stats are kept, so the deck keeps prioritizing your weak questions.
+**Boss fight.** The boss (one of four looks, never the same twice in a row) stands at the right. Each round is a normal question with a timer. A hit takes a heart. A miss or a timeout makes the boss throw a rock: the hero staggers, no life is lost, and the boss steps closer (`BOSS_STEP`, never past `BOSS_LIMIT`). After `BOSS_ROUNDS`, or when the hearts run out, `rules.bossReward` settles it. Winning gives `BOSS_BONUS` points and a life. Losing pays `BOSS_HIT_BONUS` per hit, then the boss crushes the hero for one life.
+
+## Topics and performance by area
+
+`data/study-guide.js` lists the four CLF-C02 domains and 18 topics. Each topic has keywords, study notes and AWS documentation links. On load, `main.js` gives every question without a valid `topic` the best match from `topics.classify()`. Matches in the answer weigh 3, in the question 2, in the explanation 1. Old saved reports get the same treatment.
+
+`report.analyzeAreas(log, guide)` groups the game log by domain and topic and rates each one: Ótimo (≥ 80%), Bom (≥ 60%), Atenção (≥ 40%) or Precisa estudar. Strengths and weak areas come from those ratings. Weak areas carry their study notes and links.
+
+## Reports
+
+Every question shown is logged as `first`, `late`, `lost` or `skipped`, with the wrong options picked. At Game Over the report is saved under the same timestamp as the history row. The last `REPORTS_LIMIT` reports are kept.
+
+- **PDF**: `report.toPdf()` draws the report with `pdf.createDocument()`: stat tiles, area bars, strengths, weak areas with links, an outcome bar and every question, with page footers. The result is a `Blob` URL that the player can view or download.
+- **Markdown**: `report.toMarkdown()` builds the same content as text.
+- **Compartilhar** uses the Web Share API, with a copy-link fallback.
+
+## Sound
+
+`sound.js` synthesizes everything with the Web Audio API. Music is a scheduler that queues beats 200 ms ahead, with a theme per scenery and a happy mood for the visitor. After a stall it skips missed beats instead of playing them all at once. The heartbeat starts when the monster passes `HEARTBEAT_FROM`.
+
+Audio unlocks on the first `pointerup`, `touchend`, `click` or `keydown`. On iPhone the game sets `navigator.audioSession.type = "playback"` (Safari 17+), or plays a silent looping WAV on older versions, so sound works with the silent switch on.
+
+## Layout
+
+The page never scrolls. `body` is fixed to the visible viewport, and `.app` is a column: HUD, world (sky and field), answers. Long text scrolls inside the question panel, the answer list and dialog cards. Safe-area insets keep content clear of notches and the home indicator. A "▼ mais alternativas" hint appears when options are hidden below the answer list.
+
+## Stored in localStorage
+
+| Key | Shape |
+|---|---|
+| `awsCloudQuestBest` | number |
+| `awsCloudQuestHistory` | `[{ t, score, correct, level, mode }]`, newest first, at most `HISTORY_LIMIT` |
+| `awsCloudQuestReports` | `[{ t, mode, hero, score, …, log }]`, at most `REPORTS_LIMIT` |
+| `awsCloudQuestStats` | `{ [questionId]: { w, r } }` |
+| `awsCloudQuestHero` | `"male"` or `"female"` |
+| `awsCloudQuestMode` | `"easy"` or `"advanced"` |
+| `awsCloudQuestMuted` | boolean |
+
+Every access is wrapped in `try/catch`. With storage blocked, the game plays normally and remembers nothing. **Limpar** removes the history, reports and best score, and keeps the review stats.
 
 ## Testing
 
-- `tests/*.test.js` (`node:test`): normalization, deck building (adjacency, review copies, deck rollover), travel time, scoring, fast-hit rule, life cap, miss speed-up, storage fallbacks, reports and Markdown export, and the repository bank itself.
-- `scripts/smoke.mjs` (Playwright, optional): loads the page at 360 px and 1280 px with a fake clock, in Chromium or WebKit (`--browser`). Mobile plays *Fácil* and desktop plays *Avançado*. It covers:
-  - the character and mode choice and the "Como jogar" accordion;
-  - a miss with its lockout, then hits, the panel auto-close and a life gain;
-  - a life loss and Game Over with the player's numbers;
-  - history with per-game export and the in-card clear confirmation;
-  - the .md and PDF reports and sharing;
-  - all five attacks, both power-ups, mute, day, night, rain, birds and critters;
-  - cards never overflowing the screen.
-
-  It fails on any console error or browser dialog.
+- **Unit tests** (`tests/*.test.js`, `node:test`): bank rules, deck building, travel time, score, modes, event schedule, boss rewards, storage, topics, areas analysis, Markdown, the PDF writer, the bank itself and the SEO tags.
+- **Smoke test** (`scripts/smoke.mjs`, Playwright with a fake clock, Chromium and WebKit): start flow, setup dialog, intro, sound hint, misses and lockout, hits, lives, Game Over, history, reports, every monster attack, power-ups, mystery box, visitor, boss win and loss, scenery change and ambience. It fails on any console error.
+- **Layout test** (`scripts/responsive.mjs`): 10 viewports, from 320 × 480 to 1920 × 969, including landscape and Safari's reduced height. It checks that nothing overflows sideways, the HUD and answers stay on screen, and every dialog's buttons are reachable.

@@ -1,6 +1,6 @@
 # Decisions
 
-A log of the choices made while building v2.0.0, in the order they came up. Each entry says what was decided and why.
+A log of the choices made since v2.0.0, in the order they came up. Each entry says what was decided and why.
 
 ## 1. Classic scripts with one namespace, not ES modules
 
@@ -93,6 +93,8 @@ Overlay cards are flex columns capped at the viewport height. The long parts (th
 
 ## 22. Reports: one game at a time, Markdown and print-to-PDF
 
+> Superseded in 2.2.0 by [#28](#28-pdf-written-in-the-browser): the print dialog was replaced by a generated PDF.
+
 A combined report of every game would grow without bound and mix separate study sessions, so reports are per game. The Game Over card exports the game that just ended, and the history screen exports any of the last 20. PDF uses the browser's print dialog ("Salvar como PDF") on a print-only page. Generating PDF bytes in JavaScript would need a library, and the browser's output has selectable text and prints well. The outcome chart is a single 100% bar. The outcomes are states, so they use the reference status palette, with a symbol and a label in the legend so color is never the only cue. The question list doubles as the table view.
 
 ## 23. Link preview from a real screenshot
@@ -105,7 +107,7 @@ The fifth monster, a gorilla, punches the hero on the head; the hero ends flatte
 
 ## 25. Difficulty modes as configuration overrides
 
-*Fácil* and *Avançado* differ only in numbers. Each mode is therefore a list of `CONFIG` overrides, and `rules.configFor()` merges them into one frozen object that the whole game reads. Adding a mode, or tuning one, means editing `CONFIG.MODES`, with no code changes. *Avançado* stays the default because it is the game as originally designed. Players who want help pick *Fácil* once, and the choice is remembered.
+*Fácil* and *Avançado* differ only in numbers. Each mode is therefore a list of `CONFIG` overrides, and `rules.configFor()` merges them into one frozen object that the whole game reads. Adding a mode, or tuning one, means editing `CONFIG.MODES`, with no code changes. Since 2.2.0 the player picks a character and a mode in the **Antes de começar** dialog every session, with nothing pre-selected ([#33](#33-nothing-pre-selected)).
 
 ## 26. iPhone sound with the silent switch on
 
@@ -115,3 +117,31 @@ An iPhone 14 played no sound while an iPhone 17 Pro Max did. There were two caus
 - On touch screens iOS only accepts the end of a tap as the gesture that unlocks audio, so unlocking on `pointerdown` alone could fail on some iOS versions.
 
 The game now unlocks on every gesture type until audio runs. It also asks for the media playback audio session, so sound plays with the switch on, like a video player. The in-game mute button is the player's control.
+
+## 27. Topics from a keyword classifier, not a model
+
+Questions need a CLF-C02 topic for **Desempenho por área**, and the bank will keep growing. Tagging by hand does not scale, and calling an AI service would break the "no external calls" rule. `topics.js` scores each question against the keyword lists in `data/study-guide.js`: hits in the answer weigh 3, in the question 2, in the explanation 1. It agreed with the manual tags on 56 of 60 questions. A manual `topic` always wins, and the validator rejects topics that are not in the guide.
+
+## 28. PDF written in the browser
+
+The print dialog looked out of place on phones and did not let players simply view or download a file. PDF libraries add hundreds of KB. The report only needs text, boxes and links, so `pdf.js` writes PDF 1.4 directly with the built-in Helvetica font and WinAnsi encoding (Portuguese accents included). Characters outside WinAnsi fall back to close equivalents.
+
+## 29. Scripted events between questions
+
+Box, boss, visitor and scenery all happen between questions, decided in one place (`questionDone()`), in a fixed order. They never interrupt a running question, so the timer and the lockout rules stay simple. The schedule is pure functions in `rules.js` and is unit-tested.
+
+## 30. The boss does not take lives with rocks
+
+A boss that drains lives on every miss would end most games at level 4. Rocks only stagger the hero and bring the boss one step closer, so the fight builds tension without punishing every miss. The cost comes at the end: losing the fight costs one life. With 3 hearts and 4 rounds, the player can miss once and still win. Gelo and Pular are disabled, so the fight cannot be skipped.
+
+## 31. Music stays soft
+
+Background music plays for a long time. Square and sawtooth waves (or car-like noises in the city) get tiring fast, so every theme uses only sine and triangle waves, with a low-pass pad. Rain sits at a quarter of its original level so it never covers the effects.
+
+## 32. The page never scrolls
+
+Mobile browsers resize the viewport as their bars appear and hide, and a page that can scroll ends up with the HUD or the last answer off screen. `body` is fixed to the visible viewport and `.app` fills it. Only the question panel, the answer list and dialog cards scroll inside. `scripts/responsive.mjs` checks this on 10 screen sizes.
+
+## 33. Nothing pre-selected
+
+A remembered character and mode looked like a choice the player had already made, and players tapped Play without noticing the mode. **Jogar** now opens **Antes de começar** with nothing selected, and **Começar** unlocks once both are chosen. **Jogar de novo** keeps the current choices; **Início** returns to the start screen to choose again, after a reminder to download the report.
