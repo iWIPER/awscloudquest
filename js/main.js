@@ -79,6 +79,13 @@
   NS.app = game;      // handy for debugging and the smoke test
   NS.scene = ambient; // idem: NS.scene.set({ time: 0.7, rain: true })
 
+  // ── No zoom ─────────────────────────────────────────────────────────
+  // iOS Safari ignores maximum-scale and touch-action for pinch zoom; its
+  // proprietary gesture events are the only way to keep the layout at 100%.
+  for (const type of ["gesturestart", "gesturechange"]) {
+    document.addEventListener(type, (event) => event.preventDefault(), { passive: false });
+  }
+
   // ── Sound ─────────────────────────────────────────────────────────────
   // Audio may only start inside a user gesture. On touch screens iOS only counts
   // the end of a tap (touchend/click), not pointerdown, so listen to all of them
