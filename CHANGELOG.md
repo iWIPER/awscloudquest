@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Losing the last life fades the screen slowly to dark before "GAME OVER" appears. The dark screen always says GAME OVER; a new record shows as a "NOVO RECORDE!" badge on the Game Over card.
+
+### Fixed
+
+- The screen could zoom in by itself on phones (double tap on an answer or a two-finger touch), cutting off every edge. Double-tap and pinch zoom are now disabled in the game.
+
 ## [2.2.0] - 2026-10-26
 
 ### Added

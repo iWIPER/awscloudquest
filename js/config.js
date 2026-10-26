@@ -82,7 +82,7 @@
 
     // ── Game events ────────────────────────────────────────────────────
     INTRO_MS: 1700,                    // "READY?" → "GO!" before the first question
-    DEATH_SCREEN_MS: 3400,             // dark "GAME OVER" screen before the summary card
+    DEATH_SCREEN_MS: 4600,             // dark "GAME OVER" screen before the summary card
     WEAPON_BOX_EVERY: [6, 8],          // questions finished between mystery boxes (random)
     SCENE_EVERY: 15,                   // correct answers between scenery changes
     CHEER_FIRST: [5, 7],               // correct answers before the first cheer (random)

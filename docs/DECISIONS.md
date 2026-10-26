@@ -145,3 +145,7 @@ Mobile browsers resize the viewport as their bars appear and hide, and a page th
 ## 33. Nothing pre-selected
 
 A remembered character and mode looked like a choice the player had already made, and players tapped Play without noticing the mode. **Jogar** now opens **Antes de começar** with nothing selected, and **Começar** unlocks once both are chosen. **Jogar de novo** keeps the current choices; **Início** returns to the start screen to choose again, after a reminder to download the report.
+
+## 34. No zoom on the game screen
+
+Quick taps on answers triggered double-tap zoom on phones, and a stray two-finger touch did the same. With the page pinned to the viewport ([#32](#32-the-page-never-scrolls)), a zoomed screen cut off every edge and could not be panned back. The page now sets `touch-action: pan-x pan-y` (no double-tap or pinch zoom, scrolling inside panels still works) and `maximum-scale=1`. iOS Safari ignores both for pinch zoom, so `main.js` also cancels its `gesturestart` and `gesturechange` events. The trade-off is losing pinch zoom inside the game. Text is sized for phones, and the layout is tested from 320 px up.

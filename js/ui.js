@@ -182,8 +182,8 @@
     }
 
     /** Dark "GAME OVER" (or "NOVO RECORDE!") screen before the summary card. */
-    function showDeath(newRecord) {
-      $("curtain-title").textContent = newRecord ? "NOVO RECORDE!" : "GAME OVER";
+    /** Dark "GAME OVER" screen. A new record is only announced later, on the card. */
+    function showDeath() {
       $("curtain").hidden = false;
       el.app.inert = true;
     }
@@ -443,11 +443,12 @@
 
     function showGameOver(data) {
       const title = $("over-title");
-      title.innerHTML = data.newRecord
-        ? icon("trophy", { size: 34, className: "icon-trophy", fill: "#fbd51a" })
-        : icon("skull", { size: 34 });
-      title.append(data.newRecord ? " NOVO RECORDE!" : " GAME OVER");
-      title.classList.toggle("is-record", data.newRecord);
+      title.innerHTML = icon("skull", { size: 34 });
+      title.append(" GAME OVER");
+      const record = $("over-record");
+      record.innerHTML = icon("trophy", { size: 22, className: "icon-trophy", fill: "#fbd51a" });
+      record.append(" NOVO RECORDE!");
+      record.hidden = !data.newRecord;
       $("over-mode").textContent = `Modo ${modeLabel(data.mode)}`;
 
       $("over-score").textContent = String(data.score);

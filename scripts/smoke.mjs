@@ -258,8 +258,14 @@ for (const viewport of VIEWPORTS) {
   await page.clock.runFor(Math.ceil(((1 - s.progress) * s.travel * 1000) / s.speed) + 2500);
   check((await snapshot(page)).phase === "dead" && (await page.locator("#curtain").isVisible()), "losing the last life shows the dark GAME OVER screen first");
   check(await page.locator("#ov-over").isHidden(), "the summary card waits for the dark screen");
+  check((await page.locator("#curtain-title").textContent()) === "GAME OVER", "the dark screen always says GAME OVER, even on a new record");
   await page.locator("#curtain").click(); // a tap skips the dark screen
   check(await page.locator("#ov-over:not([hidden])").isVisible(), "losing the last life shows Game Over");
+  check(/GAME OVER/.test(await page.locator("#over-title").textContent()), "the card title is GAME OVER");
+  check(
+    (await page.locator("#over-record").isVisible()) === ((await snapshot(page)).score > 0),
+    "a new record shows as a badge on the card (first game with points)"
+  );
   check((await page.locator("#over-a").textContent()).length > 0, "Game Over shows the right answer");
   check(await cardFits(page, "ov-over"), "the Game Over card fits on screen (long text scrolls inside)");
   const overStats = await page.evaluate(() => ({

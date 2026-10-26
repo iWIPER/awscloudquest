@@ -899,7 +899,7 @@
         question: cur.question,
         answerText: cur.question.options[cur.question.answer],
       };
-      ui.showDeath(newRecord);
+      ui.showDeath();
       later(showGameOverCard, config.DEATH_SCREEN_MS);
     }
 
