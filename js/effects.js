@@ -22,12 +22,54 @@
     }
 
     return Object.freeze({
-      /** Bullet flying from (x1, y1) to (x2, y2) in `ms`. */
-      shot(x1, y1, x2, y2, ms) {
-        const el = spawn("bullet", { transform: `translate(${x1}px, ${y1}px)` }, ms + 40);
+      /** Projectile flying from (x1, y1) to (x2, y2) in `ms`. kind: laser | arrow | pebble | star. */
+      shot(x1, y1, x2, y2, ms, kind = "laser") {
+        const el = spawn(`bullet shot-${kind}`, { transform: `translate(${x1}px, ${y1}px)` }, ms + 40);
         void el.offsetWidth; // commit the start position before transitioning
         el.style.transition = `transform ${ms}ms linear`;
         el.style.transform = `translate(${x2}px, ${y2}px)`;
+      },
+
+      /**
+       * Boss rock thrown in an arc from (x1, y1) to (x2, y2). The outer element
+       * moves horizontally (linear) and the inner one vertically (up, then down).
+       */
+      rock(x1, y1, x2, y2, ms) {
+        const outer = spawn("rock-x", { transform: `translateX(${x1}px)` }, ms + 60);
+        const inner = document.createElement("span");
+        inner.className = "rock-y";
+        inner.style.setProperty("--y1", `${y1}px`);
+        inner.style.setProperty("--y2", `${y2}px`);
+        inner.style.setProperty("--peak", `${Math.min(y1, y2) - 70}px`);
+        inner.style.animationDuration = `${ms}ms`;
+        outer.append(inner);
+        void outer.offsetWidth;
+        outer.style.transition = `transform ${ms}ms linear`;
+        outer.style.transform = `translateX(${x2}px)`;
+      },
+
+      /** Spider web shot from the spider (fromX) to the hero (toX), at height y. */
+      web(fromX, toX, y, ms) {
+        const left = Math.min(fromX, toX);
+        spawn("web-shot", { left: `${left}px`, top: `${y - 2}px`, width: `${Math.abs(fromX - toX)}px` }, ms);
+      },
+
+      /** Sparkles bursting from (x, y): opening the mystery box. */
+      sparkle(x, y) {
+        const count = reducedMotion() ? 0 : 14;
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 * i) / count;
+          spawn(
+            "sparkle",
+            {
+              left: `${x}px`,
+              top: `${y}px`,
+              "--dx": `${Math.round(Math.cos(angle) * 46)}px`,
+              "--dy": `${Math.round(Math.sin(angle) * 46 - 16)}px`,
+            },
+            800
+          );
+        }
       },
 
       /** Colorful burst centered on (x, y). Skipped with reduced motion. */
@@ -78,7 +120,9 @@
       /** Animated balloon centered horizontally, with its top edge at `y`. */
       balloon(text, y, iconName) {
         const el = spawn("balloon", { top: `${y}px` }, 2300);
-        if (iconName) el.innerHTML = icon(iconName, { size: 18, fill: "currentColor", className: `balloon-icon-${iconName}` });
+        // Outline-only icons (clock) would turn into a solid disc if filled.
+        const fill = iconName === "clock" ? "none" : "currentColor";
+        if (iconName) el.innerHTML = icon(iconName, { size: 18, fill, className: `balloon-icon-${iconName}` });
         el.append(` ${text}`);
       },
 

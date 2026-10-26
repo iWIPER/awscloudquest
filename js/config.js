@@ -24,6 +24,8 @@
     // factor = max(MIN_FACTOR, 1 − LEVEL_SPEEDUP × (level − 1))
     THINK_SECONDS: 20,
     READ_CHARS_PER_SEC: 25,
+    LONG_READ_CHARS: 500,      // question + options this long count as a "long read"…
+    LONG_READ_BONUS: 30,       // …and get these extra seconds (not reduced by level)
     LEVEL_SPEEDUP: 0.05,
     MIN_FACTOR: 0.55,
     DANGER_AT: 0.72,           // progress at which the field pulses red
@@ -77,6 +79,32 @@
     HISTORY_LIMIT: 50,         // games kept in storage
     HISTORY_SHOWN: 20,         // games listed on the history screen
     REPORTS_LIMIT: 20,         // games whose full per-question report is kept for export
+
+    // ── Game events ────────────────────────────────────────────────────
+    INTRO_MS: 1700,                    // "READY?" → "GO!" before the first question
+    DEATH_SCREEN_MS: 3400,             // dark "GAME OVER" screen before the summary card
+    WEAPON_BOX_EVERY: [6, 8],          // questions finished between mystery boxes (random)
+    SCENE_EVERY: 15,                   // correct answers between scenery changes
+    CHEER_FIRST: [5, 7],               // correct answers before the first cheer (random)
+    CHEERS: [                          // fixed milestones, in correct answers
+      { at: 25, text: "Mandou bem! A cidade inteira está torcendo por você!" },
+      { at: 50, text: "Imbatível! Os monstros já estão fugindo da cidade!" },
+      { at: 100, text: "Lendário! Você é o herói que a cidade precisava!" },
+      { at: 200, text: "Extraordinário! Ninguém nunca chegou até aqui! A cidade está salva!" },
+    ],
+    CHEER_FIRST_TEXT: "Continue, você está indo bem! Você vai salvar a cidade!",
+
+    // ── Boss fight: 4 questions, 3 hits to win ─────────────────────────
+    // Rocks thrown during the fight only stagger the hero. Winning gives a
+    // bonus and a life; losing ends with the boss's smash (−1 life).
+    BOSS_FIRST: 12,                    // correct answers before the first boss…
+    BOSS_EVERY: 15,                    // …and between bosses
+    BOSS_HP: 3,                        // hits to defeat it: 3 correct answers…
+    BOSS_ROUNDS: 4,                    // …out of 4 questions (room for one miss)
+    BOSS_STEP: 0.15,                   // it steps closer each round it is not hit…
+    BOSS_LIMIT: 0.55,                  // …but never past this point of the path
+    BOSS_BONUS: 100,                   // points for defeating it (plus +1 life up to MAX_LIVES)
+    BOSS_HIT_BONUS: 15,                // points per hit when the fight is lost
 
     // ── Ambience (seconds; [min, max] are random ranges) ───────────────
     AMBIENT_CYCLE_SECONDS: 240,       // one full day → night → day cycle

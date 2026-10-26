@@ -42,6 +42,63 @@
       "</svg>",
   };
 
+  // More passers-by, one set per scenery (all face right and move left → right).
+  Object.assign(CRITTERS, {
+    deer:
+      '<svg viewBox="0 0 34 30" aria-hidden="true">' +
+      '<path d="M25 6l2-5M25 6l4-3M27 7l4 0M25 6l-1-5" stroke="#7a4a22" stroke-width="1.4" stroke-linecap="round"/>' +
+      '<rect x="8" y="20" width="2.6" height="9" rx="1" fill="#8b5a2b"/><rect x="13" y="20" width="2.6" height="9" rx="1" fill="#8b5a2b"/>' +
+      '<rect x="20" y="20" width="2.6" height="9" rx="1" fill="#8b5a2b"/><rect x="24" y="20" width="2.6" height="9" rx="1" fill="#8b5a2b"/>' +
+      '<ellipse cx="17" cy="17" rx="11" ry="6" fill="#b5763b"/><circle cx="12" cy="16" r="1.3" fill="#f4e3c8"/><circle cx="16" cy="14" r="1.1" fill="#f4e3c8"/>' +
+      '<path d="M24 15L27 8" stroke="#b5763b" stroke-width="4" stroke-linecap="round"/>' +
+      '<ellipse cx="29" cy="8.5" rx="3.6" ry="2.6" fill="#b5763b"/><circle cx="29.6" cy="7.8" r=".7" fill="#1f1a24"/>' +
+      '<path d="M6 15l-2-2" stroke="#f4e3c8" stroke-width="2" stroke-linecap="round"/>' +
+      "</svg>",
+    camel:
+      '<svg viewBox="0 0 40 30" aria-hidden="true">' +
+      '<rect x="9" y="19" width="2.6" height="10" rx="1" fill="#b98a4e"/><rect x="14" y="19" width="2.6" height="10" rx="1" fill="#b98a4e"/>' +
+      '<rect x="23" y="19" width="2.6" height="10" rx="1" fill="#b98a4e"/><rect x="28" y="19" width="2.6" height="10" rx="1" fill="#b98a4e"/>' +
+      '<path d="M7 20Q8 12 13 13Q15 6 19 11Q22 5 26 12Q30 13 31 20Z" fill="#d9a85f"/>' +
+      '<path d="M30 17Q33 10 35 8" stroke="#d9a85f" stroke-width="4" stroke-linecap="round" fill="none"/>' +
+      '<ellipse cx="36.5" cy="7.5" rx="3.2" ry="2.3" fill="#d9a85f"/><circle cx="37" cy="6.8" r=".7" fill="#1f1a24"/>' +
+      '<path d="M7 19q-3 1-3 4" stroke="#b98a4e" stroke-width="1.3" fill="none"/>' +
+      "</svg>",
+    car:
+      '<svg viewBox="0 0 44 22" aria-hidden="true">' +
+      '<path d="M3 15V11Q3 9 6 9H12L17 3H30L36 9H40Q42 9 42 12V15Z" fill="#e8272d"/>' +
+      '<path d="M18 4.5H24V9H14.5ZM25.5 4.5H29.5L34 9H25.5Z" fill="#bfe3f7"/>' +
+      '<rect x="38" y="10" width="3" height="2" rx="1" fill="#fbd51a"/>' +
+      '<circle cx="12" cy="16" r="4.2" fill="#2a1a3a"/><circle cx="12" cy="16" r="1.6" fill="#b9b3c2"/>' +
+      '<circle cx="33" cy="16" r="4.2" fill="#2a1a3a"/><circle cx="33" cy="16" r="1.6" fill="#b9b3c2"/>' +
+      "</svg>",
+  });
+
+  /** Sceneries, in the order they appear during a game. */
+  const SCENES = Object.freeze([
+    { id: "field", label: "Campo", icon: "🌼", critters: ["bunny", "squirrel"] },
+    { id: "forest", label: "Floresta", icon: "🌲", critters: ["deer", "squirrel"] },
+    { id: "desert", label: "Deserto", icon: "🌵", critters: ["camel"] },
+    { id: "city", label: "Cidade", icon: "🏙️", critters: ["car"] },
+  ]);
+
+  /** Background pieces of each scenery, drawn with CSS (see .scenery in style.css). */
+  function sceneryMarkup(id) {
+    const repeat = (n, fn) => Array.from({ length: n }, (_, i) => fn(i)).join("");
+    if (id === "forest") {
+      return repeat(9, (i) => `<span class="pine" style="--x:${4 + i * 11.5}%;--s:${0.7 + ((i * 37) % 5) / 10}"></span>`);
+    }
+    if (id === "desert") {
+      return (
+        '<span class="dune dune-1"></span><span class="dune dune-2"></span>' +
+        repeat(4, (i) => `<span class="cactus" style="--x:${18 + i * 22}%;--s:${0.8 + ((i * 3) % 4) / 10}"></span>`)
+      );
+    }
+    if (id === "city") {
+      return repeat(12, (i) => `<span class="building" style="--x:${i * 8.5}%;--h:${22 + ((i * 53) % 30)}%;--w:${7 + ((i * 7) % 4)}%"></span>`);
+    }
+    return "";
+  }
+
   const between = ([min, max]) => min + Math.random() * (max - min);
 
   /**
@@ -56,7 +113,7 @@
     return 0;
   }
 
-  function create({ world, sky, critterLayer, config, sound, reducedMotion = () => false }) {
+  function create({ world, sky, critterLayer, scenery, config, sound, reducedMotion = () => false }) {
     const state = {
       t: config.AMBIENT_CYCLE_START,
       night: -1,
@@ -67,7 +124,18 @@
       nextCritter: between(config.AMBIENT_CRITTERS_EVERY),
       nextThunder: between(config.AMBIENT_THUNDER_EVERY),
       nextCricket: 2,
+      scene: SCENES[0],
     };
+
+    /** Switches the scenery (background pieces, colors, passers-by and music theme). */
+    function setScene(id) {
+      const scene = SCENES.find((s) => s.id === id) || SCENES[0];
+      state.scene = scene;
+      world.dataset.scene = scene.id;
+      if (scenery) scenery.innerHTML = sceneryMarkup(scene.id);
+      sound.setTheme(scene.id);
+      return scene;
+    }
 
     function applyNight() {
       const night = nightAmount(state.t);
@@ -109,12 +177,16 @@
       sound.play("chirp");
     }
 
-    /** One bunny or squirrel (sometimes a pair) hopping along the ground, left → right. */
+    /** Seconds a passer-by takes to cross the field. */
+    const CROSSING = { bunny: [7, 10], squirrel: [5, 7], deer: [6, 8], camel: [11, 15], car: [3.5, 5] };
+
+    /** One passer-by of the current scenery (sometimes a pair), moving along the ground, left → right. */
     function spawnCritters(kind) {
-      const type = kind || (Math.random() < 0.5 ? "bunny" : "squirrel");
+      const options = state.scene.critters;
+      const type = kind || options[Math.floor(Math.random() * options.length)];
       const width = critterLayer.clientWidth;
-      const count = Math.random() < 0.3 ? 2 : 1;
-      const seconds = between(type === "bunny" ? [7, 10] : [5, 7]);
+      const count = type !== "car" && Math.random() < 0.3 ? 2 : 1;
+      const seconds = between(CROSSING[type] || [6, 9]);
       for (let i = 0; i < count; i++) {
         const critter = document.createElement("div");
         critter.className = `critter critter-${type}`;
@@ -183,14 +255,16 @@
     }
 
     applyNight();
+    setScene(SCENES[0].id);
 
     return Object.freeze({
       update,
       set,
-      snapshot: () => ({ time: state.t, night: state.night, rain: state.rain }),
+      setScene,
+      snapshot: () => ({ time: state.t, night: state.night, rain: state.rain, scene: state.scene.id }),
     });
   }
 
   const NS = (root.AwsCloudQuest = root.AwsCloudQuest || {});
-  NS.ambient = Object.freeze({ create, nightAmount });
+  NS.ambient = Object.freeze({ create, nightAmount, SCENES });
 })(typeof window !== "undefined" ? window : globalThis);

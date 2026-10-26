@@ -79,6 +79,7 @@
         <span class="hud-icon icon-trophy" data-icon="trophy" data-fill="#fbd51a"></span><span id="hud-best">0</span>
       </span>
       <button class="hud-item hud-btn" id="btn-sound" type="button" aria-label="Desligar som" title="Som (M)"></button>
+      <span class="sound-hint" id="sound-hint" aria-hidden="true" hidden></span>
     </header>
 
     <!-- The game world: one sky behind the floating question balloon and the field -->
@@ -117,11 +118,27 @@
         <div class="hill hill-1"></div>
         <div class="hill hill-2"></div>
         <div class="hill hill-3"></div>
+        <div class="scenery" id="scenery"></div>
         <div class="critters" id="critters"></div>
         <div class="ground"></div>
         <div class="hero" id="hero"></div>
         <div class="monster" id="monster" hidden></div>
+        <div class="visitors" id="visitors"></div>
       </section>
+
+      <!-- Mystery box next to the hero: opening it swaps the weapon (X) -->
+      <button class="weapon-box" id="weapon-box" type="button" hidden aria-label="Abrir a caixa misteriosa: troca de arma (tecla X)" title="Caixa misteriosa (X)">
+        <svg viewBox="0 0 40 40" aria-hidden="true">
+          <rect class="box-body" x="5" y="17" width="30" height="20" rx="3" fill="#a64ca6" stroke="#5a2278" stroke-width="2"/>
+          <rect x="17" y="17" width="6" height="20" fill="#fbd51a"/>
+          <g class="box-lid">
+            <rect x="3" y="10" width="34" height="9" rx="3" fill="#c36bc3" stroke="#5a2278" stroke-width="2"/>
+            <rect x="17" y="10" width="6" height="9" fill="#fbd51a"/>
+            <path d="M20 10q-7-9-10-3q2 4 10 3q7-9 10-3q-2 4-10 3z" fill="#fbd51a" stroke="#c99a00" stroke-width="1"/>
+          </g>
+          <text x="20" y="32" text-anchor="middle" font-size="11" font-weight="900" fill="#fff">?</text>
+        </svg>
+      </button>
 
       <!-- Power-ups, on the ground strip (outside the aria-hidden field so they stay accessible) -->
       <div class="powers" role="group" aria-label="Poderes">
@@ -142,11 +159,14 @@
       <div class="rain" aria-hidden="true"></div>
       <div class="lightning" aria-hidden="true"></div>
       <div class="fx" id="fx" aria-hidden="true"></div>
+      <!-- Big centred message: "READY? / GO!", boss announcement, new scenery -->
+      <div class="banner" id="banner" aria-hidden="true"></div>
     </main>
 
     <!-- 4. Answers -->
     <section class="answers-wrap">
       <div class="answers" id="answers" role="group" aria-label="Alternativas"></div>
+      <span class="more-hint" id="answers-more" aria-hidden="true">▼ mais alternativas</span>
       <div class="lock" id="answers-lock" hidden>
         <span class="lock-pill">
           <span class="lock-icon" data-icon="lock" data-size="22"></span>
@@ -163,39 +183,6 @@
     <div class="card" role="dialog" aria-modal="true" aria-labelledby="start-title">
       <h1 class="card-title" id="start-title">AWS <span class="accent">Cloud Quest</span></h1>
       <p class="card-lead">Monstros estão chegando! Atire na alternativa certa antes que eles alcancem você.</p>
-
-      <fieldset class="box pick">
-        <legend class="box-title"><span data-icon="user" data-size="18"></span> Você é homem ou mulher?</legend>
-        <div class="pick-grid">
-          <label class="pick-card">
-            <input type="radio" name="hero" value="male">
-            <span class="pick-art" data-hero-art="male"></span>
-            <span class="pick-name">Homem</span>
-          </label>
-          <label class="pick-card">
-            <input type="radio" name="hero" value="female">
-            <span class="pick-art" data-hero-art="female"></span>
-            <span class="pick-name">Mulher</span>
-          </label>
-        </div>
-        <p class="pick-hint" id="pick-hint">Escolha seu personagem para jogar.</p>
-      </fieldset>
-
-      <fieldset class="box modes">
-        <legend class="box-title"><span data-icon="gauge" data-size="18"></span> Modo de jogo</legend>
-        <div class="mode-grid">
-          <label class="mode-card">
-            <input type="radio" name="mode" value="easy">
-            <span class="mode-name">Fácil</span>
-            <span class="mode-summary" data-mode-summary="easy"></span>
-          </label>
-          <label class="mode-card">
-            <input type="radio" name="mode" value="advanced">
-            <span class="mode-name">Avançado</span>
-            <span class="mode-summary" data-mode-summary="advanced"></span>
-          </label>
-        </div>
-      </fieldset>
 
       <section class="box howto" id="howto">
         <button class="box-title box-toggle" id="howto-toggle" type="button" aria-expanded="false" aria-controls="start-rules">
@@ -222,6 +209,65 @@
       <div class="card-actions">
         <button class="btn btn-go" id="btn-play" type="button" data-autofocus><span data-icon="play" data-fill="currentColor"></span> Jogar</button>
         <button class="btn btn-alt" id="btn-history-start" type="button"><span data-icon="chart-column"></span> Histórico</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ov-setup" hidden>
+    <div class="card card-setup" role="dialog" aria-modal="true" aria-labelledby="setup-title">
+      <h2 class="card-title" id="setup-title">Antes de começar</h2>
+
+      <fieldset class="box pick">
+        <legend class="box-title"><span data-icon="user" data-size="18"></span> Você é homem ou mulher?</legend>
+        <div class="pick-grid">
+          <label class="pick-card">
+            <input type="radio" name="hero" value="male">
+            <span class="pick-art" data-hero-art="male"></span>
+            <span class="pick-name">Homem</span>
+          </label>
+          <label class="pick-card">
+            <input type="radio" name="hero" value="female">
+            <span class="pick-art" data-hero-art="female"></span>
+            <span class="pick-name">Mulher</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="box modes">
+        <legend class="box-title"><span data-icon="gauge" data-size="18"></span> Modo de jogo</legend>
+        <div class="mode-grid">
+          <label class="mode-card">
+            <input type="radio" name="mode" value="easy">
+            <span class="mode-name">Fácil</span>
+            <span class="mode-summary" data-mode-summary="easy"></span>
+          </label>
+          <label class="mode-card">
+            <input type="radio" name="mode" value="advanced">
+            <span class="mode-name">Avançado</span>
+            <span class="mode-summary" data-mode-summary="advanced"></span>
+          </label>
+        </div>
+      </fieldset>
+
+      <p class="pick-hint" id="setup-hint">Escolha o personagem e o modo de jogo.</p>
+
+      <div class="card-actions">
+        <button class="btn btn-go" id="btn-begin" type="button" disabled><span data-icon="play" data-fill="currentColor"></span> Começar</button>
+        <button class="btn btn-alt" id="btn-setup-back" type="button">Voltar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ov-leave" hidden>
+    <div class="card card-leave" role="dialog" aria-modal="true" aria-labelledby="leave-title">
+      <h2 class="card-title" id="leave-title">Voltar ao início?</h2>
+      <p class="card-lead">Antes de voltar, baixe o relatório deste jogo. Ele também fica guardado no Histórico.</p>
+      <div class="card-actions">
+        <button class="btn btn-areas" id="btn-leave-pdf" type="button"><span data-icon="file-text"></span> Baixar PDF</button>
+        <button class="btn btn-go" id="btn-leave-go" type="button" data-autofocus><span data-icon="house"></span> Voltar</button>
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-alt" id="btn-leave-cancel" type="button">Cancelar</button>
       </div>
     </div>
   </div>
@@ -287,8 +333,12 @@
       </div>
 
       <div class="card-actions">
-        <button class="btn btn-go" id="btn-again" type="button" data-autofocus><span data-icon="rotate-ccw"></span> Jogar de novo</button>
+        <button class="btn btn-areas" id="btn-areas" type="button"><span data-icon="target" data-size="20"></span> Desempenho</button>
         <button class="btn btn-alt" id="btn-history-over" type="button"><span data-icon="chart-column"></span> Histórico</button>
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-go" id="btn-again" type="button" data-autofocus><span data-icon="rotate-ccw"></span> Jogar de novo</button>
+        <button class="btn btn-alt" id="btn-home" type="button"><span data-icon="house"></span> Início</button>
       </div>
       <div class="card-actions card-actions-small">
         <button class="btn btn-small" id="btn-share" type="button"><span data-icon="share-2" data-size="18"></span> <span class="btn-label">Compartilhar</span></button>
@@ -323,8 +373,38 @@
     </div>
   </div>
 
-  <!-- Printable end-of-game report (only visible when printing / saving as PDF) -->
-  <article class="report" id="report" aria-hidden="true"></article>
+  <div class="overlay" id="ov-areas" hidden>
+    <div class="card card-areas" role="dialog" aria-modal="true" aria-labelledby="areas-title">
+      <h2 class="card-title" id="areas-title"><span data-icon="target" data-size="28"></span> Desempenho por área</h2>
+      <p class="card-meta" id="areas-meta"></p>
+      <p class="areas-legend">Acerto de primeira · Ótimo ≥ 80% · Bom 60–79% · Atenção 40–59% · Precisa estudar &lt; 40%. Toque numa área fraca para ver o que estudar.</p>
+      <div class="areas-body" id="areas-body"></div>
+      <div class="card-actions">
+        <button class="btn btn-go" id="btn-areas-close" type="button" data-autofocus><span data-icon="x"></span> Voltar</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Dark "GAME OVER" screen shown before the summary card (tap to skip) -->
+  <div class="curtain" id="curtain" hidden>
+    <p class="curtain-title" id="curtain-title" role="alert">GAME OVER</p>
+    <p class="curtain-hint">toque para continuar</p>
+  </div>
+
+  <div class="overlay" id="ov-pdf" hidden>
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="pdf-title">
+      <h2 class="card-title" id="pdf-title"><span data-icon="file-text" data-size="28"></span> Relatório em PDF</h2>
+      <p class="card-meta" id="pdf-meta"></p>
+      <div class="pdf-actions">
+        <a class="btn btn-alt" id="pdf-view" target="_blank" rel="noopener"><span data-icon="file-text"></span> Visualizar</a>
+        <a class="btn btn-go" id="pdf-download"><span data-icon="download"></span> Baixar</a>
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-small" id="btn-pdf-close" type="button" data-autofocus><span data-icon="x" data-size="18"></span> Voltar</button>
+      </div>
+    </div>
+  </div>
 
   <noscript><p class="noscript">O AWS Cloud Quest precisa de JavaScript para funcionar.</p></noscript>
 
@@ -333,8 +413,10 @@
     The question bank comes first; everything else hangs off window.AwsCloudQuest.
   -->
   <script src="data/questions.js"></script>
+  <script src="data/study-guide.js"></script>
   <script src="js/config.js"></script>
   <script src="js/questions.js"></script>
+  <script src="js/topics.js"></script>
   <script src="js/rules.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/icons.js"></script>
@@ -343,6 +425,8 @@
   <script src="js/hero.js"></script>
   <script src="js/effects.js"></script>
   <script src="js/ambient.js"></script>
+  <script src="js/visitor.js"></script>
+  <script src="js/pdf.js"></script>
   <script src="js/report.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/game.js"></script>

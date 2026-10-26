@@ -17,11 +17,16 @@
     return 1 + Math.floor(correctCount / config.QUESTIONS_PER_LEVEL);
   }
 
+  /** Very long question + options: the player gets LONG_READ_BONUS extra seconds. */
+  function isLongRead(question, config) {
+    return charCount(question) >= config.LONG_READ_CHARS;
+  }
+
   /** Seconds the monster takes from the right edge to the hero. */
   function travelSeconds(question, level, config) {
     const base = config.THINK_SECONDS + charCount(question) / config.READ_CHARS_PER_SEC;
     const factor = Math.max(config.MIN_FACTOR, 1 - config.LEVEL_SPEEDUP * (level - 1));
-    return base * factor;
+    return base * factor + (isLongRead(question, config) ? config.LONG_READ_BONUS : 0);
   }
 
   /**
@@ -70,10 +75,58 @@
     return Object.freeze({ ...config, ...overrides, mode: key, modeLabel: label || key });
   }
 
+  // ── Game events ─────────────────────────────────────────────────────
+  /** Random integer in [min, max]. */
+  const between = ([min, max], rng = Math.random) => min + Math.floor(rng() * (max - min + 1));
+
+  /** Question count at which the next mystery box appears. */
+  function nextBoxAt(finished, config, rng) {
+    return finished + between(config.WEAPON_BOX_EVERY, rng);
+  }
+
+  /** Cheering milestones of a game (correct answers → text), the first one at a random count. */
+  function cheerMilestones(config, rng) {
+    const first = { at: between(config.CHEER_FIRST, rng), text: config.CHEER_FIRST_TEXT };
+    return [first, ...config.CHEERS].sort((a, b) => a.at - b.at);
+  }
+
+  /** True when this number of correct answers starts a boss fight. */
+  function isBossDue(correct, config) {
+    return correct >= config.BOSS_FIRST && (correct - config.BOSS_FIRST) % config.BOSS_EVERY === 0;
+  }
+
+  /** Scenery for a number of correct answers: it changes every SCENE_EVERY and cycles. */
+  function sceneFor(correct, config, scenes) {
+    return scenes[Math.floor(correct / config.SCENE_EVERY) % scenes.length];
+  }
+
+  /** Boss position after a round in which it was not hit: one step closer, never past BOSS_LIMIT. */
+  function bossStep(position, config) {
+    return Math.min(config.BOSS_LIMIT, position + config.BOSS_STEP);
+  }
+
+  /**
+   * Reward when a boss fight ends. Losing it (fewer than BOSS_HP hits) also
+   * costs a life, applied by game.js after the boss's final smash.
+   * @returns {{ defeated: boolean, points: number, lives: number }}
+   */
+  function bossReward({ hits, lives }, config) {
+    const defeated = hits >= config.BOSS_HP;
+    if (!defeated) return { defeated, points: hits * config.BOSS_HIT_BONUS, lives };
+    return { defeated, points: config.BOSS_BONUS, lives: Math.min(config.MAX_LIVES, lives + 1) };
+  }
+
   const api = Object.freeze({
     configFor,
+    nextBoxAt,
+    cheerMilestones,
+    isBossDue,
+    sceneFor,
+    bossStep,
+    bossReward,
     charCount,
     levelFor,
+    isLongRead,
     travelSeconds,
     pointsFor,
     isFastHit,

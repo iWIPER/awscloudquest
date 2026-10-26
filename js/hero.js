@@ -1,19 +1,21 @@
 /**
  * AWS Cloud Quest — the hero: two playable characters drawn as inline SVG
- * (67×72, facing right, gun level) plus the end states used by the attacks
- * (eaten, burned, squeezed, bonked). Both characters share the same box, eyes and
- * gun position, so attacks and bullets line up for either one.
+ * (67×72, facing right) holding one of several weapons, plus the end states
+ * used by the attacks (eaten, burned, squeezed, bonked, webbed).
+ * Both characters share the same box, eyes and hand position, so attacks,
+ * weapons and projectiles line up for either one.
  */
 (function (root) {
   "use strict";
 
   const WIDTH = 67;
   const HEIGHT = 72;
-  /** Gun muzzle, in hero box coordinates. */
+  /** Where projectiles leave the weapon, in hero box coordinates. */
   const MUZZLE = Object.freeze({ x: 66, y: 37 });
 
   const SKIN = "#f6c39a";
   const INK = "#3a1459";
+  const SLEEVES = { male: "#2b9fdc", female: "#e84393" };
 
   // Parts shared by both characters.
   const head = `<circle cx="24" cy="19" r="11" fill="${SKIN}"/>`;
@@ -29,13 +31,6 @@
        <path d="M23 19l4 4M27 19l-4 4M29 19l4 4M33 19l-4 4"/>
      </g>
      <path class="h-mouth" d="M26 26q3 2.5 6 0" stroke="${INK}" stroke-width="1.4" fill="none" stroke-linecap="round"/>`;
-  const gun = (sleeve) =>
-    `<rect x="27" y="35" width="13" height="6" rx="3" fill="${sleeve}"/>
-     <rect x="40" y="39" width="6" height="8" rx="1.5" fill="#5b606a"/>
-     <rect x="38" y="33" width="25" height="7" rx="2" fill="#7a7f8a"/>
-     <rect x="40" y="34" width="20" height="1.6" rx="0.8" fill="#a9aeb8"/>
-     <rect x="61" y="34" width="5" height="5" rx="1" fill="#4a4e57"/>
-     <circle cx="38" cy="38" r="3.2" fill="${SKIN}"/>`;
 
   const BODIES = {
     // Blue shirt, purple trousers.
@@ -46,7 +41,7 @@
       <rect x="24" y="65" width="12" height="6" rx="3" fill="${INK}"/>
       <rect x="11" y="30" width="26" height="23" rx="9" fill="#2b9fdc"/>
       <rect x="11" y="46" width="26" height="4" fill="#fbd51a"/>
-      ${head}${cap}${face(false)}${gun("#2b9fdc")}`,
+      ${head}${cap}${face(false)}`,
 
     // Ponytail, pink top, purple skirt.
     female: `
@@ -63,14 +58,71 @@
       <path d="M13 17Q16 23 20 18Q22 22 27 18V16H13Z" fill="#7a3e1d"/>
       ${cap}
       <circle cx="30" cy="25" r="2" fill="#ff8fd0" opacity=".8"/>
-      ${face(true)}${gun("#e84393")}`,
+      ${face(true)}`,
   };
+
+  const arm = (sleeve) => `<rect x="27" y="35" width="13" height="6" rx="3" fill="${sleeve}"/>`;
+  const hand = `<circle cx="38" cy="38" r="3.2" fill="${SKIN}"/>`;
+
+  /**
+   * Weapons: label shown to the player, projectile style (css .shot-*) and art
+   * (the arm, the weapon and the hand on top). The mystery box swaps them.
+   */
+  const WEAPONS = Object.freeze({
+    blaster: {
+      label: "Pistola",
+      projectile: "laser",
+      art: (sleeve) =>
+        `${arm(sleeve)}
+         <rect x="40" y="39" width="6" height="8" rx="1.5" fill="#5b606a"/>
+         <rect x="38" y="33" width="25" height="7" rx="2" fill="#7a7f8a"/>
+         <rect x="40" y="34" width="20" height="1.6" rx="0.8" fill="#a9aeb8"/>
+         <rect x="61" y="34" width="5" height="5" rx="1" fill="#4a4e57"/>${hand}`,
+    },
+    bow: {
+      label: "Arco e flecha",
+      projectile: "arrow",
+      art: (sleeve) =>
+        `${arm(sleeve)}
+         <path d="M48 18Q63 37 48 56" stroke="#8b5a2b" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+         <path d="M48 18L39 37L48 56" stroke="#f4eee8" stroke-width="0.9" fill="none"/>
+         <path d="M38 37H63" stroke="#8b5a2b" stroke-width="1.8"/>
+         <path d="M63 34L68 37L63 40Z" fill="#7a7f8a"/>
+         <path d="M38 37l-3-3M38 37l-3 3" stroke="#e8272d" stroke-width="1.6" stroke-linecap="round"/>${hand}`,
+    },
+    slingshot: {
+      label: "Estilingue",
+      projectile: "pebble",
+      art: (sleeve) =>
+        `${arm(sleeve)}
+         <path d="M40 41L52 30" stroke="#8b5a2b" stroke-width="3.4" stroke-linecap="round"/>
+         <path d="M52 30L49 21M52 30L60 23" stroke="#8b5a2b" stroke-width="2.6" stroke-linecap="round"/>
+         <path d="M49 21Q53 30 60 23" stroke="#e8272d" stroke-width="1.3" fill="none"/>
+         <circle cx="54" cy="26" r="2.3" fill="#7a7f8a"/>${hand}`,
+    },
+    wand: {
+      label: "Varinha mágica",
+      projectile: "star",
+      art: (sleeve) =>
+        `${arm(sleeve)}
+         <path d="M39 39L60 31" stroke="#4a2a12" stroke-width="2.6" stroke-linecap="round"/>
+         <path d="M57 32.2L60 31" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
+         <path class="h-wand-star" d="M63 24l1.6 3.4 3.7.4-2.8 2.5.8 3.6-3.3-1.9-3.2 1.9.8-3.6-2.8-2.5 3.7-.4z" fill="#fbd51a" stroke="#e39b00" stroke-width=".6"/>${hand}`,
+    },
+  });
 
   const COILS = `
     <svg class="h-coils" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}" aria-hidden="true">
       <ellipse cx="25" cy="32" rx="21" ry="6" fill="none" stroke="#4e9a33" stroke-width="6"/>
       <ellipse cx="25" cy="42" rx="21" ry="6" fill="none" stroke="#fbd51a" stroke-width="5"/>
       <ellipse cx="25" cy="52" rx="21" ry="6" fill="none" stroke="#6cc24a" stroke-width="6"/>
+    </svg>`;
+
+  // Spider web cocoon around the hero (spider attack).
+  const WEB = `
+    <svg class="h-web" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}" aria-hidden="true">
+      <ellipse cx="25" cy="40" rx="20" ry="31" fill="rgba(255,255,255,.72)" stroke="#fff" stroke-width="1.5"/>
+      <path d="M8 22Q25 30 42 20M6 34Q25 42 44 32M6 46Q25 54 44 44M8 58Q25 64 42 56M16 10Q22 40 18 70M34 10Q28 40 32 70" stroke="#d9d4e0" stroke-width="1.2" fill="none"/>
     </svg>`;
 
   // Dizzy stars circling the head after the gorilla's punch.
@@ -85,41 +137,64 @@
 
   const VARIANTS = Object.freeze(Object.keys(BODIES));
   const DEFAULT_VARIANT = "male";
+  const DEFAULT_WEAPON = "blaster";
 
-  /** Standalone SVG markup for a character (used by the character picker). */
-  function artFor(variant) {
-    const body = BODIES[variant] || BODIES[DEFAULT_VARIANT];
-    return `<svg class="h-svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}" aria-hidden="true">${body}</svg>`;
+  /** Standalone SVG markup for a character holding a weapon (also used by the character picker). */
+  function artFor(variant, weapon = DEFAULT_WEAPON) {
+    const v = BODIES[variant] ? variant : DEFAULT_VARIANT;
+    const w = WEAPONS[weapon] || WEAPONS[DEFAULT_WEAPON];
+    return `<svg class="h-svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}" aria-hidden="true">${BODIES[v]}${w.art(SLEEVES[v])}</svg>`;
   }
 
-  const FATES = ["eaten", "burned", "squeezed", "bonked"];
+  const FATES = ["eaten", "burned", "squeezed", "bonked", "webbed"];
 
   /** Creates the hero view inside `el`. */
   function create(el, variant = DEFAULT_VARIANT) {
-    function draw(v) {
-      el.innerHTML = artFor(v) + COILS + STARS;
-      el.dataset.variant = BODIES[v] ? v : DEFAULT_VARIANT;
+    let current = { variant: BODIES[variant] ? variant : DEFAULT_VARIANT, weapon: DEFAULT_WEAPON };
+
+    function draw() {
+      // Keep fate/blink classes: only the artwork is replaced.
+      el.innerHTML = artFor(current.variant, current.weapon) + COILS + WEB + STARS;
+      el.dataset.variant = current.variant;
+      el.dataset.weapon = current.weapon;
     }
-    draw(variant);
+    draw();
+
+    function restart(className) {
+      el.classList.remove(className);
+      void el.offsetWidth; // restart the animation
+      el.classList.add(className);
+    }
 
     return Object.freeze({
       WIDTH,
       HEIGHT,
       MUZZLE,
-      setVariant: draw,
+      setVariant(v) {
+        current = { ...current, variant: BODIES[v] ? v : DEFAULT_VARIANT };
+        draw();
+      },
+      setWeapon(w) {
+        current = { ...current, weapon: WEAPONS[w] ? w : DEFAULT_WEAPON };
+        draw();
+        restart("is-equipping");
+      },
+      weapon: () => current.weapon,
       /** Puts the hero in an attack end state (kept on Game Over). */
       setFate(fate) {
         el.classList.add(`fate-${fate}`);
       },
       recoil() {
-        el.classList.remove("is-shooting");
-        void el.offsetWidth; // restart the animation
-        el.classList.add("is-shooting");
+        restart("is-shooting");
+      },
+      /** Short stagger when hit by something that does not cost a life (boss rocks). */
+      flinch() {
+        restart("is-flinching");
       },
       /** Back to normal; optionally blinking for `blinkMs`. */
       reset(blinkMs = 0) {
         FATES.forEach((f) => el.classList.remove(`fate-${f}`));
-        el.classList.remove("is-shooting", "is-blinking");
+        el.classList.remove("is-shooting", "is-blinking", "is-flinching");
         if (blinkMs > 0) {
           void el.offsetWidth;
           el.style.setProperty("--blink-ms", `${blinkMs}ms`);
@@ -130,5 +205,5 @@
   }
 
   const NS = (root.AwsCloudQuest = root.AwsCloudQuest || {});
-  NS.hero = Object.freeze({ create, artFor, VARIANTS, DEFAULT_VARIANT, WIDTH, HEIGHT, MUZZLE });
+  NS.hero = Object.freeze({ create, artFor, WEAPONS, VARIANTS, DEFAULT_VARIANT, DEFAULT_WEAPON, WIDTH, HEIGHT, MUZZLE });
 })(typeof window !== "undefined" ? window : globalThis);

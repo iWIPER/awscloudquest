@@ -12,10 +12,45 @@
   "use strict";
 
   const MASTER_VOLUME = 0.6;
+  const RAIN_VOLUME = 0.025; // rain loop level: kept low so it never covers the game sounds
+  const HEARTBEAT_FROM = 0.72; // music intensity (monster progress) where the heartbeat starts; matches CONFIG.DANGER_AT
 
-  // A-minor material for the suspense loop (Hz).
-  const BASS = [55, 55, 43.65, 41.2];         // A1 A1 F1 E1
-  const PLUCKS = [440, 523.25, 659.25, 493.88]; // A4 C5 E5 B4
+  /**
+   * Music themes: one per scenery, plus "happy" for the cheering visitor.
+   * Only soft waveforms (sine/triangle): square and sawtooth sound buzzy and tire the ear.
+   *   bass / plucks  note frequencies (Hz) cycled on every beat / every other beat
+   *   bassWave, pluckWave  oscillator types (the "instrument")
+   *   bpm   [calm, tense]: tempo goes from calm to tense as the monster gets close
+   *   drone frequencies of the background pad ([] = none)
+   *   tense whether the heartbeat joins near the hero
+   */
+  const THEMES = Object.freeze({
+    // Campo: pulsing A-minor suspense (the original track).
+    field: {
+      bass: [55, 55, 43.65, 41.2], plucks: [440, 523.25, 659.25, 493.88],
+      bassWave: "triangle", pluckWave: "sine", bpm: [70, 150], drone: [55, 55.4, 82.4], tense: true,
+    },
+    // Floresta: D Dorian, airy "flute" line over a soft pad.
+    forest: {
+      bass: [73.42, 73.42, 98, 87.31], plucks: [587.33, 698.46, 880, 783.99, 659.25, 587.33],
+      bassWave: "sine", pluckWave: "triangle", bpm: [64, 138], drone: [73.42, 110], tense: true,
+    },
+    // Deserto: E Phrygian dominant (E F G# A B C D), soft plucked pulse.
+    desert: {
+      bass: [82.41, 87.31, 82.41, 103.83], plucks: [659.25, 698.46, 830.61, 880, 987.77, 830.61],
+      bassWave: "triangle", pluckWave: "sine", bpm: [76, 150], drone: [82.41, 123.47], tense: true,
+    },
+    // Cidade: steady C-minor groove, soft keys (no harsh synths).
+    city: {
+      bass: [65.41, 65.41, 77.78, 98, 87.31, 65.41], plucks: [523.25, 622.25, 783.99, 622.25],
+      bassWave: "triangle", pluckWave: "sine", bpm: [84, 156], drone: [65.41, 98], tense: true,
+    },
+    // Visitor with the sign: bright C-major bounce, no pad, no heartbeat.
+    happy: {
+      bass: [130.81, 174.61, 196, 130.81], plucks: [523.25, 659.25, 783.99, 880, 783.99, 659.25],
+      bassWave: "triangle", pluckWave: "triangle", bpm: [116, 116], drone: [], tense: false,
+    },
+  });
 
   function create({ muted = false } = {}) {
     const AudioCtx = root.AudioContext || root.webkitAudioContext;
@@ -25,7 +60,7 @@
     let isMuted = muted;
 
     const rain = { gain: null, wanted: false };
-    const music = { on: false, intensity: 0, timer: null, nextTime: 0, beat: 0, drone: null };
+    const music = { on: false, intensity: 0, timer: null, nextTime: 0, beat: 0, drone: null, theme: "field", mood: null };
 
     // ── iOS: play even with the ring/silent switch on ──────────────────
     // iOS treats Web Audio as "ambient" sound, which the silent switch mutes.
@@ -163,26 +198,82 @@
         burst({ dur: 0.08, vol: 0.25, freq: 3000, type: "highpass", at: ctx.currentTime + 0.85 });
         melody([1568, 1760, 1568, 1760], { type: "sine", step: 0.09, dur: 0.08, vol: 0.04 }); // birdies
       },
+      wolf() {
+        tone({ type: "sine", from: 420, to: 700, dur: 0.7, vol: 0.08 }); // howl up…
+        tone({ type: "sine", from: 700, to: 500, dur: 0.5, vol: 0.07, at: ctx.currentTime + 0.65 }); // …and down
+        [0.5, 0.7].forEach((d) => burst({ dur: 0.1, vol: 0.28, freq: 320, at: ctx.currentTime + d }));
+      },
+      spider() {
+        burst({ dur: 0.6, vol: 0.12, freq: 4000, type: "highpass", at: ctx.currentTime + 0.3 }); // web hiss
+        [0, 0.08, 0.16, 0.24].forEach((d) => burst({ dur: 0.03, vol: 0.08, freq: 2500, at: ctx.currentTime + d })); // skitter
+      },
       gator() {
         [0.15, 0.35, 0.55].forEach((d) => burst({ dur: 0.1, vol: 0.32, freq: 250, at: ctx.currentTime + d }));
         tone({ type: "sawtooth", from: 110, to: 50, dur: 0.9, vol: 0.14, at: ctx.currentTime + 0.6 });
       },
     };
 
+    const SHOTS = {
+      laser: () => tone({ type: "square", from: 900, to: 200, dur: 0.11, vol: 0.08 }),
+      arrow() {
+        tone({ type: "triangle", from: 260, to: 140, dur: 0.12, vol: 0.14 }); // bowstring
+        burst({ dur: 0.18, vol: 0.06, freq: 2500, type: "highpass" }); // whoosh
+      },
+      pebble() {
+        burst({ dur: 0.05, vol: 0.12, freq: 1800 }); // band snap
+        tone({ type: "sine", from: 700, to: 300, dur: 0.12, vol: 0.06 });
+      },
+      star: () => melody([1318.5, 1760, 2093], { type: "sine", step: 0.035, dur: 0.12, vol: 0.06 }),
+    };
+
     const SFX = {
-      shoot: () => tone({ type: "square", from: 900, to: 200, dur: 0.11, vol: 0.08 }),
+      shoot: (kind) => (SHOTS[kind] || SHOTS.laser)(),
+      ready: () => tone({ type: "triangle", from: 523.25, dur: 0.18, vol: 0.07 }),
+      go: () => melody([783.99, 1046.5], { type: "triangle", step: 0.08, dur: 0.22, vol: 0.08 }),
+      box() {
+        tone({ type: "sawtooth", from: 180, to: 320, dur: 0.25, vol: 0.05 }); // lid creak
+        melody([783.99, 987.77, 1174.66, 1567.98], { type: "triangle", step: 0.07, dur: 0.18, vol: 0.12, at: 0 });
+      },
+      equip: () => melody([392, 523.25], { type: "triangle", step: 0.06, dur: 0.1, vol: 0.06 }),
+      bark() {
+        // Two short "woof"s: a pitched drop plus a breathy burst.
+        [0, 0.22].forEach((d) => {
+          tone({ type: "sawtooth", from: 520, to: 260, dur: 0.12, vol: 0.09, at: ctx.currentTime + d });
+          burst({ dur: 0.1, vol: 0.08, freq: 900, at: ctx.currentTime + d });
+        });
+      },
+      bossIntro() {
+        tone({ type: "sawtooth", from: 90, to: 55, dur: 1.1, vol: 0.12 }); // low growl, kept soft
+        burst({ dur: 0.9, vol: 0.06, freq: 220, type: "lowpass", at: ctx.currentTime + 0.1 });
+        melody([220, 207.65, 196], { type: "triangle", step: 0.25, dur: 0.3, vol: 0.05 });
+      },
+      bossGrowl: () => tone({ type: "sawtooth", from: 110, to: 70, dur: 0.6, vol: 0.09 }),
+      rockThrow: () => burst({ dur: 0.35, vol: 0.06, freq: 500, q: 0.7 }),
+      rockHit() {
+        burst({ dur: 0.2, vol: 0.18, freq: 160, type: "lowpass" });
+        tone({ type: "sine", from: 200, to: 90, dur: 0.15, vol: 0.12 });
+      },
+      bossHurt() {
+        tone({ type: "sawtooth", from: 160, to: 90, dur: 0.35, vol: 0.1 });
+        burst({ dur: 0.15, vol: 0.12, freq: 1200 });
+      },
+      bossDefeated() {
+        burst({ dur: 0.8, vol: 0.2, freq: 140, type: "lowpass" });
+        melody([523.25, 659.25, 783.99, 1046.5, 1318.5], { type: "triangle", step: 0.1, dur: 0.2, vol: 0.08 });
+      },
+      scene: () => melody([659.25, 880, 1174.66], { type: "sine", step: 0.12, dur: 0.3, vol: 0.06 }),
       hit() {
         burst({ dur: 0.18, vol: 0.22, freq: 1800 });
         melody([659.25, 987.77], { step: 0.07, dur: 0.12, vol: 0.16 });
       },
       miss() {
         tone({ type: "sawtooth", from: 220, to: 90, dur: 0.4, vol: 0.16 });
-        tone({ type: "square", from: 300, to: 1100, dur: 0.35, vol: 0.05, at: ctx.currentTime + 0.25 });
+        tone({ type: "triangle", from: 300, to: 1100, dur: 0.35, vol: 0.07, at: ctx.currentTime + 0.25 });
       },
       unlock: () => tone({ type: "sine", from: 660, to: 990, dur: 0.12, vol: 0.12 }),
       life: () => melody([523.25, 659.25, 783.99, 1046.5], { step: 0.09, dur: 0.18, vol: 0.18 }),
       bonus: () => melody([783.99, 1046.5], { step: 0.08, dur: 0.15, vol: 0.15 }),
-      levelUp: () => melody([392, 523.25, 659.25], { type: "square", step: 0.07, dur: 0.12, vol: 0.06 }),
+      levelUp: () => melody([392, 523.25, 659.25], { type: "triangle", step: 0.07, dur: 0.12, vol: 0.06 }),
       attack: (monsterId) => (ATTACKS[monsterId] || ATTACKS.dino)(),
       lifeLost: () => melody([392, 329.63, 261.63], { step: 0.22, dur: 0.35, vol: 0.16 }),
       gameOver() {
@@ -191,7 +282,7 @@
         tone({ type: "triangle", from: 110, dur: 1.8, vol: 0.18, at: ctx.currentTime + 1.95 });
         tone({ type: "sine", from: 220, dur: 1.8, vol: 0.08, at: ctx.currentTime + 1.95 });
       },
-      record: () => melody([523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5], { type: "square", step: 0.11, dur: 0.16, vol: 0.08 }),
+      record: () => melody([523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5], { type: "triangle", step: 0.11, dur: 0.16, vol: 0.08 }),
       freeze() {
         // Glassy, descending sparkle.
         melody([2093, 1760, 1568, 1319, 1047], { type: "sine", step: 0.05, dur: 0.25, vol: 0.09 });
@@ -261,22 +352,28 @@
         src.connect(filter).connect(rain.gain).connect(master);
         src.start();
       }
-      rain.gain.gain.setTargetAtTime(on ? 0.1 : 0, ctx.currentTime, 0.9);
+      rain.gain.gain.setTargetAtTime(on ? RAIN_VOLUME : 0, ctx.currentTime, 0.9);
     }
 
-    // ── Suspense music ──────────────────────────────────────────────────
-    // A pulsing A-minor bass line over a low drone. Tempo, drone brightness
-    // and a heartbeat follow `intensity` (0 = monster far, 1 = at the hero).
+    // ── Music ───────────────────────────────────────────────────────────
+    // A theme (see THEMES) per scenery: a bass line over a soft pad. Tempo,
+    // pad brightness and a heartbeat follow `intensity` (0 = monster far,
+    // 1 = at the hero). A "mood" (the happy theme) can temporarily replace it.
+    const currentTheme = () => THEMES[music.mood || music.theme] || THEMES.field;
+
     function startDrone() {
+      const freqs = currentTheme().drone;
+      if (freqs.length === 0) return;
       const gain = ctx.createGain();
       const filter = ctx.createBiquadFilter();
       filter.type = "lowpass";
       filter.frequency.value = 280;
       gain.gain.value = 0;
-      const oscs = [55, 55.4, 82.4].map((f) => {
+      const oscs = freqs.map((f, k) => {
         const osc = ctx.createOscillator();
         osc.type = "sawtooth";
         osc.frequency.value = f;
+        osc.detune.value = k === 0 ? -6 : 6; // slight detune for a fuller pad
         osc.connect(filter);
         osc.start();
         return osc;
@@ -294,18 +391,26 @@
       music.drone = null;
     }
 
+    /**
+     * Soft "lub-dub" while the field is red. Phone speakers cannot reproduce
+     * the 40–70 Hz of a real heartbeat, so each thump is a 150→90 Hz tone plus
+     * a muffled click, which small speakers can play. Kept quiet on purpose.
+     */
+    function heartbeat(at) {
+      tone({ type: "sine", from: 150, to: 90, dur: 0.11, vol: 0.13, at });
+      burst({ dur: 0.07, vol: 0.06, freq: 320, type: "lowpass", at });
+      tone({ type: "sine", from: 135, to: 85, dur: 0.1, vol: 0.09, at: at + 0.17 });
+    }
+
     function scheduleBeat(at) {
-      const i = music.intensity;
+      const theme = currentTheme();
+      const i = theme.tense ? music.intensity : 0;
       const beat = music.beat++;
-      tone({ type: "triangle", from: BASS[beat % BASS.length], dur: 0.32, vol: 0.2 + 0.1 * i, at });
+      tone({ type: theme.bassWave, from: theme.bass[beat % theme.bass.length], dur: 0.32, vol: (theme.bassWave === "triangle" || theme.bassWave === "sine" ? 0.2 : 0.07) + 0.08 * i, at });
       if (beat % 2 === 1) {
-        tone({ type: "sine", from: PLUCKS[(beat >> 1) % PLUCKS.length], dur: 0.25, vol: 0.035 + 0.03 * i, at });
+        tone({ type: theme.pluckWave, from: theme.plucks[(beat >> 1) % theme.plucks.length], dur: 0.25, vol: (theme.pluckWave === "sine" ? 0.035 : 0.02) + 0.03 * i, at });
       }
-      if (i > 0.72) {
-        // Heartbeat: two low thumps.
-        tone({ type: "sine", from: 70, to: 45, dur: 0.12, vol: 0.28, at });
-        tone({ type: "sine", from: 70, to: 45, dur: 0.12, vol: 0.2, at: at + 0.16 });
-      }
+      if (theme.tense && i > HEARTBEAT_FROM) heartbeat(at);
     }
 
     function startScheduler() {
@@ -313,13 +418,25 @@
       if (!music.drone) startDrone();
       music.timer = setInterval(() => {
         if (!music.on || !ctx) return;
-        const bpm = 70 + 80 * music.intensity;
+        const theme = currentTheme();
+        const i = theme.tense ? music.intensity : 0;
+        const bpm = theme.bpm[0] + (theme.bpm[1] - theme.bpm[0]) * i;
+        // After a stall (hidden tab, busy phone) skip the missed beats instead of playing them all at once.
+        if (music.nextTime < ctx.currentTime) music.nextTime = ctx.currentTime + 0.05;
         while (music.nextTime < ctx.currentTime + 0.2) {
           if (!isMuted) scheduleBeat(music.nextTime);
           music.nextTime += 60 / bpm;
         }
-        if (music.drone) music.drone.filter.frequency.setTargetAtTime(280 + 900 * music.intensity, ctx.currentTime, 0.3);
+        if (music.drone) music.drone.filter.frequency.setTargetAtTime(280 + 420 * i, ctx.currentTime, 0.3); // stays mellow even at full tension
       }, 60);
+    }
+
+    /** Swaps the pad when the theme or mood changes (the beat follows on its own). */
+    function refreshTheme() {
+      if (!ctx || !music.on) return;
+      stopDrone();
+      startDrone();
+      music.beat = 0;
     }
 
     function startMusic() {
@@ -333,6 +450,21 @@
       clearInterval(music.timer);
       music.timer = null;
       if (ctx) stopDrone();
+    }
+
+    /** Scenery theme: "field" | "forest" | "desert" | "city". */
+    function setTheme(name) {
+      if (!THEMES[name] || music.theme === name) return;
+      music.theme = name;
+      if (!music.mood) refreshTheme();
+    }
+
+    /** Temporary mood over the scenery theme ("happy"), or null to go back. */
+    function setMood(name) {
+      const next = THEMES[name] ? name : null;
+      if (music.mood === next) return;
+      music.mood = next;
+      refreshTheme();
     }
 
     function setIntensity(value) {
@@ -356,6 +488,8 @@
       setRain,
       startMusic,
       stopMusic,
+      setTheme,
+      setMood,
       setIntensity,
       setMuted,
       isMuted: () => isMuted,

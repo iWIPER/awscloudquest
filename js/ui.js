@@ -70,20 +70,30 @@
       timer: $("q-timer"),
       text: $("q-text"),
       answers: $("answers"),
+      answersWrap: $("answers").parentElement,
       lock: $("answers-lock"),
       lockSecs: $("lock-secs"),
       live: $("live"),
       overlays: {
         start: $("ov-start"),
+        setup: $("ov-setup"),
+        leave: $("ov-leave"),
         life: $("ov-life"),
         over: $("ov-over"),
         history: $("ov-history"),
+        areas: $("ov-areas"),
+        pdf: $("ov-pdf"),
       },
     };
 
     let answerButtons = [];
+    const SOUND_HINT_MS = 6500;
+    let soundHintTimer = 0;
     let openOverlay = null;     // key of the overlay currently shown
     let historyReturnTo = null; // overlay to go back to when history closes
+    let areasReturnTo = null;   // overlay to go back to when the areas screen closes
+    let pdfReturnTo = null;     // overlay to go back to when the PDF card closes
+    let pdfUrl = null;          // object URL of the current PDF (revoked on close)
     let lastFocus = null;
     let lastTimerKey = "";
     let lastLockText = "";
@@ -106,8 +116,6 @@
       howtoToggle.setAttribute("aria-expanded", String(open));
       $("howto").classList.toggle("is-open", open);
       $("start-rules").hidden = !open;
-      // While the rules are open, the character and mode pickers step aside to give them room.
-      el.overlays.start.querySelector(".card").classList.toggle("is-howto-open", open);
     });
 
     // ── HUD ─────────────────────────────────────────────────────────────
@@ -127,19 +135,85 @@
     }
 
     /** Power-up buttons on the ground: remaining uses, enabled only while playing. */
-    function renderPowers(powers, { playing, frozen }) {
+    function renderPowers(powers, { playing, frozen, boss = false }) {
       const freezeButton = $("btn-freeze");
       const skipButton = $("btn-skip");
       $("freeze-count").textContent = String(powers.freeze);
       $("skip-count").textContent = String(powers.skip);
-      freezeButton.disabled = !playing || frozen || powers.freeze <= 0;
-      skipButton.disabled = !playing || powers.skip <= 0;
+      // No Gelo or Pular against the boss.
+      freezeButton.disabled = !playing || boss || frozen || powers.freeze <= 0;
+      skipButton.disabled = !playing || boss || powers.skip <= 0;
       freezeButton.classList.toggle("is-active", frozen);
       freezeButton.setAttribute(
         "aria-label",
         `Gelo: congela o monstro por ${config.FREEZE_SECONDS} segundos. Restam ${powers.freeze}. Tecla G.`
       );
       skipButton.setAttribute("aria-label", `Pular a pergunta sem perder vida. Restam ${powers.skip}. Tecla P.`);
+    }
+
+    // ── Scripted moments ────────────────────────────────────────────────
+    /** Big centred message (READY? / GO! / boss / scenery). kind picks the style. */
+    function banner(text, kind = "") {
+      const el = $("banner");
+      el.className = `banner banner-${kind}`;
+      el.textContent = text;
+      void el.offsetWidth; // restart the animation for back-to-back banners
+      el.classList.add("is-on");
+    }
+
+    function clearBanner() {
+      $("banner").classList.remove("is-on");
+    }
+
+    /** Hides the question and the answers while a scripted moment plays. */
+    function setEvent(on) {
+      el.app.classList.toggle("is-event", on);
+    }
+
+    /** Shows or hides the mystery box next to the hero. */
+    function setBox(visible) {
+      const box = $("weapon-box");
+      box.hidden = !visible;
+      if (visible) {
+        box.classList.remove("is-new");
+        void box.offsetWidth;
+        box.classList.add("is-new");
+      }
+    }
+
+    /** Dark "GAME OVER" (or "NOVO RECORDE!") screen before the summary card. */
+    function showDeath(newRecord) {
+      $("curtain-title").textContent = newRecord ? "NOVO RECORDE!" : "GAME OVER";
+      $("curtain").hidden = false;
+      el.app.inert = true;
+    }
+
+    function hideDeath() {
+      $("curtain").hidden = true;
+      if (!openOverlay) el.app.inert = false;
+    }
+
+    /**
+     * Short balloon under the sound button ("Ligar som" / "Desligar som") with
+     * a speaker icon that flips between on and off, so players notice the button.
+     */
+    function soundHint(muted) {
+      const hint = $("sound-hint");
+      const button = $("btn-sound");
+      hint.innerHTML =
+        `<span class="sh-icons">${icon("volume-2", { size: 18, className: "sh-on" })}${icon("volume-x", { size: 18, className: "sh-off" })}</span>` +
+        `<span>${muted ? "Ligar som" : "Desligar som"}</span>`;
+      hint.hidden = false;
+      for (const target of [hint, button]) {
+        target.classList.remove("is-hinting");
+        void target.offsetWidth;
+        target.classList.add("is-hinting");
+      }
+      clearTimeout(soundHintTimer);
+      soundHintTimer = setTimeout(() => {
+        hint.hidden = true;
+        button.classList.remove("is-hinting");
+      }, SOUND_HINT_MS);
     }
 
     function setMuted(muted) {
@@ -165,7 +239,17 @@
       });
       el.answers.replaceChildren(...answerButtons);
       el.answers.scrollTop = 0;
+      updateMoreHint();
     }
+
+    /** Shows "▼ mais alternativas" while some options are hidden below the scroll area. */
+    function updateMoreHint() {
+      const a = el.answers;
+      const hidden = a.scrollHeight - a.scrollTop - a.clientHeight > 4;
+      el.answersWrap.classList.toggle("has-more", hidden);
+    }
+    el.answers.addEventListener("scroll", updateMoreHint, { passive: true });
+    root.addEventListener("resize", updateMoreHint);
 
     function setPanelOpen(open) {
       el.panel.classList.toggle("is-closed", !open);
@@ -279,6 +363,7 @@
     function rulesFromConfig() {
       const c = config;
       const lines = [
+        ["shield", "Monstros estão invadindo a cidade. Cada resposta certa é um tiro: salve a cidade!"],
         ["crosshair", "Monstros vêm pela direita. Toque na alternativa certa (ou tecle 1–6 / A–F) para atirar."],
         ["lock", `Errou? Você fica ${c.WRONG_LOCK_SECONDS}s sem atirar e o monstro fica ${Math.round(c.WRONG_SPEEDUP * 100)}% mais rápido.`],
         ["heart", `Você começa com ${plural(c.START_LIVES, "vida", "vidas")} e pode ter até ${c.MAX_LIVES}.`],
@@ -286,6 +371,9 @@
         ["gauge", `A cada ${plural(c.QUESTIONS_PER_LEVEL, "acerto", "acertos")} você sobe de nível e os monstros aceleram.`],
         ["snowflake", `Gelo (${c.POWER_FREEZE}× por jogo): prende o monstro numa pedra de gelo por ${c.FREEZE_SECONDS}s. Tecla G.`],
         ["skip-forward", `Pular (${c.POWER_SKIP}× por jogo): troca a pergunta sem perder vida. Tecla P.`],
+        ["crosshair", `Caixa misteriosa: aparece de vez em quando ao lado da personagem e troca a arma. Toque nela ou tecle X.`],
+        ["trophy", `Chefão: ${c.BOSS_ROUNDS} perguntas; acerte ${c.BOSS_HP} para vencer (+${c.BOSS_BONUS} pontos e +1 vida). Se perder, ele tira uma vida. Sem Gelo nem Pular contra ele.`],
+        ["clock", `Questão de leitura longa ganha +${c.LONG_READ_BONUS}s.`],
         ["clock", `A pergunta fecha sozinha após ${c.QUESTION_AUTOCLOSE}s; toque nela (ou tecle Q) para abrir.`],
       ];
       if (c.REVIEW_MISSED) lines.push(["rotate-ccw", "Perguntas que você erra voltam mais vezes."]);
@@ -307,29 +395,37 @@
     /** Switches the effective rules (difficulty mode) shown by the UI. */
     function setConfig(next) {
       config = next;
-      document.querySelectorAll('input[name="mode"]').forEach((input) => (input.checked = input.value === config.mode));
       $("start-rules").replaceChildren(
         ...rulesFromConfig().map(([name, text]) => withIcon("li", "", name, text, { size: 18 }))
       );
     }
 
-    /** Marks the chosen character and enables Play once there is one. */
-    function setHeroChoice(hero, canPlay) {
-      document.querySelectorAll('input[name="hero"]').forEach((input) => (input.checked = input.value === hero));
-      $("btn-play").disabled = !canPlay || !hero;
-      $("pick-hint").hidden = Boolean(hero);
+    /** "Antes de começar": nothing comes pre-selected; Começar unlocks once both choices are made. */
+    function showSetup() {
+      document.querySelectorAll('#ov-setup input[type="radio"]').forEach((input) => (input.checked = false));
+      updateSetup();
+      show("setup");
+      document.querySelector('#ov-setup input[name="hero"]').focus({ preventScroll: true });
     }
 
-    function showStart({ lastGame, best, warnings, canPlay, hero }) {
+    /** Enables Começar when a character and a mode are chosen; returns whether both are. */
+    function updateSetup() {
+      const chosen = (name) => document.querySelector(`#ov-setup input[name="${name}"]:checked`) !== null;
+      const ready = chosen("hero") && chosen("mode");
+      $("btn-begin").disabled = !ready;
+      $("setup-hint").hidden = ready;
+      return ready;
+    }
+
+    function showStart({ lastGame, best, warnings, canPlay }) {
       setConfig(config);
       $("start-last").textContent = lastGame ? `${lastGame.score} pts` : "—";
       $("start-best").textContent = `${best} pts`;
       const warn = $("start-warn");
       warn.textContent = warnings.join(" ");
       warn.hidden = warnings.length === 0;
-      setHeroChoice(hero, canPlay);
+      $("btn-play").disabled = !canPlay;
       show("start");
-      if (!hero) document.querySelector('input[name="hero"]')?.focus({ preventScroll: true });
     }
 
     function showLifeLost({ monster, lives, question, answerText }) {
@@ -367,16 +463,61 @@
       show("over");
     }
 
-    /** Small icon button that exports one game's report (handled by main.js through data-export). */
+    /** Small icon button for one saved game (handled by main.js through data-export). */
     function exportButton(kind, t, when) {
+      const kinds = {
+        areas: { icon: "target", text: " Áreas", label: `Ver desempenho por área de ${when}` },
+        pdf: { icon: "file-text", text: " PDF", label: `Exportar relatório de ${when} em PDF` },
+        md: { icon: "download", text: " .md", label: `Exportar relatório de ${when} em Markdown` },
+      };
       const button = h("button", "hist-export");
       button.type = "button";
       button.dataset.export = kind;
       button.dataset.t = String(t);
-      button.innerHTML = icon(kind === "pdf" ? "file-text" : "download", { size: 16 });
-      button.append(kind === "pdf" ? " PDF" : " .md");
-      button.setAttribute("aria-label", `Exportar relatório de ${when} em ${kind === "pdf" ? "PDF" : "Markdown"}`);
+      button.innerHTML = icon(kinds[kind].icon, { size: 16 });
+      button.append(kinds[kind].text);
+      button.setAttribute("aria-label", kinds[kind].label);
       return button;
+    }
+
+    /** "Desempenho por área" screen: bars per domain/topic, strengths, and weak areas that open on tap. */
+    function showAreas(analysis, report) {
+      if (openOverlay !== "areas") areasReturnTo = openOverlay;
+      const mode = report.modeLabel ? ` · Modo ${report.modeLabel}` : "";
+      $("areas-meta").textContent = `${formatDate(report.t)} · ${plural(analysis.total, "pergunta", "perguntas")}${mode}`;
+      $("areas-body").replaceChildren(root.AwsCloudQuest.report.buildAreas(analysis, { interactive: true }));
+      show("areas");
+    }
+
+    /** "Relatório em PDF" card: view (opens the browser's PDF viewer) or download. */
+    function showPdf({ url, file, sizeKb }) {
+      if (openOverlay !== "pdf") pdfReturnTo = openOverlay;
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      pdfUrl = url;
+      $("pdf-meta").textContent = `${file} · ${sizeKb} KB`;
+      $("pdf-view").href = url;
+      const download = $("pdf-download");
+      download.href = url;
+      download.download = file;
+      show("pdf");
+    }
+
+    function closePdf() {
+      const back = pdfReturnTo;
+      pdfReturnTo = null;
+      // Keep the URL alive a moment in case the viewer tab is still loading it.
+      const old = pdfUrl;
+      pdfUrl = null;
+      if (old) setTimeout(() => URL.revokeObjectURL(old), 60000);
+      if (back) show(back);
+      else hide();
+    }
+
+    function closeAreas() {
+      const back = areasReturnTo;
+      areasReturnTo = null;
+      if (back) show(back);
+      else hide();
     }
 
     function showHistory({ history, best, reportTimes = new Set() }) {
@@ -395,7 +536,8 @@
         li.append(h("span", "hist-label", label), h("span", "hist-score", `${game.score} pts`));
         if (reportTimes.has(game.t)) {
           const actions = h("span", "hist-actions");
-          actions.append(exportButton("pdf", game.t, formatDate(game.t)), exportButton("md", game.t, formatDate(game.t)));
+          const when = formatDate(game.t);
+          actions.append(exportButton("areas", game.t, when), exportButton("pdf", game.t, when), exportButton("md", game.t, when));
           li.append(actions);
         }
         return li;
@@ -431,6 +573,13 @@
       el,
       renderHud,
       renderPowers,
+      soundHint,
+      banner,
+      clearBanner,
+      setEvent,
+      setBox,
+      showDeath,
+      hideDeath,
       setConfig,
       setMuted,
       renderQuestion,
@@ -441,7 +590,12 @@
       lockAnswers,
       enableAnswers,
       setLock,
-      setHeroChoice,
+      showSetup,
+      updateSetup,
+      backToStart: () => show("start"),
+      /** "Início" on Game Over: reminds the player to download the report first. */
+      askLeave: () => show("leave"),
+      cancelLeave: () => show("over"),
       markRight,
       markAnswer,
       setDanger,
@@ -451,6 +605,10 @@
       showGameOver,
       showHistory,
       closeHistory,
+      showAreas,
+      closeAreas,
+      showPdf,
+      closePdf,
       setClearConfirm,
       isClearConfirmOpen,
       hide,

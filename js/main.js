@@ -22,6 +22,26 @@
     warnings.push(`⚠ ${problems.length === 1 ? "1 pergunta ignorada" : `${problems.length} perguntas ignoradas`} por erro de formato (detalhes no console).`);
   }
 
+  // ── Topics ────────────────────────────────────────────────────────────
+  // Questions without a known `topic` are classified from their text, so the
+  // "Desempenho por área" report works for questions added later.
+  const guide = root.STUDY_GUIDE || null;
+  const compiledTopics = NS.topics.compile(guide);
+  for (const question of questions) {
+    question.topic = NS.topics.topicOf(question, guide, compiledTopics) || question.topic;
+  }
+
+  /** Fills missing topics in a saved report (games played before topics existed). */
+  function withTopics(report) {
+    if (!report || !guide) return report;
+    const log = report.log.map((entry) =>
+      entry.topic && guide.topics[entry.topic]
+        ? entry
+        : { ...entry, topic: NS.topics.classify({ q: entry.q, options: [], answer: entry.answer, explanation: entry.explanation }, compiledTopics) || "" }
+    );
+    return { ...report, log };
+  }
+
   // ── Wiring ────────────────────────────────────────────────────────────
   const store = NS.storage.store;
   const ui = NS.ui.create(config);
@@ -34,10 +54,12 @@
     world: $("world"),
     sky: $("sky"),
     critterLayer: $("critters"),
+    scenery: $("scenery"),
     config,
     sound,
     reducedMotion,
   });
+  const visitor = NS.visitor.create($("visitors"), { sound, reducedMotion });
 
   const game = NS.game.create({
     config,
@@ -46,6 +68,7 @@
     ui,
     sound,
     ambient,
+    visitor,
     field,
     heroEl: $("hero"),
     monsterEl: $("monster"),
@@ -88,19 +111,24 @@
   $("qpanel-toggle").addEventListener("click", () => game.togglePanel());
   $("btn-freeze").addEventListener("click", () => game.freeze());
   $("btn-skip").addEventListener("click", () => game.skip());
+  $("weapon-box").addEventListener("click", () => game.openBox());
+  $("curtain").addEventListener("click", () => game.showGameOverCard());
   document.querySelectorAll('input[name="mode"]').forEach((input) => {
     input.addEventListener("change", () => {
       game.setMode(input.value);
+      ui.updateSetup();
       ui.announce(`Modo ${game.config().modeLabel} selecionado.`);
     });
   });
   document.querySelectorAll('input[name="hero"]').forEach((input) => {
     input.addEventListener("change", () => {
       game.setHero(input.value);
-      ui.setHeroChoice(input.value, questions.length > 0);
+      ui.updateSetup();
     });
   });
-  $("btn-play").addEventListener("click", () => game.start());
+  $("btn-play").addEventListener("click", () => ui.showSetup());
+  $("btn-begin").addEventListener("click", () => game.start());
+  $("btn-setup-back").addEventListener("click", () => ui.backToStart());
   $("btn-continue").addEventListener("click", () => game.continueAfterLifeLost());
   $("btn-again").addEventListener("click", () => game.start());
   $("btn-history-start").addEventListener("click", () => game.openHistory());
@@ -161,9 +189,10 @@
     }
   });
 
-  function exportMarkdown(report) {
+  function exportMarkdown(rawReport) {
+    const report = withTopics(rawReport);
     if (!report) return;
-    const blob = new Blob([NS.report.toMarkdown(report)], { type: "text/markdown;charset=utf-8" });
+    const blob = new Blob([NS.report.toMarkdown(report, guide)], { type: "text/markdown;charset=utf-8" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `aws-cloud-quest-relatorio-${NS.report.stamp(report)}.md`;
@@ -174,16 +203,34 @@
     ui.announce("Relatório em Markdown baixado.");
   }
 
-  function exportPdf(report) {
+  /** Opens the "Relatório em PDF" card for one game: view it or download it (no print dialog). */
+  function exportPdf(rawReport) {
+    const report = withTopics(rawReport);
     if (!report) return;
-    NS.report.renderPrintable($("report"), report);
-    // The print dialog offers "Salvar como PDF"; css/style.css shows only the report when printing.
-    root.print();
+    const bytes = NS.report.toPdf(report, guide);
+    const file = `aws-cloud-quest-relatorio-${NS.report.stamp(report)}.pdf`;
+    const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+    ui.showPdf({ url, file, sizeKb: Math.max(1, Math.round(bytes.length / 1024)) });
+  }
+
+  $("btn-pdf-close").addEventListener("click", () => ui.closePdf());
+
+  /** "Desempenho por área" screen for one game. */
+  function showAreas(rawReport) {
+    const report = withTopics(rawReport);
+    if (!report || !guide) return;
+    ui.showAreas(NS.report.analyzeAreas(report.log, guide), report);
   }
 
   // Game Over: the game that just ended.
+  $("btn-areas").addEventListener("click", () => showAreas(game.lastReport()));
+  $("btn-home").addEventListener("click", () => ui.askLeave());
+  $("btn-leave-pdf").addEventListener("click", () => exportPdf(game.lastReport()));
+  $("btn-leave-go").addEventListener("click", () => game.goHome());
+  $("btn-leave-cancel").addEventListener("click", () => ui.cancelLeave());
   $("btn-md").addEventListener("click", () => exportMarkdown(game.lastReport()));
   $("btn-pdf").addEventListener("click", () => exportPdf(game.lastReport()));
+  $("btn-areas-close").addEventListener("click", () => ui.closeAreas());
 
   // History: any saved game, one at a time.
   $("hist-list").addEventListener("click", (event) => {
@@ -191,6 +238,7 @@
     if (!button) return;
     const report = game.reportAt(Number(button.dataset.t));
     if (button.dataset.export === "pdf") exportPdf(report);
+    else if (button.dataset.export === "areas") showAreas(report);
     else exportMarkdown(report);
   });
 
@@ -201,6 +249,21 @@
 
     if (key === "m" || key === "M") {
       toggleSound();
+      return;
+    }
+
+    if (ui.isOpen("areas") || ui.isOpen("pdf")) {
+      if (key === "Escape") (ui.isOpen("pdf") ? ui.closePdf : ui.closeAreas)();
+      return; // buttons inside these screens handle Enter/Space themselves
+    }
+
+    if (ui.isOpen("leave") && key === "Escape") {
+      ui.cancelLeave();
+      return;
+    }
+
+    if (ui.isOpen("setup") && key === "Escape") {
+      ui.backToStart();
       return;
     }
 
@@ -215,6 +278,7 @@
     if (key === "Enter" || key === " ") {
       // A focused button handles Enter/Space by itself.
       if (event.target instanceof HTMLButtonElement) return;
+      if (key === " " && event.target instanceof HTMLInputElement) return; // Space picks a radio option
       if (game.confirm()) event.preventDefault();
       return;
     }
@@ -222,10 +286,9 @@
     if (ui.anyOpen()) return;
 
     const lower = key.toLowerCase();
-    if (lower === "q" || lower === "g" || lower === "p") {
-      if (lower === "q") game.togglePanel();
-      if (lower === "g") game.freeze();
-      if (lower === "p") game.skip();
+    const shortcuts = { q: game.togglePanel, g: game.freeze, p: game.skip, x: game.openBox };
+    if (shortcuts[lower]) {
+      shortcuts[lower]();
       event.preventDefault();
       return;
     }

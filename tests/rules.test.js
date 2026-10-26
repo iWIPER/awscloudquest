@@ -27,6 +27,17 @@ test("travelSeconds: each level speeds up, but the factor never drops below MIN_
   close(R.travelSeconds(question, 999, CONFIG), base * CONFIG.MIN_FACTOR);
 });
 
+test("travelSeconds: a long read gets LONG_READ_BONUS extra seconds, not reduced by level", () => {
+  const long = makeQuestion("x", { q: "x".repeat(CONFIG.LONG_READ_CHARS) });
+  const plain = (level) =>
+    (CONFIG.THINK_SECONDS + R.charCount(long) / CONFIG.READ_CHARS_PER_SEC) *
+    Math.max(CONFIG.MIN_FACTOR, 1 - CONFIG.LEVEL_SPEEDUP * (level - 1));
+  assert.ok(R.isLongRead(long, CONFIG));
+  assert.ok(!R.isLongRead(makeQuestion("y"), CONFIG));
+  close(R.travelSeconds(long, 1, CONFIG), plain(1) + CONFIG.LONG_READ_BONUS);
+  close(R.travelSeconds(long, 5, CONFIG), plain(5) + CONFIG.LONG_READ_BONUS);
+});
+
 test("levelFor: one level every QUESTIONS_PER_LEVEL correct answers", () => {
   const per = CONFIG.QUESTIONS_PER_LEVEL;
   assert.equal(R.levelFor(0, CONFIG), 1);
@@ -120,6 +131,60 @@ test("configFor: easy is never harder than advanced", () => {
   const question = makeQuestion("x");
   assert.ok(R.travelSeconds(question, 1, easy) > R.travelSeconds(question, 1, advanced), "easy gives more time per question");
   close(R.travelSeconds(question, 1, easy) - R.travelSeconds(question, 1, advanced), easy.THINK_SECONDS - advanced.THINK_SECONDS);
+});
+
+const fixedRng = (value) => () => value;
+
+test("nextBoxAt: the mystery box comes back after WEAPON_BOX_EVERY questions", () => {
+  const [min, max] = CONFIG.WEAPON_BOX_EVERY;
+  assert.equal(R.nextBoxAt(10, CONFIG, fixedRng(0)), 10 + min);
+  assert.equal(R.nextBoxAt(10, CONFIG, fixedRng(0.999)), 10 + max);
+});
+
+test("cheerMilestones: a random first cheer, then the fixed ones, in order", () => {
+  const list = R.cheerMilestones(CONFIG, fixedRng(0));
+  assert.equal(list[0].at, CONFIG.CHEER_FIRST[0]);
+  assert.equal(list[0].text, CONFIG.CHEER_FIRST_TEXT);
+  assert.deepEqual(list.slice(1).map((c) => c.at), CONFIG.CHEERS.map((c) => c.at));
+  assert.ok(list.every((c, i) => i === 0 || c.at >= list[i - 1].at));
+});
+
+test("isBossDue: first at BOSS_FIRST, then every BOSS_EVERY correct answers", () => {
+  const { BOSS_FIRST: first, BOSS_EVERY: every } = CONFIG;
+  assert.equal(R.isBossDue(first - 1, CONFIG), false);
+  assert.equal(R.isBossDue(first, CONFIG), true);
+  assert.equal(R.isBossDue(first + 1, CONFIG), false);
+  assert.equal(R.isBossDue(first + every, CONFIG), true);
+});
+
+test("sceneFor: changes every SCENE_EVERY correct answers and cycles", () => {
+  const scenes = ["a", "b", "c"];
+  const n = CONFIG.SCENE_EVERY;
+  assert.equal(R.sceneFor(0, CONFIG, scenes), "a");
+  assert.equal(R.sceneFor(n - 1, CONFIG, scenes), "a");
+  assert.equal(R.sceneFor(n, CONFIG, scenes), "b");
+  assert.equal(R.sceneFor(3 * n, CONFIG, scenes), "a");
+});
+
+test("bossStep: the boss steps closer but never past BOSS_LIMIT", () => {
+  close(R.bossStep(0, CONFIG), CONFIG.BOSS_STEP);
+  let pos = 0;
+  for (let i = 0; i < 20; i++) pos = R.bossStep(pos, CONFIG);
+  close(pos, CONFIG.BOSS_LIMIT);
+  assert.ok(CONFIG.BOSS_LIMIT < 1, "the boss never reaches the hero");
+});
+
+test("bossReward: defeating gives the bonus and a life (capped); escaping pays per hit", () => {
+  assert.deepEqual(R.bossReward({ hits: CONFIG.BOSS_HP, lives: 1 }, CONFIG), { defeated: true, points: CONFIG.BOSS_BONUS, lives: 2 });
+  assert.equal(R.bossReward({ hits: CONFIG.BOSS_HP, lives: CONFIG.MAX_LIVES }, CONFIG).lives, CONFIG.MAX_LIVES);
+  const almost = CONFIG.BOSS_HP - 1;
+  assert.deepEqual(R.bossReward({ hits: almost, lives: 1 }, CONFIG), { defeated: false, points: almost * CONFIG.BOSS_HIT_BONUS, lives: 1 });
+});
+
+test("boss fight: winnable with room for one miss (3 hits out of 4 rounds)", () => {
+  assert.ok(CONFIG.BOSS_HP < CONFIG.BOSS_ROUNDS, "the player can miss a round and still win");
+  assert.equal(CONFIG.BOSS_HP, 3);
+  assert.equal(CONFIG.BOSS_ROUNDS, 4);
 });
 
 test("charCount: sums question and options", () => {
