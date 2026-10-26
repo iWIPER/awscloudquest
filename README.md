@@ -29,8 +29,14 @@ The game is in Brazilian Portuguese. Code and documentation are in English.
 
 ## Contents
 
+**For players**
+
+- [Start studying](#start-studying)
 - [Features](#features)
 - [How to play](#how-to-play)
+
+**For contributors**
+
 - [Running locally](#running-locally)
 - [Adding questions](#adding-questions)
 - [Configuration](#configuration)
@@ -38,7 +44,20 @@ The game is in Brazilian Portuguese. Code and documentation are in English.
 - [Project structure](#project-structure)
 - [Development](#development)
 - [Roadmap](#roadmap)
-- [License](#license)
+
+[License](#license)
+
+# For players
+
+## Start studying
+
+1. Open **<https://iwiper.github.io/awscloudquest/>** on your phone or computer. Nothing to install and no account needed.
+2. Tap **Jogar**, choose a character and a mode, then **Começar**.
+3. At the end of each game, open **Desempenho** to see your strong and weak areas, with what to study and links to the AWS docs. Download the report as PDF to keep track.
+
+Your history, best score and reports stay in your own browser. Nothing is sent to a server. Clearing the browser data erases them, so download the PDF of games you want to keep.
+
+Tip: on a phone, use the browser's "Add to Home Screen" to open the game like an app.
 
 ## Features
 
@@ -104,6 +123,10 @@ The game is in Brazilian Portuguese. Code and documentation are in English.
 **Boss fight.** The boss stands still and throws rocks. Hit 3 of 4 questions to win +100 points and +1 life. A miss or a timeout only staggers the hero, and the boss steps closer. If you lose the fight, the boss crushes you and you lose a life. Gelo and Pular are disabled during the fight.
 
 **Score per hit:** `10 + min(streak, 10) × 2 + 10 if fast`. You level up every 3 hits.
+
+# For contributors
+
+Everything below is for people who want to change the game or add questions. To play, the link above is all you need.
 
 ## Running locally
 
