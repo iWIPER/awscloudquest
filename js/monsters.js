@@ -132,52 +132,222 @@
     <circle cx="44" cy="61" r="2" fill="#e8272d"/><circle cx="50" cy="60" r="2" fill="#e8272d"/>
     <g class="m-jaw"><path d="M40 70l-3 9 6-6zM49 72l-1 9 5-7z" fill="#ece6f2"/></g>`);
 
-  // The boss: a big golem in four looks (stone, lava, ice, robot). Same shape for all,
-  // so the CSS animations fit every one. Its front arm (.m-arm, shoulder at 46, 40) throws rocks.
+  // Flying monsters: drawn high in the box and lifted further by CSS (.is-flying,
+  // --lift); their wings (.m-wing) flap. They dive at the hero to attack.
+  const BAT = svg(`
+    <g class="m-wing"><path d="M58 44Q38 16 8 26Q22 32 18 44Q30 40 34 52Q44 44 58 50Z" fill="#4a3a5f"/></g>
+    <g class="m-wing"><path d="M70 44Q90 16 118 26Q104 32 108 44Q96 40 92 52Q82 44 70 50Z" fill="#3a2a4f"/></g>
+    <ellipse cx="64" cy="52" rx="13" ry="16" fill="#5a4a6f"/>
+    <path d="M54 38l2-10 6 8zM68 36l6-8 2 10z" fill="#5a4a6f"/>
+    <circle cx="58" cy="46" r="3.4" fill="#fff"/><circle cx="57" cy="46" r="1.7" fill="#e8272d"/>
+    <circle cx="67" cy="46" r="3.4" fill="#fff"/><circle cx="66" cy="46" r="1.7" fill="#e8272d"/>
+    <g class="m-jaw"><path d="M58 57l2 6 2-6zM65 57l2 6 2-6z" fill="#fff"/></g>
+    <path d="M60 67l-2 5M68 67l2 5" stroke="#3a2a4f" stroke-width="2.4" stroke-linecap="round"/>`);
+
+  const PTERO = svg(`
+    <g class="m-wing"><path d="M56 50Q42 14 6 16Q26 28 22 42Q38 38 46 56Z" fill="#c0703a"/></g>
+    <g class="m-wing"><path d="M72 50Q88 16 116 20Q98 30 102 44Q88 40 80 56Z" fill="#a85e2e"/></g>
+    <ellipse cx="64" cy="56" rx="20" ry="9" fill="#d4844a"/>
+    <path d="M66 64l-4 12M76 64l2 12" stroke="#8a4a1e" stroke-width="3" stroke-linecap="round"/>
+    <path d="M84 56l18 6-18 2z" fill="#a85e2e"/>
+    <circle cx="44" cy="48" r="8" fill="#d4844a"/>
+    <path d="M48 42L64 34L50 48z" fill="#a85e2e"/>
+    <path d="M38 46L8 50L38 52z" fill="#e8b04a"/>
+    <path class="m-jaw" d="M38 52L12 54L38 56z" fill="#c99030"/>
+    ${eye(42, 46, 2.8)}`);
+
+  const WASP = svg(`
+    <g class="m-wing"><ellipse cx="58" cy="32" rx="16" ry="9" fill="rgba(220,240,255,.8)" stroke="#9fc4dd" stroke-width="1.2"/></g>
+    <g class="m-wing"><ellipse cx="74" cy="30" rx="14" ry="8" fill="rgba(220,240,255,.7)" stroke="#9fc4dd" stroke-width="1.2"/></g>
+    <path d="M58 60l-4 12M64 61l0 12M70 60l4 12" stroke="#2a1a0a" stroke-width="2.2" stroke-linecap="round"/>
+    <ellipse cx="86" cy="56" rx="20" ry="13" fill="#fbd51a"/>
+    <path d="M78 44v24M88 43v26M97 46v20" stroke="#2a1a0a" stroke-width="4"/>
+    <path d="M104 56l12 4-12 3z" fill="#2a1a0a"/>
+    <ellipse cx="62" cy="52" rx="11" ry="10" fill="#2a1a0a"/>
+    <circle cx="46" cy="50" r="10" fill="#fbd51a"/>
+    <ellipse cx="42" cy="48" rx="4" ry="5" fill="#2a1a0a"/><circle cx="41" cy="46" r="1.2" fill="#fff"/>
+    <path d="M44 41Q38 30 32 30M48 41Q46 30 40 26" stroke="#2a1a0a" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path class="m-jaw" d="M37 54l-6 3 6 2z" fill="#2a1a0a"/>`);
+
+  // Scorpion: on the ground, tail arched over its back; the sting is the tail tip.
+  const SCORPION = svg(`
+    <g class="m-legs" stroke="#7a3a12" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <path d="M54 74l-8 22M64 76l-4 21M76 76l4 21M86 74l8 22"/>
+    </g>
+    <path class="m-tail" d="M96 68Q118 58 112 32Q106 12 84 16" stroke="#c0622a" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <path d="M84 16l-13-4 6 11z" fill="#3a1a0a"/>
+    <ellipse cx="72" cy="66" rx="28" ry="12" fill="#d4733a"/>
+    <path d="M60 56v20M72 55v22M84 56v20" stroke="#b05a26" stroke-width="2"/>
+    <ellipse cx="44" cy="64" rx="12" ry="10" fill="#c0622a"/>
+    <path d="M36 58Q22 48 14 54" stroke="#c0622a" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path class="m-jaw" d="M8 48q-6 6 0 12l9-4z" fill="#a04d1e"/>
+    <path d="M36 70Q24 78 14 72" stroke="#c0622a" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M8 66q-6 6 0 12l9-4z" fill="#a04d1e"/>
+    <circle cx="38" cy="58" r="2.6" fill="#fff"/><circle cx="37.5" cy="58" r="1.3" fill="#1f1a24"/>
+    <circle cx="44" cy="56" r="2.6" fill="#fff"/><circle cx="43.5" cy="56" r="1.3" fill="#1f1a24"/>`);
+
+  // Bosses come in three species (golem, King Kong, minotaur), each in a few
+  // looks (colors and details). Every species has its front arm in .m-arm,
+  // swinging around its shoulder (CSS: .boss-<species> .m-arm), and the rock in
+  // that hand.
+
+  // Golem: an upright giant, head on top of the body; shoulder at 42, 42.
   const golem = (c) => svg(`
-    <rect x="52" y="74" width="18" height="24" rx="6" fill="${c.shade}"/>
-    <rect x="82" y="74" width="18" height="24" rx="6" fill="${c.shade}"/>
-    <path d="M96 38Q114 52 108 82" stroke="${c.back}" stroke-width="15" stroke-linecap="round" fill="none"/>
-    <rect x="40" y="28" width="66" height="54" rx="20" fill="${c.skin}"/>
-    <path d="M58 40l6 10-4 8M88 46l-5 9 5 7M72 64l8 4" stroke="${c.crack}" stroke-width="2.2" fill="none" stroke-linecap="round"/>
-    <ellipse cx="96" cy="34" rx="9" ry="4" fill="${c.accent}" opacity=".8"/>
-    <rect x="20" y="14" width="42" height="34" rx="12" fill="${c.head}"/>
+    <rect x="46" y="74" width="14" height="24" rx="5" fill="${c.shade}"/>
+    <rect x="68" y="74" width="14" height="24" rx="5" fill="${c.shade}"/>
+    <rect x="43" y="92" width="20" height="7" rx="3.5" fill="${c.dark}"/>
+    <rect x="65" y="92" width="20" height="7" rx="3.5" fill="${c.dark}"/>
+    <path d="M86 42Q98 56 94 74" stroke="${c.back}" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <circle cx="94" cy="76" r="6" fill="${c.back}"/>
+    <rect x="36" y="34" width="54" height="44" rx="16" fill="${c.skin}"/>
+    <path d="M50 46l6 10-4 8M76 50l-5 9 5 7M60 68l8 4" stroke="${c.crack}" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <ellipse cx="80" cy="40" rx="8" ry="3.5" fill="${c.accent}" opacity=".8"/>
+    <rect x="44" y="8" width="36" height="30" rx="12" fill="${c.head}"/>
     ${c.top}
-    <rect x="26" y="25" width="9" height="5" rx="2" fill="${c.eye}"/>
-    <rect x="40" y="25" width="9" height="5" rx="2" fill="${c.eye}"/>
-    <path d="M24 22l12 3M50 22l-12 3" stroke="${c.dark}" stroke-width="2.4" stroke-linecap="round"/>
-    <rect class="m-jaw" x="26" y="37" width="22" height="5" rx="2" fill="${c.mouth}"/>
+    ${c.face || `<rect x="50" y="19" width="8" height="5" rx="2" fill="${c.eye}"/>
+    <rect x="64" y="19" width="8" height="5" rx="2" fill="${c.eye}"/>
+    <path d="M48 16l11 3M75 16l-11 3" stroke="${c.dark}" stroke-width="2.4" stroke-linecap="round"/>`}
+    <rect class="m-jaw" x="52" y="29" width="20" height="5" rx="2" fill="${c.mouth}"/>
     <g class="m-arm">
-      <path d="M46 40Q28 50 26 68" stroke="${c.skin}" stroke-width="15" stroke-linecap="round" fill="none"/>
-      <circle class="m-rock" cx="24" cy="74" r="9" fill="${c.rock}" stroke="${c.rockEdge}" stroke-width="1.5"/>
+      <path d="M42 42Q30 50 26 62" stroke="${c.skin}" stroke-width="13" stroke-linecap="round" fill="none"/>
+      <circle class="m-rock" cx="24" cy="68" r="9" fill="${c.rock}" stroke="${c.rockEdge}" stroke-width="1.5"/>
+    </g>`);
+
+  // King Kong: a huge gorilla, knuckles on the ground, a big rock; shoulder at 46, 46.
+  const kong = (c) => svg(`
+    <rect x="52" y="78" width="15" height="20" rx="6" fill="${c.shade}"/>
+    <rect x="74" y="78" width="15" height="20" rx="6" fill="${c.shade}"/>
+    <path d="M90 44Q104 64 100 90" stroke="${c.back}" stroke-width="14" stroke-linecap="round" fill="none"/>
+    <circle cx="100" cy="92" r="7" fill="${c.back}"/>
+    <ellipse cx="70" cy="60" rx="30" ry="26" fill="${c.skin}"/>
+    <ellipse cx="62" cy="64" rx="16" ry="14" fill="${c.face}"/>
+    <path d="M56 58q6 4 12 0M56 66q6 4 12 0" stroke="${c.shade}" stroke-width="1.6" fill="none" opacity=".6"/>
+    <circle cx="52" cy="28" r="16" fill="${c.skin}"/>
+    ${c.top}
+    <ellipse cx="45" cy="33" rx="11" ry="9" fill="${c.face}"/>
+    <path d="M36 23q9-4 18 1" stroke="${c.dark}" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+    <circle cx="41" cy="27" r="2.2" fill="${c.eye}"/><circle cx="50" cy="27" r="2.2" fill="${c.eye}"/>
+    <circle cx="39" cy="33" r="1.2" fill="${c.dark}"/><circle cx="43" cy="33" r="1.2" fill="${c.dark}"/>
+    <rect class="m-jaw" x="37" y="37" width="14" height="4" rx="2" fill="${c.dark}"/>
+    <g class="m-arm">
+      <path d="M46 46Q32 54 26 64" stroke="${c.skin}" stroke-width="14" stroke-linecap="round" fill="none"/>
+      <circle class="m-rock" cx="22" cy="70" r="11" fill="${c.rock}" stroke="${c.rockEdge}" stroke-width="1.5"/>
+    </g>`);
+
+  // Minotaur: a giant with a bull's head and horns; shoulder at 44, 44.
+  const minotaur = (c) => svg(`
+    <rect x="46" y="74" width="14" height="22" rx="5" fill="${c.shade}"/>
+    <rect x="68" y="74" width="14" height="22" rx="5" fill="${c.shade}"/>
+    <rect x="44" y="92" width="18" height="7" rx="2" fill="${c.dark}"/>
+    <rect x="66" y="92" width="18" height="7" rx="2" fill="${c.dark}"/>
+    <path d="M86 44Q98 58 94 76" stroke="${c.back}" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <circle cx="94" cy="78" r="6" fill="${c.back}"/>
+    <rect x="38" y="36" width="52" height="42" rx="14" fill="${c.skin}"/>
+    <rect x="38" y="62" width="52" height="7" fill="${c.belt}"/>
+    <path d="M36 16Q20 10 18 0" stroke="${c.horn}" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M58 16Q70 8 74 -1" stroke="${c.horn}" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M26 18l-8-4 4 9zM68 18l8-4-4 9z" fill="${c.head}"/>
+    <rect x="28" y="12" width="34" height="28" rx="11" fill="${c.head}"/>
+    ${c.top}
+    <ellipse cx="34" cy="33" rx="10" ry="7" fill="${c.snout}"/>
+    <circle cx="31" cy="33" r="1.5" fill="${c.dark}"/><circle cx="37" cy="33" r="1.5" fill="${c.dark}"/>
+    <path class="m-jaw" d="M28 39q6 3 12 0" stroke="${c.dark}" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <circle cx="34" cy="38" r="3.5" fill="none" stroke="#fbd51a" stroke-width="1.6"/>
+    <rect x="35" y="21" width="6" height="4" rx="1.5" fill="${c.eye}"/><rect x="48" y="21" width="6" height="4" rx="1.5" fill="${c.eye}"/>
+    <path d="M33 18l9 3M56 18l-9 3" stroke="${c.dark}" stroke-width="2.2" stroke-linecap="round"/>
+    <g class="m-arm">
+      <path d="M44 44Q30 52 26 62" stroke="${c.skin}" stroke-width="13" stroke-linecap="round" fill="none"/>
+      <circle class="m-rock" cx="24" cy="68" r="9" fill="${c.rock}" stroke="${c.rockEdge}" stroke-width="1.5"/>
     </g>`);
 
   const BOSS_LOOKS = [
     {
-      kind: "stone", name: "Golem de pedra",
+      species: "golem", kind: "stone", throws: "rock", name: "Golem de pedra",
       skin: "#8c8496", shade: "#6b6476", back: "#7a7286", head: "#9d95a8", crack: "#6b6476", accent: "#6cc24a",
       eye: "#f7931e", dark: "#5b5466", mouth: "#4a4456", rock: "#7a6f6a", rockEdge: "#5e5450",
-      top: '<path d="M24 14l4-11 7 11 7-13 7 13 7-11 4 11z" fill="#fbd51a" stroke="#c99a00" stroke-width="1"/>',
+      top: '<path d="M46 9l4-9 6 9 6-11 6 11 6-9 4 9z" fill="#fbd51a" stroke="#c99a00" stroke-width="1"/>',
     },
     {
-      kind: "lava", name: "Golem de lava",
+      species: "golem", kind: "lava", throws: "fireball", name: "Golem de lava",
       skin: "#5a2e22", shade: "#3f1f17", back: "#4a261c", head: "#6e3a2a", crack: "#ff8a1e", accent: "#ff5a1e",
       eye: "#ffd23f", dark: "#2a120c", mouth: "#ff7a1a", rock: "#ff6a1a", rockEdge: "#c23a0a",
-      top: '<path d="M26 16l-8-13 14 9zM56 16l8-13-14 9z" fill="#2a120c"/>',
+      top: '<path d="M49 12l-9-11 14 6zM75 12l9-11-14 6z" fill="#2a120c"/>',
     },
     {
-      kind: "ice", name: "Gigante de gelo",
+      species: "golem", kind: "ice", throws: "snowball", name: "Gigante de gelo",
       skin: "#8fc9e6", shade: "#5f9fc4", back: "#73b2d6", head: "#b5e2f5", crack: "#e8f7ff", accent: "#ffffff",
       eye: "#1f6fd1", dark: "#2f5f86", mouth: "#2f5f86", rock: "#d8f1ff", rockEdge: "#7fb8d8",
-      top: '<path d="M24 15l5-12 5 12zM36 15l5-14 5 14zM48 15l5-11 5 11z" fill="#e8f7ff" stroke="#9fd3ec" stroke-width="1"/>',
+      top: '<path d="M48 10l5-11 5 11zM59 10l5-13 5 13zM70 10l5-10 5 10z" fill="#e8f7ff" stroke="#9fd3ec" stroke-width="1"/>',
     },
     {
-      kind: "robot", name: "Robô gigante",
+      species: "golem", kind: "robot", throws: "laser", name: "Robô gigante",
       skin: "#9aa4b1", shade: "#5d6673", back: "#7d8794", head: "#b7c0cc", crack: "#5d6673", accent: "#36c5f0",
       eye: "#36c5f0", dark: "#3b434e", mouth: "#3b434e", rock: "#4a4f57", rockEdge: "#2c3036",
-      top: '<path d="M41 14V4" stroke="#5d6673" stroke-width="2.5"/><circle cx="41" cy="4" r="3.5" fill="#e8272d"/>',
+      top: '<path d="M62 8V2" stroke="#5d6673" stroke-width="2.5"/><circle cx="62" cy="2" r="3" fill="#e8272d"/>',
+    },
+    {
+      // One big eye in the middle of the forehead and a single horn (`face` replaces the two eyes).
+      species: "golem", kind: "cyclops", throws: "boulder", finale: "swallow", name: "Ciclope",
+      skin: "#b98563", shade: "#8a5d40", back: "#a07050", head: "#c99572", crack: "#8a5d40", accent: "#6b8e23",
+      eye: "#fff", dark: "#4a2a12", mouth: "#4a2a12", rock: "#8d7b6a", rockEdge: "#5e5046",
+      top: '<path d="M58 10l4-10 4 10z" fill="#efe3c8" stroke="#a89a7c" stroke-width="1"/>',
+      face:
+        '<circle cx="62" cy="21" r="7" fill="#fff" stroke="#4a2a12" stroke-width="1.5"/>' +
+        '<circle cx="60" cy="21" r="3.4" fill="#2f7d32"/><circle cx="59.5" cy="21" r="1.7" fill="#1f1a24"/>' +
+        '<path d="M53 13q9-5 18 0" stroke="#4a2a12" stroke-width="2.6" fill="none" stroke-linecap="round"/>',
+    },
+    {
+      species: "kong", kind: "kong", throws: "barrel", name: "King Kong",
+      skin: "#4a3a32", shade: "#3a2c25", back: "#3f312a", face: "#8a6a58", dark: "#1f1a24", eye: "#fff",
+      rock: "#7a6f6a", rockEdge: "#5e5450",
+      top: '<path d="M44 14q4-6 8-1q4-6 8 1" stroke="#3a2c25" stroke-width="3" fill="none" stroke-linecap="round"/>',
+    },
+    {
+      species: "kong", kind: "kong-fire", throws: "fireball", name: "Kong de fogo",
+      skin: "#6a2a1a", shade: "#4a1c12", back: "#5a2216", face: "#c8643a", dark: "#2a0e08", eye: "#ffd23f",
+      rock: "#ff6a1a", rockEdge: "#c23a0a",
+      top: '<path d="M40 16q2-12 8-6q2-10 8-2q4-8 6 6z" fill="#ff8a1e" stroke="#ff5a1e" stroke-width="1"/>',
+    },
+    {
+      species: "kong", kind: "yeti", throws: "snowball", name: "Yeti",
+      skin: "#e9f2f7", shade: "#c5d6e2", back: "#d6e3ec", face: "#9cc3dc", dark: "#2f5f86", eye: "#1f6fd1",
+      rock: "#d8f1ff", rockEdge: "#7fb8d8",
+      top: '<path d="M42 15l3-6 3 6 3-7 3 7 3-6 3 6" stroke="#c5d6e2" stroke-width="2" fill="none"/>',
+    },
+    {
+      species: "minotaur", kind: "minotaur", throws: "boulder", name: "Minotauro",
+      skin: "#8b5a3c", shade: "#6b4228", back: "#7a4e32", head: "#7a4e32", snout: "#c49274", belt: "#4a2a12",
+      horn: "#efe3c8", dark: "#2a160a", eye: "#e8272d", rock: "#7a6f6a", rockEdge: "#5e5450", top: "",
+    },
+    {
+      species: "minotaur", kind: "minotaur-lava", throws: "fireball", name: "Minotauro de lava",
+      skin: "#5a2e22", shade: "#3f1f17", back: "#4a261c", head: "#6e3a2a", snout: "#ff8a1e", belt: "#2a120c",
+      horn: "#ffb347", dark: "#2a120c", eye: "#ffd23f", rock: "#ff6a1a", rockEdge: "#c23a0a",
+      top: '<path d="M38 13q3-8 6-2q3-7 6 0q3-6 5 2z" fill="#ff5a1e"/>',
+    },
+    {
+      species: "minotaur", kind: "minotaur-ice", throws: "snowball", name: "Minotauro de gelo",
+      skin: "#8fc9e6", shade: "#5f9fc4", back: "#73b2d6", head: "#b5e2f5", snout: "#e8f7ff", belt: "#2f5f86",
+      horn: "#ffffff", dark: "#2f5f86", eye: "#1f6fd1", rock: "#d8f1ff", rockEdge: "#7fb8d8", top: "",
     },
   ];
+
+  // Per species: the drawing, where the head is (fractions of the boss box, for
+  // the speech bubble) and the close attack that ends a lost fight (a look can
+  // override it): smash, pound (fists on the ground), charge (horns), swallow.
+  const SPECIES = Object.freeze({
+    golem: { draw: golem, head: { x: 0.52, y: 0.08 }, finale: "smash" },
+    kong: { draw: kong, head: { x: 0.43, y: 0.12 }, finale: "pound" },
+    minotaur: { draw: minotaur, head: { x: 0.38, y: 0.1 }, finale: "charge" },
+  });
+
+  /** "Você perdeu" title for each close attack. */
+  const FINALE_TITLE = Object.freeze({
+    smash: (name) => `O ${name} te esmagou!`,
+    pound: (name) => `O ${name} te esmagou com os punhos!`,
+    charge: (name) => `O ${name} te deu uma chifrada!`,
+    swallow: (name) => `O ${name} te engoliu!`,
+  });
 
   // ── Attacks ─────────────────────────────────────────────────────────
   // ctx: { art, hero, fx, later, moveTo(x, ms), shake(), heroLeft, heroWidth,
@@ -222,6 +392,23 @@
       ctx.fx.popText(ctx.heroCenterX, ctx.heroTop - 6, "POW!", "pop-attack");
       ctx.shake();
     }, 850);
+  }
+
+  /** Flying monsters dive (.atk-swoop drops the lift) and strike the hero. */
+  function swoop(ctx, word, fate) {
+    ctx.art.classList.add("atk-swoop", "atk-chomp");
+    ctx.moveTo(ctx.heroLeft - ctx.size * 0.12, 420);
+    ctx.later(() => ctx.fx.popText(ctx.heroCenterX, ctx.heroTop - 10, word, "pop-attack"), 300);
+    ctx.later(() => ctx.hero.setFate(fate), 650);
+  }
+  const batAttack = (ctx) => swoop(ctx, "NHAC!", "bonked");
+  const pteroAttack = (ctx) => swoop(ctx, "KRAAA!", "eaten");
+  const waspAttack = (ctx) => swoop(ctx, "ZZZT!", "poisoned");
+
+  function scorpionAttack(ctx) {
+    ctx.art.classList.add("atk-sting");
+    ctx.later(() => ctx.fx.popText(ctx.heroCenterX, ctx.heroTop - 10, "TSSS!", "pop-attack"), 350);
+    ctx.later(() => ctx.hero.setFate("poisoned"), 600);
   }
 
   function wolfAttack(ctx) {
@@ -284,6 +471,26 @@
       lossTitle: "A aranha te enrolou na teia!", attackMs: 1900, attack: spiderAttack,
       stopGap: spiderGap, mouth: { x: 0.38, y: 0.72 },
     },
+    {
+      id: "scorpion", name: "Escorpião gigante", icon: "🦂", svg: SCORPION,
+      lossTitle: "O escorpião te envenenou!", attackMs: 1500, attack: scorpionAttack,
+      stopGap: () => 0, mouth: { x: 0.6, y: 0.14 },
+    },
+    {
+      id: "bat", name: "Morcego gigante", icon: "🦇", svg: BAT, flying: true, lift: 0.55,
+      lossTitle: "O morcego te mordeu!", attackMs: 1500, attack: batAttack,
+      stopGap: () => 0, mouth: { x: 0.53, y: 0.6 },
+    },
+    {
+      id: "ptero", name: "Pterodáctilo", icon: "🦖", svg: PTERO, flying: true, lift: 0.5,
+      lossTitle: "O pterodáctilo te levou!", attackMs: 1500, attack: pteroAttack,
+      stopGap: () => 0, mouth: { x: 0.1, y: 0.52 },
+    },
+    {
+      id: "wasp", name: "Vespa gigante", icon: "🐝", svg: WASP, flying: true, lift: 0.55,
+      lossTitle: "A vespa te ferroou!", attackMs: 1500, attack: waspAttack,
+      stopGap: () => 0, mouth: { x: 0.3, y: 0.56 },
+    },
   ]);
 
   /**
@@ -291,20 +498,24 @@
    * They do not walk to the hero: game.js places them and animates the throws.
    */
   const BOSSES = Object.freeze(
-    BOSS_LOOKS.map(({ kind, name, ...colors }) =>
+    BOSS_LOOKS.map(({ species, kind, name, throws, finale, ...colors }) =>
       Object.freeze({
-        id: "boss", kind, name, icon: "👑", svg: golem(colors),
-        lossTitle: `O ${name.toLowerCase()} te esmagou!`,
+        id: "boss", species, kind, name, icon: "👑", svg: SPECIES[species].draw(colors),
+        throws, // rock | boulder | fireball | snowball | barrel | laser
+        finale: finale || SPECIES[species].finale,
+        lossTitle: FINALE_TITLE[finale || SPECIES[species].finale](name),
         scale: 1.7, // drawn this much bigger than regular monsters
-        stopGap: () => 0, mouth: { x: 0.2, y: 0.74 }, // mouth = the rock in its hand
+        stopGap: () => 0, mouth: { x: 0.2, y: 0.68 }, // mouth = the rock in its hand
+        head: SPECIES[species].head,
       })
     )
   );
   const BOSS = BOSSES[0];
 
-  /** Picks a boss look different from the previous fight's. */
+  /** Picks a boss of another species than the previous fight's, in a random look. */
   function pickBoss(previousKind, rng = Math.random) {
-    const pool = BOSSES.filter((b) => b.kind !== previousKind);
+    const previous = BOSSES.find((b) => b.kind === previousKind);
+    const pool = BOSSES.filter((b) => !previous || b.species !== previous.species);
     return pool[Math.floor(rng() * pool.length)];
   }
 

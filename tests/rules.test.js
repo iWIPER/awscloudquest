@@ -20,18 +20,19 @@ test("travelSeconds: longer questions get more time", () => {
   assert.ok(R.travelSeconds(long, 1, CONFIG) > R.travelSeconds(short, 1, CONFIG));
 });
 
-test("travelSeconds: each level speeds up, but the factor never drops below MIN_FACTOR", () => {
+test("travelSeconds: levels shorten the thinking time (down to MIN_FACTOR), never the reading time", () => {
   const question = makeQuestion("x");
-  const base = R.travelSeconds(question, 1, CONFIG);
-  close(R.travelSeconds(question, 2, CONFIG), base * (1 - CONFIG.LEVEL_SPEEDUP));
-  close(R.travelSeconds(question, 999, CONFIG), base * CONFIG.MIN_FACTOR);
+  const reading = R.charCount(question) / CONFIG.READ_CHARS_PER_SEC;
+  close(R.travelSeconds(question, 1, CONFIG), CONFIG.THINK_SECONDS + reading);
+  close(R.travelSeconds(question, 2, CONFIG), CONFIG.THINK_SECONDS * (1 - CONFIG.LEVEL_SPEEDUP) + reading);
+  close(R.travelSeconds(question, 999, CONFIG), CONFIG.THINK_SECONDS * CONFIG.MIN_FACTOR + reading);
 });
 
 test("travelSeconds: a long read gets LONG_READ_BONUS extra seconds, not reduced by level", () => {
   const long = makeQuestion("x", { q: "x".repeat(CONFIG.LONG_READ_CHARS) });
   const plain = (level) =>
-    (CONFIG.THINK_SECONDS + R.charCount(long) / CONFIG.READ_CHARS_PER_SEC) *
-    Math.max(CONFIG.MIN_FACTOR, 1 - CONFIG.LEVEL_SPEEDUP * (level - 1));
+    CONFIG.THINK_SECONDS * Math.max(CONFIG.MIN_FACTOR, 1 - CONFIG.LEVEL_SPEEDUP * (level - 1)) +
+    R.charCount(long) / CONFIG.READ_CHARS_PER_SEC;
   assert.ok(R.isLongRead(long, CONFIG));
   assert.ok(!R.isLongRead(makeQuestion("y"), CONFIG));
   close(R.travelSeconds(long, 1, CONFIG), plain(1) + CONFIG.LONG_READ_BONUS);
@@ -189,4 +190,13 @@ test("boss fight: winnable with room for one miss (3 hits out of 4 rounds)", () 
 
 test("charCount: sums question and options", () => {
   assert.equal(R.charCount(makeQuestion("x", { q: "abc", options: ["de", "f"] })), 6);
+});
+
+test("travelSeconds: a \"choose two\" question gets MULTI_ANSWER_BONUS extra seconds", () => {
+  const single = makeQuestion("s", { options: ["a", "b", "c", "d", "e"], answers: [1] });
+  const double = makeQuestion("d", { options: ["a", "b", "c", "d", "e"], answers: [1, 3] });
+  assert.equal(R.answersNeeded(single), 1);
+  assert.equal(R.answersNeeded(double), 2);
+  close(R.travelSeconds(double, 1, CONFIG) - R.travelSeconds(single, 1, CONFIG), CONFIG.MULTI_ANSWER_BONUS);
+  close(R.travelSeconds(double, 7, CONFIG) - R.travelSeconds(single, 7, CONFIG), CONFIG.MULTI_ANSWER_BONUS);
 });

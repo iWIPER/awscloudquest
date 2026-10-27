@@ -12,6 +12,8 @@
   const HEIGHT = 72;
   /** Where projectiles leave the weapon, in hero box coordinates. */
   const MUZZLE = Object.freeze({ x: 66, y: 37 });
+  /** The weapon arm turns around the shoulder to aim at flying monsters (CSS var --aim). */
+  const SHOULDER = Object.freeze({ x: 28, y: 38 });
 
   const SKIN = "#f6c39a";
   const INK = "#3a1459";
@@ -131,6 +133,9 @@
       <path d="M8 22Q25 30 42 20M6 34Q25 42 44 32M6 46Q25 54 44 44M8 58Q25 64 42 56M16 10Q22 40 18 70M34 10Q28 40 32 70" stroke="#d9d4e0" stroke-width="1.2" fill="none"/>
     </svg>`;
 
+  // Cartoon knife for the duel's special move (shown while .is-stabbing).
+  const KNIFE = `<span class="h-knife" aria-hidden="true"></span>`;
+
   // Dizzy stars circling the head after the gorilla's punch.
   const STARS = `
     <svg class="h-stars" viewBox="0 0 40 16" width="40" height="16" aria-hidden="true">
@@ -152,11 +157,12 @@
   function artFor(variant, weapon = DEFAULT_WEAPON, cheer = false) {
     const v = BODIES[variant] ? variant : DEFAULT_VARIANT;
     const w = WEAPONS[weapon] || WEAPONS[DEFAULT_WEAPON];
-    const arms = cheer ? cheerArms(SLEEVES[v]) : w.art(SLEEVES[v]);
+    const arms = cheer ? cheerArms(SLEEVES[v]) : `<g class="h-arm">${w.art(SLEEVES[v])}</g>`;
     return `<svg class="h-svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}" aria-hidden="true">${BODIES[v]}${arms}</svg>`;
   }
 
-  const FATES = ["eaten", "burned", "squeezed", "bonked", "webbed"];
+  // "kneel" and "fallen" are the duel's: the loser drops to the knees, then to the ground.
+  const FATES = ["eaten", "burned", "squeezed", "bonked", "webbed", "poisoned", "kneel", "fallen"];
 
   /** Creates the hero view inside `el`. */
   function create(el, variant = DEFAULT_VARIANT) {
@@ -164,7 +170,7 @@
 
     function draw() {
       // Keep fate/blink classes: only the artwork is replaced.
-      el.innerHTML = artFor(current.variant, current.weapon, current.cheer) + COILS + WEB + STARS;
+      el.innerHTML = artFor(current.variant, current.weapon, current.cheer) + COILS + WEB + STARS + KNIFE;
       el.dataset.variant = current.variant;
       el.dataset.weapon = current.weapon;
     }
@@ -210,7 +216,7 @@
       /** Back to normal; optionally blinking for `blinkMs`. */
       reset(blinkMs = 0) {
         FATES.forEach((f) => el.classList.remove(`fate-${f}`));
-        el.classList.remove("is-shooting", "is-blinking", "is-flinching");
+        el.classList.remove("is-shooting", "is-blinking", "is-flinching", "is-stabbing");
         if (blinkMs > 0) {
           void el.offsetWidth;
           el.style.setProperty("--blink-ms", `${blinkMs}ms`);
@@ -221,5 +227,5 @@
   }
 
   const NS = (root.AwsCloudQuest = root.AwsCloudQuest || {});
-  NS.hero = Object.freeze({ create, artFor, WEAPONS, VARIANTS, DEFAULT_VARIANT, DEFAULT_WEAPON, WIDTH, HEIGHT, MUZZLE });
+  NS.hero = Object.freeze({ create, artFor, WEAPONS, VARIANTS, DEFAULT_VARIANT, DEFAULT_WEAPON, WIDTH, HEIGHT, MUZZLE, SHOULDER });
 })(typeof window !== "undefined" ? window : globalThis);

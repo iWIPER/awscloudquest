@@ -27,7 +27,7 @@ const VIEWPORTS = [
   { name: "mobile", width: 360, height: 740 },
   { name: "desktop", width: 1280, height: 800 },
 ];
-const MONSTERS = ["dino", "dragon", "snake", "gator", "gorilla", "wolf", "spider"];
+const MONSTERS = ["dino", "dragon", "snake", "gator", "gorilla", "wolf", "spider", "scorpion", "bat", "ptero", "wasp"];
 
 let failures = 0;
 const check = (ok, message) => {
@@ -62,16 +62,19 @@ const cardFits = (page, overlayId) =>
     return card.scrollHeight <= card.clientHeight + 1;
   }, overlayId);
 
-/** Index (on screen) of the correct and of one wrong option for the current question. */
+/**
+ * On-screen indexes of the correct options (two in "choose two" questions),
+ * the first of them, and one wrong option, for the current question.
+ */
 async function optionIndexes(page) {
   return page.evaluate(() => {
     const NS = window.AwsCloudQuest;
     const { questionId } = NS.app.snapshot();
     const question = NS.questions.normalize(window.QUESTIONS, NS.config).questions.find((q) => q.id === questionId);
-    const answer = question.options[question.answer];
+    const answers = question.answers.map((i) => question.options[i]);
     const texts = [...document.querySelectorAll("#answers .answer-text")].map((el) => el.textContent);
-    const right = texts.indexOf(answer);
-    return { right, wrong: texts.findIndex((_, i) => i !== right) };
+    const rights = answers.map((a) => texts.indexOf(a));
+    return { rights, right: rights[0], wrong: texts.findIndex((_, i) => !rights.includes(i)) };
   });
 }
 
@@ -91,8 +94,8 @@ async function waitPlay(page) {
 /** Answers correctly and waits for the next question. */
 async function hit(page) {
   await waitPlay(page);
-  const { right } = await optionIndexes(page);
-  await clickOption(page, right);
+  const { rights } = await optionIndexes(page);
+  for (const index of rights) await clickOption(page, index);
   await page.clock.runFor(1000);
   await waitPlay(page);
 }
@@ -404,6 +407,51 @@ for (const viewport of VIEWPORTS) {
   }
   check((await snapshot(page)).powers.freeze === 0 && (await page.locator("#btn-freeze").isDisabled()), "Gelo runs out after all its charges");
 
+  // "Choose two" question: the first right pick is marked, the second one kills the monster.
+  const multiId = await page.evaluate(
+    () => window.AwsCloudQuest.questions.normalize(window.QUESTIONS, window.AwsCloudQuest.config).questions.find((q) => q.answers.length === 2).id
+  );
+  await startGame(page, { questionId: multiId, monsterId: "dino" });
+  await page.clock.runFor(800);
+  check(/Marque 2 · 0 de 2/.test(await page.locator("#q-multi").textContent()), 'a "choose two" question shows "Marque 2 · 0 de 2"');
+  const two = (await optionIndexes(page)).rights;
+  await clickOption(page, two[0]);
+  const afterFirst = await snapshot(page);
+  check(
+    afterFirst.phase === "play" && afterFirst.correct === 0 && /1 de 2/.test(await page.locator("#q-multi").textContent()),
+    "the first right answer counts 1 of 2 and the monster keeps coming"
+  );
+  check(await page.locator(`#answers .answer[data-index="${two[0]}"]`).isDisabled(), "a right answer already marked cannot be shot again");
+  await clickOption(page, two[1]);
+  check((await snapshot(page)).correct === 1, "the second right answer kills the monster");
+
+  // Pause: Esc (or the HUD button) stops everything under a dim "JOGO PAUSADO" screen.
+  await waitPlay(page);
+  await page.keyboard.press("Escape");
+  const pausedAt = await snapshot(page);
+  check(pausedAt.phase === "paused" && (await page.locator("#pause-screen").isVisible()), "Esc pauses the game: JOGO PAUSADO");
+  await page.clock.runFor(4000);
+  check(Math.abs((await snapshot(page)).progress - pausedAt.progress) < 1e-6, "nothing moves while paused");
+  await shot(page, `${viewport.name}-8a-paused`);
+  await page.locator("#btn-resume").click();
+  check((await snapshot(page)).phase === "play" && (await page.locator("#pause-screen").isHidden()), "Continuar resumes the game");
+
+  // Easy mode only: "Dica" pauses the game and opens a study card for the question's topic.
+  const easy = (await page.evaluate(() => window.AwsCloudQuest.app.config().mode)) === "easy";
+  check((await page.locator("#btn-hint").isVisible()) === easy, `the Dica button shows only in the easy mode (${easy ? "easy" : "advanced"})`);
+  if (easy) {
+    await waitPlay(page);
+    await page.keyboard.press("d");
+    const paused = await snapshot(page);
+    check(paused.phase === "hint" && (await page.locator("#ov-hint:not([hidden])").isVisible()), "Dica opens the study card and pauses the game");
+    check((await page.locator("#hint-map .hint-node").count()) >= 3 && (await page.locator("#hint-tips li").count()) >= 1, "the card has memory tricks and a mind map");
+    await shot(page, `${viewport.name}-8b-hint`);
+    await page.clock.runFor(3000);
+    check(Math.abs((await snapshot(page)).progress - paused.progress) < 1e-6, "the monster does not move while the card is open");
+    await page.keyboard.press("Escape");
+    check((await snapshot(page)).phase === "play", "closing the card resumes the game");
+  }
+
   // Mystery box: swaps the weapon.
   await startGame(page);
   await waitPlay(page);
@@ -452,11 +500,28 @@ for (const viewport of VIEWPORTS) {
   const livesInFight = (await snapshot(page)).lives;
   for (let i = 0; i < 120 && ((await snapshot(page)).boss || {}).round === 1; i++) await page.clock.runFor(1000);
   check((await snapshot(page)).lives === livesInFight, "a boss rock does not take a life");
-  for (let i = 0; i < 200 && !["modal", "dead"].includes((await snapshot(page)).phase); i++) await page.clock.runFor(1000);
+  // Up to 4 rounds of up to ~2 minutes each (long reads and "choose two" questions get extra time).
+  for (let i = 0; i < 600 && !["modal", "dead"].includes((await snapshot(page)).phase); i++) await page.clock.runFor(1000);
   const lost = await snapshot(page);
   check(lost.lives === livesInFight - 1 && lost.boss === null, "losing the boss fight costs one life");
   if (lost.phase === "modal") await page.locator("#btn-continue").click();
   else await page.clock.runFor(bossConfig.DEATH_SCREEN_MS + 300);
+
+  // Pause → "Encerrar partida" asks first; Continuar goes back to the game, Encerrar shows the summary.
+  await startGame(page);
+  await page.keyboard.press("Escape");
+  await page.locator("#btn-quit").click();
+  check(await page.locator("#quit-confirm").isVisible(), "Encerrar partida asks: Tem certeza que deseja encerrar?");
+  await page.locator("#btn-quit-no").click();
+  check((await snapshot(page)).phase === "play", "Continuar on the question goes back to the game");
+  await page.keyboard.press("Escape");
+  await page.locator("#btn-quit").click();
+  await page.locator("#btn-quit-yes").click();
+  check(
+    (await snapshot(page)).phase === "over" && /PARTIDA ENCERRADA/.test(await page.textContent("#over-title")),
+    "Encerrar ends the game: PARTIDA ENCERRADA, with the summary and the report"
+  );
+  await shot(page, `${viewport.name}-10b-quit`);
 
   // Scenery: changes after SCENE_EVERY correct answers (boss and visitors may show up on the way).
   await startGame(page);

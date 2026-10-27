@@ -29,6 +29,8 @@
   const compiledTopics = NS.topics.compile(guide);
   for (const question of questions) {
     question.topic = NS.topics.topicOf(question, guide, compiledTopics) || question.topic;
+    // Official exam task statement of the topic ("2.3"), shown on the question tag.
+    question.task = (guide && guide.topics[question.topic] && guide.topics[question.topic].task) || "";
   }
 
   /** Fills missing topics in a saved report (games played before topics existed). */
@@ -71,10 +73,12 @@
     visitor,
     field,
     heroEl: $("hero"),
+    world: $("world"),
     monsterEl: $("monster"),
     fxLayer: $("fx"),
     groundHeight: () => ground.offsetHeight,
     canPlay: questions.length > 0,
+    guide,
   });
   NS.app = game;      // handy for debugging and the smoke test
   NS.scene = ambient; // idem: NS.scene.set({ time: 0.7, rain: true })
@@ -121,6 +125,13 @@
   $("qpanel-toggle").addEventListener("click", () => game.togglePanel());
   $("btn-freeze").addEventListener("click", () => game.freeze());
   $("btn-skip").addEventListener("click", () => game.skip());
+  $("btn-hint").addEventListener("click", () => game.openHint());
+  $("btn-pause").addEventListener("click", () => game.pause());
+  $("btn-resume").addEventListener("click", () => game.resume());
+  $("btn-quit").addEventListener("click", () => ui.askQuit(true));
+  $("btn-quit-no").addEventListener("click", () => game.resume());
+  $("btn-quit-yes").addEventListener("click", () => game.quit());
+  $("btn-hint-close").addEventListener("click", () => game.closeHint());
   $("weapon-box").addEventListener("click", () => game.openBox());
   $("curtain").addEventListener("click", () => game.showGameOverCard());
   document.querySelectorAll('input[name="mode"]').forEach((input) => {
@@ -251,6 +262,7 @@
     ui,
     sound,
     ambient,
+    visitor,
     field,
     onExit: () => game.goHome(),
     onReport(kind, report) {
@@ -311,6 +323,21 @@
       return; // buttons inside these screens handle Enter/Space themselves
     }
 
+    if (game.isPaused()) {
+      // Esc resumes (or closes "Encerrar a partida?"); Enter and Space press the focused button.
+      if (key === "Escape") {
+        if (ui.isAskingQuit()) ui.askQuit(false);
+        else game.resume();
+        event.preventDefault();
+      }
+      return;
+    }
+
+    if (ui.isOpen("hint") && key === "Escape") {
+      game.closeHint();
+      return;
+    }
+
     if (ui.isOpen("leave") && key === "Escape") {
       ui.cancelLeave();
       return;
@@ -339,6 +366,11 @@
 
     if (ui.anyOpen()) return;
 
+    if (key === "Escape" && !duel.active()) {
+      game.pause();
+      return;
+    }
+
     if (duel.active()) {
       // In a duel only the answer keys work (no power-ups, no panel toggle).
       const index = key.length === 1 ? Math.max("123456".indexOf(key), "abcdef".indexOf(key.toLowerCase())) : -1;
@@ -350,7 +382,7 @@
     }
 
     const lower = key.toLowerCase();
-    const shortcuts = { q: game.togglePanel, g: game.freeze, p: game.skip, x: game.openBox };
+    const shortcuts = { q: game.togglePanel, g: game.freeze, p: game.skip, x: game.openBox, d: game.openHint };
     if (shortcuts[lower]) {
       shortcuts[lower]();
       event.preventDefault();

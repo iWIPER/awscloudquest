@@ -20,12 +20,14 @@
     QUESTION_AUTOCLOSE: 20,    // panel collapses after being open for N s
 
     // ── Monster travel time ────────────────────────────────────────────
-    // travel = (THINK_SECONDS + chars / READ_CHARS_PER_SEC) × factor
+    // travel = THINK_SECONDS × factor + chars / READ_CHARS_PER_SEC (+ bonuses)
     // factor = max(MIN_FACTOR, 1 − LEVEL_SPEEDUP × (level − 1))
-    THINK_SECONDS: 20,
-    READ_CHARS_PER_SEC: 25,
+    // Levels shorten only the thinking time: reading time never shrinks.
+    THINK_SECONDS: 30,
+    READ_CHARS_PER_SEC: 15,    // careful reading of technical text (question + every option)
     LONG_READ_CHARS: 500,      // question + options this long count as a "long read"…
     LONG_READ_BONUS: 30,       // …and get these extra seconds (not reduced by level)
+    MULTI_ANSWER_BONUS: 15,    // extra seconds per additional answer in "choose two" questions
     LEVEL_SPEEDUP: 0.05,
     MIN_FACTOR: 0.55,
     DANGER_AT: 0.72,           // progress at which the field pulses red
@@ -42,6 +44,7 @@
     POWER_FREEZE: 3,           // "Gelo": freezes the monster inside an ice cube…
     FREEZE_SECONDS: 15,        // …for this long
     POWER_SKIP: 2,             // "Pular": swaps the question, no life lost, no score
+    HINTS: false,              // "Dica": study card about the question's topic (easy mode only)
 
     // ── Difficulty modes ───────────────────────────────────────────────
     // Each mode overrides some of the values above; anything not listed
@@ -54,7 +57,8 @@
         POWER_SKIP: 3,
         WRONG_LOCK_SECONDS: 5,
         WRONG_SPEEDUP: 0.3,
-        THINK_SECONDS: 30,     // +10 s before the monster arrives, on every question
+        THINK_SECONDS: 45,     // +15 s before the monster arrives, on every question
+        HINTS: true,           // "Dica" button: a study card about the question's topic
       },
       advanced: {
         label: "Avançado",
@@ -116,6 +120,10 @@
       TIMEOUT_GRACE_MS: 3000,     // the referee waits this long past the round time (public relays can lag 1–3 s)
       RESULT_MS: 2600,            // pause after a round result, before the next round
       ROUND_INTRO_MS: 2800,       // "ROUND N" presentation before each question
+      CHEER_EVERY: 7,             // the cheering visitor stops by before every 7th round (0: never)
+      SPECIAL_FROM: 4,            // in rounds 4 to 7, the first round only one player gets right
+      SPECIAL_TO: 7,              // ends with the special move (once per match; none if both right or both wrong)…
+      SPECIAL_MS: 7400,           // …a short film that takes this long before the next round
       VICTORY_MS: 7400,           // victory scene: the winner walks to the podium and jumps for joy
       CURTAIN_MS: 12000,          // then the screen darkens and "<NAME> VENCEU!" stays (time for a screenshot; a tap skips)
       HEARTBEAT_MS: 5000,         // "still here" message interval

@@ -25,6 +25,8 @@
       /** Projectile flying from (x1, y1) to (x2, y2) in `ms`. kind: laser | arrow | pebble | star. */
       shot(x1, y1, x2, y2, ms, kind = "laser") {
         const el = spawn(`bullet shot-${kind}`, { transform: `translate(${x1}px, ${y1}px)` }, ms + 40);
+        // Point the projectile along its path (arrows, lasers flying up at a flying monster).
+        el.style.rotate = `${(Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI}deg`;
         void el.offsetWidth; // commit the start position before transitioning
         el.style.transition = `transform ${ms}ms linear`;
         el.style.transform = `translate(${x2}px, ${y2}px)`;
@@ -34,10 +36,10 @@
        * Boss rock thrown in an arc from (x1, y1) to (x2, y2). The outer element
        * moves horizontally (linear) and the inner one vertically (up, then down).
        */
-      rock(x1, y1, x2, y2, ms) {
+      rock(x1, y1, x2, y2, ms, kind = "rock") {
         const outer = spawn("rock-x", { transform: `translateX(${x1}px)` }, ms + 60);
         const inner = document.createElement("span");
-        inner.className = "rock-y";
+        inner.className = `rock-y rock-${kind}`; // rock | boulder | fireball | snowball | barrel
         inner.style.setProperty("--y1", `${y1}px`);
         inner.style.setProperty("--y2", `${y2}px`);
         inner.style.setProperty("--peak", `${Math.min(y1, y2) - 70}px`);
@@ -73,6 +75,29 @@
       },
 
       /** Colorful burst centered on (x, y). Skipped with reduced motion. */
+      /** Chunks of a broken boss: they fly up and out, then fall with the fall of the body. */
+      debris(x, y, colors, count) {
+        if (reducedMotion()) return;
+        for (let i = 0; i < count; i++) {
+          const size = 8 + Math.round(Math.random() * 14);
+          spawn(
+            "debris",
+            {
+              left: `${x + Math.round((Math.random() - 0.5) * 60)}px`,
+              top: `${y + Math.round((Math.random() - 0.5) * 80)}px`,
+              width: `${size}px`,
+              height: `${Math.round(size * (0.6 + Math.random() * 0.5))}px`,
+              background: colors[i % colors.length],
+              "--dx": `${Math.round((Math.random() - 0.35) * 220)}px`,
+              "--up": `${-Math.round(40 + Math.random() * 90)}px`,
+              "--fall": `${Math.round(60 + Math.random() * 50)}px`,
+              "--rot": `${Math.round(Math.random() * 900 - 450)}deg`,
+            },
+            1500
+          );
+        }
+      },
+
       confetti(x, y, count) {
         if (reducedMotion()) return;
         for (let i = 0; i < count; i++) {
@@ -104,6 +129,7 @@
       },
 
       /** "Downgrade" sign after a miss: [x] ERROU! / [↑] VELOCIDADE +N%. */
+      /** "ERROU!" sign; the speed line under it is left out when `speedText` is empty (boss). */
       penalty(x, y, speedText) {
         const el = spawn("penalty", { left: `${x}px`, top: `${y}px` }, 1700);
         const title = document.createElement("span");
@@ -114,7 +140,8 @@
         speed.className = "penalty-speed";
         speed.innerHTML = icon("arrow-up", { size: 18, strokeWidth: 3 });
         speed.append(` ${speedText}`);
-        el.append(title, speed);
+        el.append(title);
+        if (speedText) el.append(speed);
       },
 
       /**

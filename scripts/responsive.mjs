@@ -166,13 +166,18 @@ for (const vp of VIEWPORTS) {
   await page.evaluate(() => window.AwsCloudQuest.app.start({ monsterId: "dino", skipIntro: true }));
   for (let i = 0; i < 3; i++) {
     const { questionId } = await page.evaluate(() => window.AwsCloudQuest.app.snapshot());
-    const right = await page.evaluate((qid) => {
+    // Every correct option: one, or two in a "choose two" question.
+    const rights = await page.evaluate((qid) => {
       const NS = window.AwsCloudQuest;
       const q = NS.questions.normalize(window.QUESTIONS, NS.config).questions.find((x) => x.id === qid);
-      return [...document.querySelectorAll("#answers .answer-text")].findIndex((el) => el.textContent === q.options[q.answer]);
+      const texts = [...document.querySelectorAll("#answers .answer-text")].map((el) => el.textContent);
+      return q.answers.map((i) => texts.indexOf(q.options[i]));
     }, questionId);
-    await page.locator(`#answers .answer[data-index="${right}"]`).click();
-    await page.clock.runFor(1500);
+    for (const index of rights) {
+      await page.locator(`#answers .answer[data-index="${index}"]`).click();
+      await page.clock.runFor(400);
+    }
+    await page.clock.runFor(1100);
   }
   const travel = async () => {
     const s = await page.evaluate(() => window.AwsCloudQuest.app.snapshot());
@@ -243,13 +248,14 @@ for (const vp of VIEWPORTS) {
   if (shotsDir) await host.screenshot({ path: path.join(shotsDir, `${vp.name}-8-duel.png`) });
 
   // One life each: the host's right answer ends the match.
-  const right = await host.evaluate(() => {
+  const rights = await host.evaluate(() => {
     const NS = window.AwsCloudQuest;
     const id = NS.duelApp.snapshot().questionId;
     const q = NS.questions.normalize(window.QUESTIONS, NS.config).questions.find((x) => x.id === id);
-    return [...document.querySelectorAll("#answers .answer-text")].findIndex((el) => el.textContent === q.options[q.answer]);
+    const texts = [...document.querySelectorAll("#answers .answer-text")].map((el) => el.textContent);
+    return q.answers.map((i) => texts.indexOf(q.options[i]));
   });
-  await host.locator(`#answers .answer[data-index="${right}"]`).click();
+  for (const index of rights) await host.locator(`#answers .answer[data-index="${index}"]`).click();
   await host.waitForSelector("#ov-duel-end:not([hidden])", { timeout: 15000 });
   await host.waitForTimeout(400);
   m = await measure(host, "ov-duel-end");

@@ -196,6 +196,34 @@
       src.stop(t + dur + 0.05);
     }
 
+    /**
+     * One dog "au!": a rough voice (two detuned sawtooths) that jumps up and
+     * falls, through a closing low-pass "mouth", with a breathy noise band.
+     */
+    function woof(at) {
+      const mouth = ctx.createBiquadFilter();
+      mouth.type = "lowpass";
+      mouth.Q.value = 5;
+      mouth.frequency.setValueAtTime(2400, at);
+      mouth.frequency.exponentialRampToValueAtTime(500, at + 0.2);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.32, at + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.22);
+      mouth.connect(gain).connect(master);
+      for (const detune of [1, 1.52]) {
+        const voice = ctx.createOscillator();
+        voice.type = "sawtooth";
+        voice.frequency.setValueAtTime(240 * detune, at);
+        voice.frequency.linearRampToValueAtTime(430 * detune, at + 0.035);
+        voice.frequency.exponentialRampToValueAtTime(150 * detune, at + 0.2);
+        voice.connect(mouth);
+        voice.start(at);
+        voice.stop(at + 0.24);
+      }
+      burst({ dur: 0.13, vol: 0.14, freq: 1200, q: 2.5, at });
+    }
+
     const melody = (notes, { type = "triangle", step = 0.12, dur = 0.16, vol = 0.18 } = {}) =>
       notes.forEach((f, i) => tone({ type, from: f, dur, vol, at: ctx.currentTime + i * step }));
 
@@ -225,6 +253,22 @@
         tone({ type: "sine", from: 420, to: 700, dur: 0.7, vol: 0.08 }); // howl up…
         tone({ type: "sine", from: 700, to: 500, dur: 0.5, vol: 0.07, at: ctx.currentTime + 0.65 }); // …and down
         [0.5, 0.7].forEach((d) => burst({ dur: 0.1, vol: 0.28, freq: 320, at: ctx.currentTime + d }));
+      },
+      bat() {
+        [0, 0.12, 0.24].forEach((d) => tone({ type: "sine", from: 3200, to: 2400, dur: 0.06, vol: 0.05, at: ctx.currentTime + d })); // squeaks
+        burst({ dur: 0.3, vol: 0.1, freq: 900, q: 0.6, at: ctx.currentTime + 0.3 }); // wing whoosh
+      },
+      ptero() {
+        tone({ type: "sawtooth", from: 900, to: 500, dur: 0.5, vol: 0.06 }); // screech
+        burst({ dur: 0.35, vol: 0.12, freq: 700, q: 0.6, at: ctx.currentTime + 0.35 });
+      },
+      wasp() {
+        tone({ type: "sawtooth", from: 220, to: 240, dur: 0.7, vol: 0.05 }); // buzz
+        burst({ dur: 0.08, vol: 0.12, freq: 3000, type: "highpass", at: ctx.currentTime + 0.6 }); // sting
+      },
+      scorpion() {
+        burst({ dur: 0.4, vol: 0.1, freq: 5000, type: "highpass" }); // hiss
+        burst({ dur: 0.06, vol: 0.2, freq: 1800, at: ctx.currentTime + 0.35 }); // snap
       },
       spider() {
         burst({ dur: 0.6, vol: 0.12, freq: 4000, type: "highpass", at: ctx.currentTime + 0.3 }); // web hiss
@@ -258,23 +302,49 @@
         melody([783.99, 987.77, 1174.66, 1567.98], { type: "triangle", step: 0.07, dur: 0.18, vol: 0.12, at: 0 });
       },
       equip: () => melody([392, 523.25], { type: "triangle", step: 0.06, dur: 0.1, vol: 0.06 }),
-      bark() {
-        // "Au au!": two loud, low woofs. A quick pitch rise then fall gives the
-        // "w-oof", the noise band adds the breath; loud enough over the music.
-        [0, 0.26].forEach((d) => {
-          const at = ctx.currentTime + d;
-          tone({ type: "sawtooth", from: 300, to: 420, dur: 0.05, vol: 0.18, at });
-          tone({ type: "sawtooth", from: 420, to: 190, dur: 0.16, vol: 0.2, at: at + 0.05 });
-          tone({ type: "triangle", from: 210, to: 120, dur: 0.18, vol: 0.22, at: at + 0.04 });
-          burst({ dur: 0.14, vol: 0.2, freq: 750, q: 1.4, at });
-        });
-      },
+      bark: () => [0, 0.3].forEach((d) => woof(ctx.currentTime + 0.01 + d)),
       bossIntro() {
         tone({ type: "sawtooth", from: 90, to: 55, dur: 1.1, vol: 0.12 }); // low growl, kept soft
         burst({ dur: 0.9, vol: 0.06, freq: 220, type: "lowpass", at: ctx.currentTime + 0.1 });
         melody([220, 207.65, 196], { type: "triangle", step: 0.25, dur: 0.3, vol: 0.05 });
       },
       bossGrowl: () => tone({ type: "sawtooth", from: 110, to: 70, dur: 0.6, vol: 0.09 }),
+      /** A giant's footstep: a deep thud. */
+      stomp() {
+        tone({ type: "sine", from: 80, to: 35, dur: 0.35, vol: 0.32 });
+        burst({ dur: 0.25, vol: 0.14, freq: 140, type: "lowpass" });
+      },
+      /** Knife swing: a fast whoosh going up. */
+      slash() {
+        burst({ dur: 0.22, vol: 0.12, freq: 2400, q: 0.8 });
+        tone({ type: "triangle", from: 500, to: 1600, dur: 0.15, vol: 0.04 });
+      },
+      /** Each boss species roars its own way (kept moderate, like the other monster sounds). */
+      roar(kind = "golem") {
+        const t = ctx.currentTime;
+        if (kind === "robot") {
+          // Electronic growl: a wobbling buzz.
+          [0, 0.12, 0.24, 0.36].forEach((d, i) => tone({ type: "square", from: i % 2 ? 180 : 120, to: i % 2 ? 120 : 180, dur: 0.12, vol: 0.04, at: t + d }));
+          return;
+        }
+        if (kind === "kong") {
+          // Roar, then chest beats.
+          tone({ type: "sawtooth", from: 170, to: 95, dur: 0.75, vol: 0.1 });
+          burst({ dur: 0.6, vol: 0.08, freq: 400, q: 0.7 });
+          [0.8, 0.95, 1.1, 1.25].forEach((d) => tone({ type: "sine", from: 95, to: 50, dur: 0.1, vol: 0.22, at: t + d }));
+          return;
+        }
+        if (kind === "minotaur") {
+          // An angry "muuu": a low bellow with a slow vibrato-like slide.
+          tone({ type: "triangle", from: 150, to: 120, dur: 0.5, vol: 0.14 });
+          tone({ type: "triangle", from: 125, to: 100, dur: 0.6, vol: 0.12, at: t + 0.45 });
+          tone({ type: "sawtooth", from: 150, to: 100, dur: 1, vol: 0.04 });
+          return;
+        }
+        // Golem: a deep stone rumble.
+        tone({ type: "sawtooth", from: 95, to: 58, dur: 1, vol: 0.1 });
+        burst({ dur: 0.9, vol: 0.12, freq: 160, type: "lowpass" });
+      },
       rockThrow: () => burst({ dur: 0.35, vol: 0.06, freq: 500, q: 0.7 }),
       rockHit() {
         burst({ dur: 0.2, vol: 0.18, freq: 160, type: "lowpass" });

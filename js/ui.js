@@ -78,6 +78,7 @@
         start: $("ov-start"),
         setup: $("ov-setup"),
         leave: $("ov-leave"),
+        hint: $("ov-hint"),
         duel: $("ov-duel"),
         duelWait: $("ov-duel-wait"),
         duelEnd: $("ov-duel-end"),
@@ -147,6 +148,9 @@
       // No Gelo or Pular against the boss.
       freezeButton.disabled = !playing || boss || frozen || powers.freeze <= 0;
       skipButton.disabled = !playing || boss || powers.skip <= 0;
+      const hintButton = $("btn-hint");
+      hintButton.hidden = !config.HINTS;
+      hintButton.disabled = !playing;
       freezeButton.classList.toggle("is-active", frozen);
       freezeButton.setAttribute(
         "aria-label",
@@ -220,6 +224,27 @@
       }, SOUND_HINT_MS);
     }
 
+    /** "JOGO PAUSADO": the game behind turns sepia and dim. */
+    function setPaused(paused) {
+      el.app.classList.toggle("is-paused", paused);
+      $("pause-screen").hidden = !paused;
+      el.app.inert = paused;
+      askQuit(false);
+    }
+
+    /** On the pause screen: "Encerrar a partida?" (true) or back to the pause menu (false). */
+    function askQuit(on) {
+      $("pause-main").hidden = on;
+      $("quit-confirm").hidden = !on;
+      if (!$("pause-screen").hidden) $(on ? "btn-quit-no" : "btn-resume").focus({ preventScroll: true });
+    }
+    const isAskingQuit = () => !$("quit-confirm").hidden;
+
+    /** The pause button only works while a question is being played. */
+    function setPausable(on) {
+      $("btn-pause").disabled = !on;
+    }
+
     function setMuted(muted) {
       el.sound.innerHTML = icon(muted ? "volume-x" : "volume-2", { size: 20 });
       el.sound.setAttribute("aria-label", muted ? "Ligar som" : "Desligar som");
@@ -230,8 +255,10 @@
     function renderQuestion(question, shown) {
       el.text.textContent = question.q;
       el.text.scrollTop = 0;
-      el.topic.textContent = question.topic;
+      el.topic.textContent = question.task ? `${question.task} ${question.topic}` : question.topic;
+      el.topic.title = question.task ? `Tarefa ${question.task} do guia oficial do exame CLF-C02` : "";
       el.topic.hidden = !question.topic;
+      setPicked(0, Array.isArray(question.answers) ? question.answers.length : 1);
 
       answerButtons = shown.map((option, i) => {
         const button = h("button", `answer answer-${i}`);
@@ -294,7 +321,39 @@
 
     /** Re-enables every option that has not been eliminated. */
     function enableAnswers() {
-      answerButtons.forEach((b) => (b.disabled = b.classList.contains("is-out")));
+      answerButtons.forEach((b) => (b.disabled = b.classList.contains("is-out") || b.classList.contains("is-picked")));
+    }
+
+    /**
+     * Easy-mode study card for the question's topic: memory tricks and a mini
+     * mind map. It never shows which option is right.
+     */
+    function showHint({ title, tips, map }) {
+      $("hint-topic").textContent = title;
+      $("hint-tips").replaceChildren(...tips.map((text) => h("li", "", text)));
+      $("hint-map").replaceChildren(
+        ...map.map(([service, what]) => {
+          const node = h("div", "hint-node");
+          node.append(h("b", "", service), h("span", "", what));
+          return node;
+        })
+      );
+      show("hint");
+    }
+
+    /** "Choose two": shows "Marque 2 · 1 de 2" on the question (hidden for single-answer questions). */
+    function setPicked(count, needed) {
+      const badge = $("q-multi");
+      badge.hidden = needed < 2;
+      badge.textContent = `Marque ${needed} · ${count} de ${needed}`;
+    }
+
+    /** A correct option already marked in a "choose two" question: green and no longer clickable. */
+    function pickOption(index) {
+      const button = answerButtons[index];
+      if (!button) return;
+      button.classList.add("is-right", "is-picked");
+      button.disabled = true;
     }
 
     /** Post-miss lockout banner over the answers (0 hides it). */
@@ -376,20 +435,24 @@
         ["snowflake", `Gelo (${c.POWER_FREEZE}× por jogo): prende o monstro numa pedra de gelo por ${c.FREEZE_SECONDS}s. Tecla G.`],
         ["skip-forward", `Pular (${c.POWER_SKIP}× por jogo): troca a pergunta sem perder vida. Tecla P.`],
         ["crosshair", `Caixa misteriosa: aparece de vez em quando ao lado da personagem e troca a arma. Toque nela ou tecle X.`],
-        ["trophy", `Chefão: ${c.BOSS_ROUNDS} perguntas; acerte ${c.BOSS_HP} para vencer (+${c.BOSS_BONUS} pontos e +1 vida). Se perder, ele tira uma vida. Sem Gelo nem Pular contra ele.`],
+        ["trophy", `Chefão: ${c.BOSS_ROUNDS} perguntas; acerte ${c.BOSS_HP} para vencer (+${c.BOSS_BONUS} pontos e +1 vida). Contra ele, errar só trava as respostas, sem Gelo nem Pular. Se perder, ele tira uma vida.`],
         ["clock", `Questão de leitura longa ganha +${c.LONG_READ_BONUS}s.`],
+        ["circle-check", `Pergunta de "marque DUAS": acerte as duas alternativas para derrubar o monstro (+${c.MULTI_ANSWER_BONUS}s de tempo).`],
         ["clock", `A pergunta fecha sozinha após ${c.QUESTION_AUTOCLOSE}s; toque nela (ou tecle Q) para abrir.`],
+        ["lightbulb", "Dica (só no modo Fácil): pausa o jogo e mostra macetes e um mapa mental do tema da pergunta, sem dar a resposta. Tecla D."],
+        ["pause", "Pausa: botão ⏸ no topo ou tecla Esc. Se você sair do jogo para responder uma mensagem, ele pausa sozinho."],
       ];
       if (c.REVIEW_MISSED) lines.push(["rotate-ccw", "Perguntas que você erra voltam mais vezes."]);
       return lines;
     }
 
-    /** Short summary of a mode's helps and penalties, e.g. "+6s por pergunta · 5 gelos · 3 pulos · erro: 5s, +30%". */
+    /** Short summary of a mode's helps and penalties, e.g. "+15s por pergunta · 5 gelos · 3 pulos · dicas · erro: 5s, +30%". */
     function modeSummary(mode) {
       const c = modeConfig(mode);
       const extra = c.THINK_SECONDS - baseConfig.THINK_SECONDS;
       const time = extra > 0 ? `+${extra}s por pergunta · ` : "";
-      return `${time}${c.POWER_FREEZE} gelos · ${c.POWER_SKIP} pulos · erro: ${c.WRONG_LOCK_SECONDS}s, +${Math.round(c.WRONG_SPEEDUP * 100)}%`;
+      const hints = c.HINTS ? "dicas · " : "";
+      return `${time}${c.POWER_FREEZE} gelos · ${c.POWER_SKIP} pulos · ${hints}erro: ${c.WRONG_LOCK_SECONDS}s, +${Math.round(c.WRONG_SPEEDUP * 100)}%`;
     }
 
     document.querySelectorAll("[data-mode-summary]").forEach((slot) => {
@@ -446,9 +509,11 @@
     }
 
     function showGameOver(data) {
+      // A game ended from the pause screen says so, instead of GAME OVER.
       const title = $("over-title");
-      title.innerHTML = icon("skull", { size: 34 });
-      title.append(" GAME OVER");
+      title.innerHTML = icon(data.quit ? "x" : "skull", { size: 34 });
+      title.append(data.quit ? " PARTIDA ENCERRADA" : " GAME OVER");
+      $("over-q-title").textContent = data.quit ? "A ÚLTIMA PERGUNTA" : "A PERGUNTA QUE TE DERRUBOU";
       const record = $("over-record");
       record.innerHTML = icon("trophy", { size: 22, className: "icon-trophy", fill: "#fbd51a" });
       record.append(" NOVO RECORDE!");
@@ -579,6 +644,10 @@
       renderHud,
       renderPowers,
       soundHint,
+      setPaused,
+      askQuit,
+      isAskingQuit,
+      setPausable,
       banner,
       clearBanner,
       setEvent,
@@ -594,6 +663,9 @@
       eliminate,
       lockAnswers,
       enableAnswers,
+      setPicked,
+      pickOption,
+      showHint,
       setLock,
       showSetup,
       updateSetup,

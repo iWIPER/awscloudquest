@@ -22,11 +22,21 @@
     return charCount(question) >= config.LONG_READ_CHARS;
   }
 
-  /** Seconds the monster takes from the right edge to the hero. */
+  /** How many options must be marked: 1, or 2 for "choose two" questions. */
+  const answersNeeded = (question) => (Array.isArray(question.answers) ? question.answers.length : 1);
+
+  /**
+   * Seconds the monster takes from the right edge to the hero: thinking time
+   * (shorter at higher levels) plus reading time (never shorter: a player must
+   * be able to read the whole question). Long reads and "choose two" questions
+   * add fixed seconds.
+   */
   function travelSeconds(question, level, config) {
-    const base = config.THINK_SECONDS + charCount(question) / config.READ_CHARS_PER_SEC;
     const factor = Math.max(config.MIN_FACTOR, 1 - config.LEVEL_SPEEDUP * (level - 1));
-    return base * factor + (isLongRead(question, config) ? config.LONG_READ_BONUS : 0);
+    const reading = charCount(question) / config.READ_CHARS_PER_SEC;
+    const extra =
+      (isLongRead(question, config) ? config.LONG_READ_BONUS : 0) + (answersNeeded(question) - 1) * (config.MULTI_ANSWER_BONUS || 0);
+    return config.THINK_SECONDS * factor + reading + extra;
   }
 
   /**
@@ -127,6 +137,7 @@
     charCount,
     levelFor,
     isLongRead,
+    answersNeeded,
     travelSeconds,
     pointsFor,
     isFastHit,

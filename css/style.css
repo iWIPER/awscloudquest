@@ -482,6 +482,20 @@ button { font: inherit; }
   white-space: nowrap;
 }
 
+/* "Marque 2 · 1 de 2" on "choose two" questions, above the question text */
+.qpanel-multi {
+  width: fit-content;
+  margin: 8px 14px 0;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--yellow);
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+.qpanel-multi[hidden] { display: none; }
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -615,6 +629,13 @@ button { font: inherit; }
 /* Horizontal speed lines clash with the falling rain: hide them while it rains
    (the red glow and the speed badge still show the speed-up). */
 .world.is-rain .monster.is-enraged::before { display: none; }
+
+/* Low monsters: speed lines at their height, not above them */
+.monster.monster-snake.is-enraged::before,
+.monster.monster-gator.is-enraged::before { top: 55%; height: 38%; }
+/* …and their speed badge right above the head, not floating high over them */
+.monster.monster-snake .m-speed { top: calc(27% - 26px); left: 28%; } /* the head is at the left, its top at 27% */
+.monster.monster-gator .m-speed { top: 38%; }
 
 .m-ice {
   position: absolute;
@@ -1060,6 +1081,12 @@ button { font: inherit; }
 .answer.is-out .answer-text { text-decoration: line-through; }
 
 .answer.is-right { outline: 4px solid var(--white); outline-offset: -4px; }
+
+/* "Choose two": a right option already marked turns green and stays that way (also during a lockout). */
+.answer.is-picked { --bg: #2e8b2e; --fg: #fff; }
+.answers.is-locked .answer.is-picked { filter: none; }
+.answer.is-picked .answer-key { font-size: 0; } /* the letter becomes a check mark */
+.answer.is-picked .answer-key::before { content: "✓"; color: #2e8b2e; font-size: 1.1rem; font-weight: 900; }
 
 .answer.is-answer {
   outline: 4px solid var(--white);
@@ -2172,7 +2199,11 @@ legend.box-title {
 }
 
 .monster-boss .m-art.is-hurt { animation: hurt 0.45s ease-out; }
-.monster-boss .m-arm { transform-box: view-box; transform-origin: 46px 40px; }
+.monster-boss .m-arm { transform-box: view-box; transform-origin: 42px 42px; }
+.monster-boss.boss-kong .m-arm { transform-origin: 46px 46px; }
+.monster-boss.boss-minotaur .m-arm { transform-origin: 44px 44px; }
+/* The boss does not walk at the hero: no speed badge (it hid behind the hearts) */
+.monster-boss .m-speed { display: none !important; }
 .m-art.atk-throw .m-arm { animation: throw 0.6s ease-in-out; }
 .m-art.atk-smash { animation: smash 0.5s ease-in forwards; }
 
@@ -2317,7 +2348,57 @@ legend.box-title {
 /* City: skyline with windows (lit at night) */
 .world[data-scene="city"] .hill { display: none; }
 .world[data-scene="city"] { --sky-top: #9cc8ef; --sky-bottom: #e8d6f0; }
-.world[data-scene="city"] .ground { background: #6b6b78; border-top-color: #b9b3c2; }
+/* The avenue: asphalt with a dashed center line, a sidewalk curb and street lamps */
+.world[data-scene="city"] .ground {
+  border-top-color: #b9b3c2;
+  background:
+    repeating-linear-gradient(90deg, #f2f2f2 0 26px, transparent 26px 52px) 0 55% / 100% 3px no-repeat,
+    #4a4a55;
+}
+
+.sidewalk {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--ground-h) + var(--ground-border));
+  height: 6px;
+  background: #9a96a8;
+}
+
+.lamp {
+  position: absolute;
+  left: var(--x);
+  bottom: calc(var(--ground-h) + var(--ground-border) + 6px);
+  width: 3px;
+  height: 64px;
+  background: #3c3a4c;
+}
+
+/* Lamp head; it lights up at night */
+.lamp::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: -4px;
+  width: 13px;
+  height: 6px;
+  border-radius: 4px 4px 2px 2px;
+  background: #3c3a4c;
+}
+
+.lamp::after {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 2px;
+  width: 7px;
+  height: 4px;
+  border-radius: 50%;
+  background: #f6e7a8;
+  opacity: 0.4;
+}
+
+.world.is-night[data-scene="city"] .lamp::after { opacity: 1; box-shadow: 0 6px 18px 8px rgba(255, 220, 120, 0.45); }
 
 .building {
   position: absolute;
@@ -2433,8 +2514,14 @@ legend.box-title {
 /* Passers-by sizes per type */
 .critter-deer { width: 34px; }
 .critter-camel { width: 42px; }
-.critter-car { width: 48px; }
-.critter-car svg { animation: none; }
+.critter-car,
+.critter-taxi,
+.critter-van { width: 48px; }
+.critter-bus { width: 76px; }
+.critter-car svg,
+.critter-taxi svg,
+.critter-van svg,
+.critter-bus svg { animation: none; }
 .critter-camel svg { animation: scurry 0.5s ease-in-out infinite alternate; }
 
 /* ── Keyframes for the events ───────────────────────────────────────── */
@@ -2508,7 +2595,9 @@ legend.box-title {
   .card-actions .btn:first-child:nth-last-child(2) { flex-grow: 1.3; } /* "Jogar de novo" beside "Histórico" */
   .card-actions-small .btn { font-size: 0.82rem; gap: 4px; }
   .qpanel-label { letter-spacing: 0.04em; font-size: 0.9rem; }
-  .qpanel-topic { display: none; }
+  /* Narrow screens: the topic tag ("2.3 IAM e identidade") takes the place of the "PERGUNTA" label. */
+  .qpanel-head:has(.qpanel-topic:not([hidden])) .qpanel-label { display: none; }
+  .qpanel-topic { max-width: 52%; font-size: 0.75rem; }
 }
 
 /* ── Reduced motion: no bobbing, tremors or confetti; the game stays playable ── */
@@ -2812,3 +2901,205 @@ legend.box-title {
   14%, 88% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -100%); }
 }
+
+/* ── Study hint (easy mode) ──────────────────────────────────────────── */
+.power-hint { background: linear-gradient(#f2b705, #c98a00); color: var(--ink); }
+.power-hint[hidden] { display: none; }
+.hint-topic { margin: 0 0 4px; color: var(--yellow); font-weight: 900; text-align: center; }
+.hint-tips { margin: 0; padding-left: 18px; line-height: 1.45; }
+.hint-tips li + li { margin-top: 6px; }
+
+/* Mini mind map: one node per service, linked to the topic by a left bar */
+.hint-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.hint-node {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border-left: 4px solid var(--yellow);
+  border-radius: 8px;
+  background: rgba(40, 10, 60, 0.45);
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+.hint-node b { color: var(--yellow); }
+
+/* ── Pause ───────────────────────────────────────────────────────────── */
+.hud-btn:disabled { opacity: 0.45; cursor: default; }
+
+/* The game behind turns brownish and dim, like a paused video */
+.app.is-paused { filter: sepia(0.75) brightness(0.55) saturate(0.8); }
+.app.is-paused * { animation-play-state: paused !important; }
+
+.pause-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.pause-screen[hidden] { display: none; }
+.pause-main { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.pause-main[hidden] { display: none; }
+.pause-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+
+.pause-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: #ffe9b0;
+  font-size: clamp(2rem, 9vw, 3.6rem);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.45);
+}
+
+/* ── Flying monsters, scorpion and the poisoned hero ─────────────────── */
+/* Flying monsters hover above the ground (--lift: share of their height) and dive to attack. */
+.monster.is-flying .m-art { translate: 0 var(--lift-px, 0); transition: translate 0.35s ease-in; }
+/* The speed badge, speed lines and ice cube go up with the monster. */
+.monster.is-flying .m-speed,
+.monster.is-flying .m-ice,
+.monster.is-flying.is-enraged::before { translate: 0 var(--lift-px, 0); }
+.monster.is-flying .m-art.atk-swoop { translate: 0 0; }
+.monster.is-flying .m-svg { animation: hover 0.9s ease-in-out infinite alternate; }
+.monster.is-flying .m-wing { transform-origin: 50% 100%; animation: flap 0.22s ease-in-out infinite alternate; }
+@keyframes hover { to { transform: translateY(-6%); } }
+@keyframes flap { to { transform: scaleY(0.4); } }
+
+.monster-scorpion .m-tail { transform-box: fill-box; transform-origin: 0% 100%; animation: tail-sway 1.2s ease-in-out infinite alternate; }
+.m-art.atk-sting .m-tail { animation: sting 0.5s ease-in 0.2s both; }
+@keyframes tail-sway { to { transform: rotate(-6deg); } }
+@keyframes sting { 50% { transform: rotate(-28deg) translateX(-10px); } 100% { transform: rotate(-18deg); } }
+
+.hero.fate-poisoned .h-svg { filter: hue-rotate(80deg) saturate(1.5) brightness(0.9); transform: scale(0.96, 0.9); transform-origin: 40% 100%; }
+.hero.fate-poisoned .h-eyes,
+.hero.fate-poisoned .h-mouth { display: none; }
+.hero.fate-poisoned .h-eyes-x { display: inline; }
+
+@media (prefers-reduced-motion: reduce) {
+  .monster.is-flying .m-svg,
+  .monster.is-flying .m-wing,
+  .monster-scorpion .m-tail { animation: none; }
+}
+
+/* The weapon arm turns to aim at flying monsters (game.js sets --aim on the hero) */
+.h-arm { transform-box: view-box; transform-origin: 28px 38px; rotate: var(--aim, 0deg); transition: rotate 0.15s ease-out; }
+
+/* What each boss throws */
+.rock-y.rock-boulder { width: 24px; height: 21px; }
+.rock-y.rock-fireball {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, #fff3b0, #ffb347 40%, #e8272d 75%);
+  box-shadow: 0 0 12px 4px rgba(255, 120, 40, 0.75);
+}
+.rock-y.rock-snowball {
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffffff, #d8f1ff 60%, #9fd3ec);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
+}
+.rock-y.rock-barrel {
+  width: 22px;
+  height: 18px;
+  border-radius: 6px;
+  background:
+    linear-gradient(90deg, transparent 0 22%, #5e3a1b 22% 30%, transparent 30% 70%, #5e3a1b 70% 78%, transparent 78%),
+    linear-gradient(#b5793f, #8a5a2e);
+}
+
+/* Scenery change: the hero runs between places while the screen shows only the new name */
+.hero.is-running .h-svg { animation: run-bob 0.18s ease-in-out infinite alternate; }
+@keyframes run-bob { to { transform: translateY(-5px) rotate(4deg); } }
+.world.is-traveling .field,
+.world.is-traveling .sky { filter: brightness(0.45); transition: filter 0.4s; }
+
+/* Boss arrival: the scene goes dark and flickers while the boss's silhouette walks in */
+.world.is-boss-coming :is(.field, .sky, .sky-night, .sun, .moon, .cloud) { animation: boss-dark 1.4s steps(1) infinite; filter: brightness(0.3) saturate(0.5); }
+.world.is-boss-coming .sky { background: rgba(10, 0, 22, 0.55); }
+.world.is-boss-coming .field { box-shadow: inset 0 0 120px 30px rgba(110, 0, 0, 0.6); }
+.monster.is-silhouette .m-art { filter: brightness(0) drop-shadow(0 0 5px rgba(255, 50, 30, 0.9)); animation: boss-stomp 0.8s ease-in-out infinite; }
+.monster.is-silhouette .boss-hp { display: none; }
+@keyframes boss-dark {
+  0%, 100% { filter: brightness(0.3) saturate(0.5); }
+  40% { filter: brightness(0.16) saturate(0.4); }
+  44% { filter: brightness(0.55) saturate(0.6); }
+  48% { filter: brightness(0.2) saturate(0.4); }
+}
+/* Defeated boss: trembles and flashes, then tips over backwards and sinks, falling apart */
+.monster.is-breaking .m-art { animation: boss-tremble 0.09s linear infinite, boss-blink 0.3s steps(1) infinite; }
+.monster.is-breaking.is-falling .m-art {
+  animation: boss-fall 0.75s ease-in forwards;
+  transform-origin: 70% 100%;
+}
+.monster.is-falling .boss-hp { opacity: 0; transition: opacity 0.3s; }
+.debris {
+  position: absolute;
+  border-radius: 3px;
+  box-shadow: inset -2px -3px 0 rgba(0, 0, 0, 0.25);
+  animation: debris 1.4s cubic-bezier(0.3, 0, 0.7, 1) forwards;
+}
+@keyframes boss-tremble { 0%, 100% { translate: 0 0; } 25% { translate: -3px 1px; } 75% { translate: 3px -1px; } }
+@keyframes boss-blink { 0%, 100% { filter: none; } 50% { filter: brightness(2.2) saturate(0.3); } }
+@keyframes boss-fall {
+  0% { transform: none; opacity: 1; filter: none; }
+  60% { transform: rotate(28deg) translateY(4%); opacity: 1; }
+  100% { transform: rotate(80deg) translateY(30%) scale(0.85); opacity: 0; filter: brightness(0.6); }
+}
+@keyframes debris {
+  40% { transform: translate(calc(var(--dx) * 0.5), var(--up)) rotate(calc(var(--rot) * 0.4)); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--fall)) rotate(var(--rot)); opacity: 0; }
+}
+@keyframes boss-stomp { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }
+
+/* Duel special move: a cartoon knife swing and a lunge */
+.h-knife {
+  position: absolute;
+  left: 46px;
+  top: 34px;
+  width: 30px;
+  height: 9px;
+  opacity: 0;
+  pointer-events: none;
+  transform-origin: 3px 50%;
+  background: linear-gradient(90deg, #6b4423 0 34%, #e8eef3 34% 100%);
+  clip-path: polygon(0 22%, 34% 22%, 34% 0, 100% 50%, 34% 100%, 34% 78%, 0 78%);
+}
+.hero.is-stabbing .h-knife { opacity: 1; animation: knife-swing 0.8s ease-out both; }
+.hero.is-stabbing .h-svg { animation: lunge 0.8s ease-out both; }
+
+/* Duel special move: black film bars and a darker street */
+.world.is-cinema::after {
+  opacity: 1;
+  animation: none;
+  box-shadow: inset 0 0 90px 20px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(#000 0 13%, transparent 13% 87%, #000 87%);
+  transition: opacity 0.5s;
+}
+@keyframes knife-swing { 0% { transform: rotate(-75deg); } 55% { transform: translateX(10px) rotate(12deg); } 100% { transform: rotate(0deg); } }
+@keyframes lunge { 0%, 100% { transform: none; } 50% { transform: translateX(9px) rotate(8deg); } }
+
+/* Duel: the loser drops to the knees, then falls (towards the middle of the street) */
+.hero.fate-kneel .h-svg { transform-origin: 50% 100%; transform: translateY(5px) scale(1, 0.8) rotate(9deg); transition: transform 0.3s ease-in; }
+.hero.fate-fallen .h-svg { transform-origin: 75% 100%; transform: rotate(82deg); transition: transform 0.35s ease-in; }
+.hero.fate-fallen .h-stars { top: 6px; opacity: 1; transition: opacity 0.15s 0.3s; animation: dizzy 0.9s linear infinite; }
+.hero.fate-kneel .h-eyes,
+.hero.fate-fallen .h-eyes,
+.hero.fate-fallen .h-mouth { display: none; }
+.hero.fate-kneel .h-eyes-x,
+.hero.fate-fallen .h-eyes-x { display: inline; }
+
+@media (prefers-reduced-motion: reduce) {
+  .world.is-boss-coming :is(.field, .sky, .sky-night, .sun, .moon, .cloud),
+  .monster.is-silhouette .m-art,
+  .monster.is-breaking .m-art { animation: none; }
+}
+#quit-confirm[hidden] { display: none; }

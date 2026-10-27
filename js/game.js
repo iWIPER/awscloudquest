@@ -92,6 +92,9 @@
     let lastFrame = null;
     const pick = (list) => list[Math.floor(Math.random() * list.length)];
     const HERO_LINES = ["Eu vou salvar todo mundo!", "Pode deixar, eu protejo a cidade!", "Ninguém vai machucar essa cidade!"];
+    const BOSS_THREATS = ["Eu vou acabar com você!", "Grrr! Agora você me irritou!", "Isso não vai ficar assim!"];
+    /** Which roar a boss uses: the robot has its own, the others roar by species. */
+    const bossVoice = (boss) => (boss.kind === "robot" ? "robot" : boss.species);
     const BOSS_TAUNTS = ["Toma essa!", "Hahaha! Errou!", "Mais uma pedra pra você!"];
     let bootWarnings = [];
     let lastBossKind = null; // the next boss fight shows a different look
@@ -125,6 +128,25 @@
       geo.monsterHeight = geo.size * (100 / 120);
     }
 
+    // The loop re-measures only after a resize: reading the layout every frame costs time.
+    let sizeChanged = true;
+    if (root.ResizeObserver) {
+      const observer = new root.ResizeObserver(() => (sizeChanged = true));
+      observer.observe(field);
+      const ground = field.querySelector(".ground");
+      if (ground) observer.observe(ground);
+    }
+
+    // Style writes from the loop happen only when the value changes (no work on still frames).
+    const written = new Map();
+    function setStyle(el, prop, value) {
+      const key = `${el.id}:${prop}`;
+      if (written.get(key) === value) return;
+      written.set(key, value);
+      if (prop.startsWith("--")) el.style.setProperty(prop, value);
+      else el.style[prop] = value;
+    }
+
     const heroTop = () => geo.height - geo.ground - hero.HEIGHT;
     /**
      * Height for callouts (balloons, penalty sign). Anchored to the ground,
@@ -156,16 +178,32 @@
     };
 
     function placeMonster(x) {
-      monsterEl.style.transform = `translate3d(${x}px, 0, 0)`;
+      setStyle(monsterEl, "transform", `translate3d(${x}px, 0, 0)`);
     }
 
     function render() {
-      deps.heroEl.style.left = `${geo.heroLeft}px`;
+      setStyle(deps.heroEl, "left", `${geo.heroLeft}px`);
       const cur = state.current;
       const scale = cur ? scaleOf(cur.monster) : 1;
-      monsterEl.style.width = `${geo.size * scale}px`;
-      monsterEl.style.height = `${geo.monsterHeight * scale}px`;
-      if (cur && (state.phase === "play" || state.phase === "dying")) placeMonster(currentX());
+      setStyle(monsterEl, "width", `${geo.size * scale}px`);
+      setStyle(monsterEl, "height", `${geo.monsterHeight * scale}px`);
+      // Flying monsters hover this many px above the ground (art, speed badge, speed lines, ice).
+      const lift = cur && cur.monster.lift ? cur.monster.lift * geo.monsterHeight * scale : 0;
+      setStyle(monsterEl, "--lift-px", `${-lift}px`);
+      const live = cur && (state.phase === "play" || state.phase === "dying");
+      setStyle(deps.heroEl, "--aim", `${live ? aimAngle(cur) : 0}deg`);
+      if (live) placeMonster(currentX());
+    }
+
+    const heroShoulder = () => ({ x: geo.heroLeft + NS.hero.SHOULDER.x, y: heroTop() + NS.hero.SHOULDER.y });
+
+    /** Degrees the weapon arm turns to aim at the monster: up for flying ones (negative), level otherwise. */
+    function aimAngle(cur) {
+      if (!cur.monster.flying) return 0;
+      const target = monsterCenter();
+      const shoulder = heroShoulder();
+      const degrees = (Math.atan2(target.y - shoulder.y, target.x - shoulder.x) * 180) / Math.PI;
+      return Math.max(-50, Math.min(0, degrees));
     }
 
     function renderHud() {
@@ -183,7 +221,10 @@
     function frame(now) {
       const dtMs = lastFrame === null ? 0 : Math.min(now - lastFrame, config.MAX_DT_MS);
       lastFrame = now;
-      measure();
+      if (sizeChanged || !root.ResizeObserver) {
+        sizeChanged = false;
+        measure();
+      }
       ambient.update(dtMs / 1000);
       if (state.phase === "play") step(dtMs / 1000);
       render();
@@ -233,6 +274,11 @@
 
     // ── Question flow ───────────────────────────────────────────────────
     function nextQuestion(forced = {}) {
+      // A new scenery comes with its own little scene before the question.
+      if (!state.boss && !forced.sceneReady) {
+        const scene = R.sceneFor(state.correct, config, SCENES.map((s) => s.id));
+        if (scene !== state.scene) return changeScene(scene, () => nextQuestion({ ...forced, sceneReady: true }));
+      }
       if (state.deck.length === 0) {
         state.deck = Q.buildDeck(questions, config, { stats: state.stats, lastId: state.lastId });
       }
@@ -242,7 +288,6 @@
       state.lastId = id;
 
       const isBoss = Boolean(state.boss);
-      if (!isBoss) updateScene();
       const previous = state.current ? state.current.monster.id : null;
       const monster = isBoss
         ? Monsters.bosses.find((b) => b.kind === state.boss.kind)
@@ -253,6 +298,7 @@
         isBoss,
         shown: Q.shuffledOptions(question),
         eliminated: new Set(),
+        picked: new Set(), // correct options already marked ("choose two" questions)
         hadError: false,
         elapsed: 0,
         prog: 0, // walking progress; in boss rounds, the time until it throws a rock
@@ -295,14 +341,47 @@
     }
 
     /** Changes the scenery when the number of correct answers calls for it. */
-    function updateScene() {
-      const scene = R.sceneFor(state.correct, config, SCENES.map((s) => s.id));
-      if (scene === state.scene) return;
-      state.scene = scene;
-      const info = ambient.setScene(scene);
-      ui.banner(`${info.icon} ${info.label}`, "scene");
-      sound.play("scene");
-      ui.announce(`Novo cenário: ${info.label}.`);
+    /**
+     * Scenery change: the question goes away, the hero runs off to the right,
+     * the new place's name shows on a dimmed screen, the new scenery appears
+     * with the hero running in from the left, and then the next question comes.
+     */
+    function changeScene(scene, done) {
+      state.phase = "event";
+      ui.setEvent(true);
+      ui.setDanger(false);
+      monsterEl.hidden = true;
+      syncPowers();
+      sound.setIntensity(0);
+      const heroEl = deps.heroEl;
+      const run = (x, ms) => {
+        heroEl.style.transition = ms ? `translate ${ms}ms ease-in-out` : "none";
+        heroEl.style.translate = `${x}px 0`;
+      };
+      heroEl.classList.add("is-running");
+      run(geo.width + 40, 1100);
+      const info = SCENES.find((s) => s.id === scene);
+      later(() => {
+        deps.world.classList.add("is-traveling"); // dim while only the name shows
+        ui.banner(`${info.icon} ${info.label}`, "scene");
+        sound.play("scene");
+        ui.announce(`Novo cenário: ${info.label}.`);
+      }, 1100);
+      later(() => {
+        state.scene = scene;
+        ambient.setScene(scene);
+        deps.world.classList.remove("is-traveling");
+        run(-(geo.heroLeft + hero.WIDTH + 20), 0);
+        void heroEl.offsetWidth;
+        run(0, 900);
+      }, 2500);
+      later(() => {
+        heroEl.classList.remove("is-running");
+        heroEl.style.transition = "";
+        heroEl.style.translate = "";
+        ui.clearBanner();
+        done();
+      }, 3500);
     }
 
     /** Closes the current question in the report log: "first" | "late" | "lost" | "skipped". */
@@ -313,7 +392,7 @@
         id: q.id,
         q: q.q,
         topic: q.topic,
-        answer: q.options[q.answer],
+        answer: Q.answerText(q),
         explanation: q.explanation,
         wrongPicks: cur.wrongPicks.slice(),
         outcome,
@@ -388,6 +467,7 @@
     // ── Power-ups ───────────────────────────────────────────────────────
     function syncPowers() {
       const cur = state.current;
+      ui.setPausable(state.phase === "play");
       ui.renderPowers(state.powers, {
         playing: state.phase === "play",
         frozen: Boolean(cur && cur.frozenLeft > 0),
@@ -433,6 +513,59 @@
     }
 
     /** "Pular": swaps the question. No life lost, no score, streak and stats untouched. Not in boss fights. */
+    /** Pauses a game in progress: nothing moves and the music stops until resume(). */
+    function pause() {
+      if (state.phase !== "play") return false;
+      state.phase = "paused";
+      sound.stopMusic();
+      ui.setPaused(true);
+      ui.announce("Jogo pausado.");
+      return true;
+    }
+
+    function resume() {
+      if (state.phase !== "paused") return;
+      ui.setPaused(false);
+      state.phase = "play";
+      lastFrame = null; // no jump for the time spent paused
+      sound.startMusic();
+      ui.announce("Jogo retomado.");
+    }
+
+    /** "Encerrar partida" on the pause screen (after "Tem certeza?"): ends the game now, with its summary and report. */
+    function quit() {
+      if (state.phase !== "paused") return;
+      ui.setPaused(false);
+      clearTimers();
+      gameOver({ quit: true });
+    }
+
+    const togglePause = () => (state.phase === "paused" ? resume() : pause());
+
+    /** Easy mode: pauses the game and opens the study card of the question's topic. */
+    function openHint() {
+      const cur = state.current;
+      if (!config.HINTS || state.phase !== "play" || !cur) return;
+      const guide = deps.guide || { topics: {}, tasks: {} };
+      const info = guide.topics[cur.question.topic];
+      state.phase = "hint"; // nothing moves until the card closes
+      sound.setIntensity(0);
+      const task = info && info.task ? `${info.task} ` : "";
+      ui.showHint({
+        title: info ? `${task}${cur.question.topic} · ${info.domain}` : "Tema geral",
+        tips: info ? info.tips : ["Leia com calma: a pergunta diz qual problema precisa ser resolvido. Procure o serviço que faz exatamente isso."],
+        map: info ? info.map : [],
+      });
+      ui.announce("Jogo pausado. Dica de estudo aberta.");
+    }
+
+    function closeHint() {
+      if (state.phase !== "hint") return;
+      ui.hide();
+      state.phase = "play";
+      ui.announce("De volta ao jogo.");
+    }
+
     function skip() {
       const cur = state.current;
       if (state.phase !== "play" || !cur || state.boss || state.shotInFlight || state.powers.skip <= 0) return;
@@ -453,10 +586,11 @@
     }
 
     function spawnMonster(monster) {
-      monsterEl.className = `monster monster-${monster.id}`;
+      monsterEl.className = `monster monster-${monster.id}${monster.species ? ` boss-${monster.species}` : ""}${monster.flying ? " is-flying" : ""}`;
       monsterEl.innerHTML =
         `<div class="m-art">${monster.svg}</div><span class="m-speed" hidden></span>` +
         (state.boss ? `<span class="boss-hp" role="img"></span>` : "");
+      monsterEl.style.setProperty("--lift", String(monster.lift || 0)); // flying monsters hover this high
       monsterEl.hidden = false;
       measure();
       if (state.boss) {
@@ -473,8 +607,9 @@
       return monsterEl.querySelector(".m-art");
     }
 
-    function correctIndex(cur) {
-      return cur.shown.findIndex((o) => o.correct);
+    /** Marks every correct option (one, or two in "choose two" questions). */
+    function markCorrect(cur) {
+      cur.shown.forEach((o, i) => o.correct && ui.markAnswer(i));
     }
 
     function recordStat(id, correct) {
@@ -494,24 +629,30 @@
       const cur = state.current;
       if (state.phase !== "play" || state.shotInFlight || !cur || cur.lockLeft > 0) return;
       const option = cur.shown[index];
-      if (!option || cur.eliminated.has(index)) return;
+      if (!option || cur.eliminated.has(index) || cur.picked.has(index)) return;
 
       const projectile = WEAPONS[hero.weapon()].projectile;
       state.shotInFlight = true;
       hero.recoil();
       sound.play("shoot", projectile);
-      const fromX = geo.heroLeft + hero.MUZZLE.x;
-      const fromY = heroTop() + hero.MUZZLE.y - 4;
+      // The shot leaves the muzzle of the (possibly raised) weapon arm.
+      const angle = (aimAngle(cur) * Math.PI) / 180;
+      const shoulder = heroShoulder();
+      const dx = hero.MUZZLE.x - NS.hero.SHOULDER.x;
+      const dy = hero.MUZZLE.y - 4 - NS.hero.SHOULDER.y;
+      const fromX = shoulder.x + dx * Math.cos(angle) - dy * Math.sin(angle);
+      const fromY = shoulder.y + dx * Math.sin(angle) + dy * Math.cos(angle);
       fx.muzzle(fromX, fromY + 4);
       const scale = scaleOf(cur.monster);
       const toX = currentX() + geo.size * scale * 0.3;
-      const toY = geo.height - geo.ground - geo.monsterHeight * scale * 0.55;
+      const toY = geo.height - geo.ground - geo.monsterHeight * scale * (0.55 + (cur.monster.lift || 0));
       fx.shot(fromX, fromY, toX, toY, config.SHOT_MS, projectile);
 
       later(() => {
         state.shotInFlight = false;
         if (state.phase !== "play" || state.current !== cur) return; // monster arrived mid-flight
-        if (option.correct) onHit(index);
+        if (option.correct && cur.picked.size + 1 < R.answersNeeded(cur.question)) onPartialHit(index);
+        else if (option.correct) onHit(index);
         else onMiss(index);
       }, config.SHOT_MS);
     }
@@ -521,7 +662,7 @@
       const scale = scaleOf(cur.monster);
       return {
         x: currentX() + geo.size * scale * 0.45,
-        y: geo.height - geo.ground - geo.monsterHeight * scale * 0.6,
+        y: geo.height - geo.ground - geo.monsterHeight * scale * (0.6 + (cur.monster.lift || 0)),
       };
     }
 
@@ -581,6 +722,27 @@
       later(() => questionDone(true), config.NEXT_AFTER_HIT_MS);
     }
 
+    /**
+     * A right option in a "choose two" question, but not the last one: the shot
+     * lands and the monster staggers, but only the final right answer kills it.
+     */
+    function onPartialHit(index) {
+      const cur = state.current;
+      const needed = R.answersNeeded(cur.question);
+      cur.picked.add(index);
+      ui.pickOption(index);
+      ui.setPicked(cur.picked.size, needed);
+      sound.play("hit");
+      const art = artEl();
+      art.classList.remove("is-jolt");
+      void art.offsetWidth;
+      art.classList.add("is-jolt");
+      const center = monsterCenter();
+      fx.popText(center.x, center.y - 30, `${cur.picked.size} de ${needed}!`, "pop-points");
+      const left = needed - cur.picked.size;
+      ui.announce(`Certo! Falta ${left === 1 ? "mais uma alternativa" : `mais ${left} alternativas`}.`);
+    }
+
     function onMiss(index) {
       const cur = state.current;
       cur.eliminated.add(index);
@@ -594,18 +756,19 @@
       state.misses += 1;
       sound.play("miss");
 
-      // Penalty: lockout + a faster monster for the rest of this question.
-      cur.speed = R.speedAfterWrong(cur.speed, config);
+      // Penalty: lockout, plus a faster monster for the rest of this question.
+      // The boss stands still, so against it a miss only locks the answers (and it throws).
       cur.lockLeft = config.WRONG_LOCK_SECONDS;
       ui.lockAnswers();
       ui.setLock(cur.lockLeft);
-
-      const percent = Math.round(cur.speed * 100);
       const boost = Math.round(config.WRONG_SPEEDUP * 100);
-      monsterEl.classList.add("is-enraged");
-      const badge = monsterEl.querySelector(".m-speed");
-      badge.textContent = `▲ ${percent}%`;
-      badge.hidden = false;
+      if (!cur.isBoss) {
+        cur.speed = R.speedAfterWrong(cur.speed, config);
+        monsterEl.classList.add("is-enraged");
+        const badge = monsterEl.querySelector(".m-speed");
+        badge.textContent = `▲ ${Math.round(cur.speed * 100)}%`;
+        badge.hidden = false;
+      }
 
       const art = artEl();
       art.classList.remove("is-jolt");
@@ -614,9 +777,11 @@
       art.classList.add("is-jolt");
       field.classList.add("is-shaking");
 
-      fx.penalty(geo.width / 2, calloutY() + 30, `VELOCIDADE +${boost}%`);
+      fx.penalty(geo.width / 2, calloutY() + 30, cur.isBoss ? "" : `VELOCIDADE +${boost}%`);
       ui.announce(
-        `Errou! O monstro ficou ${boost}% mais rápido. Aguarde ${config.WRONG_LOCK_SECONDS} segundos para atirar de novo.`
+        cur.isBoss
+          ? `Errou! Aguarde ${config.WRONG_LOCK_SECONDS} segundos para atirar de novo.`
+          : `Errou! O monstro ficou ${boost}% mais rápido. Aguarde ${config.WRONG_LOCK_SECONDS} segundos para atirar de novo.`
       );
       if (cur.isBoss) bossThrow();
       renderHud();
@@ -626,24 +791,64 @@
     // The boss stands still, takes one heart per hit, throws rocks on misses
     // and timeouts (the hero staggers, no life is lost) and steps closer each
     // round it is not hit, never past BOSS_LIMIT.
+    //
+    // Its arrival is a little film: the screen goes dark and flickers, heavy
+    // steps shake the ground and lightning flashes while its dark silhouette
+    // walks in; then a big flash shows it, it roars, and the fight starts.
+    const BOSS_SCENE = Object.freeze({ steps: [500, 1300, 2100, 2900], lightning: [1000, 2500], walk: [700, 3300], reveal: 3600, fight: 5200 });
+
     function startBoss() {
       state.phase = "event";
       ui.setEvent(true);
       monsterEl.hidden = true;
       ui.setDanger(false);
       syncPowers();
-      ui.banner("👑 HORA DO CHEFÃO!", "boss");
+      sound.setIntensity(0);
       sound.play("bossIntro");
       const look = Monsters.pickBoss(lastBossKind);
       lastBossKind = look.kind;
       ui.announce(`Hora do chefão: ${look.name}! Acerte ${config.BOSS_HP} de ${config.BOSS_ROUNDS} perguntas para derrotá-lo. As pedras não tiram vidas, mas se ele vencer você perde uma.`);
+      state.boss = { hp: config.BOSS_HP, hits: 0, round: 1, pos: 0, kind: look.kind };
+      deps.world.classList.add("is-boss-coming");
+
+      // The silhouette walks in from off screen to where the boss stands.
+      later(() => {
+        spawnMonster(look);
+        monsterEl.classList.add("is-silhouette");
+        monsterEl.style.transition = "none";
+        placeMonster(geo.width);
+        void monsterEl.offsetWidth;
+        const [from, to] = BOSS_SCENE.walk;
+        monsterEl.style.transition = `transform ${to - from}ms linear`;
+        placeMonster(bossX(0));
+      }, BOSS_SCENE.walk[0]);
+      for (const at of BOSS_SCENE.steps) {
+        later(() => {
+          sound.play("stomp");
+          shakeField();
+        }, at);
+      }
+      for (const at of BOSS_SCENE.lightning) later(() => ambient.flash(), at);
+
+      later(() => {
+        ambient.flash();
+        deps.world.classList.remove("is-boss-coming");
+        monsterEl.classList.remove("is-silhouette");
+        ui.banner("👑 HORA DO CHEFÃO!", "boss");
+        sound.play("roar", bossVoice(look));
+        shakeField();
+      }, BOSS_SCENE.reveal);
       later(() => {
         ui.clearBanner();
-        state.boss = { hp: config.BOSS_HP, hits: 0, round: 1, pos: 0, kind: look.kind };
-        nextQuestion();
-        placeMonster(geo.width); // start off screen; the transition slides it in
-        later(() => bossSays("Eu vou destruir você!", 2600), 1000);
-      }, 1800);
+        nextQuestion(); // the boss is already in place
+        bossSays("Eu vou destruir você!", 2600);
+      }, BOSS_SCENE.fight);
+    }
+
+    function shakeField() {
+      field.classList.remove("is-shaking");
+      void field.offsetWidth;
+      field.classList.add("is-shaking");
     }
 
     function updateBossHp() {
@@ -657,7 +862,10 @@
     function bossSays(text, ms = 2000) {
       if (!state.current || !state.current.isBoss) return;
       const scale = Monsters.boss.scale;
-      fx.speech(currentX() + geo.size * scale * 0.35, geo.height - geo.ground - geo.monsterHeight * scale * 0.92, text, ms);
+      const head = state.current.monster.head || { x: 0.5, y: 0.08 };
+      // A new line replaces the one still on screen, so bubbles never pile up.
+      document.querySelectorAll("#fx .speech.is-boss").forEach((el) => el.remove());
+      fx.speech(currentX() + geo.size * scale * head.x, geo.height - geo.ground - geo.monsterHeight * scale * (1 - head.y), text, ms).classList.add("is-boss");
     }
 
     /** Rock throw animation: no damage, the hero just staggers. */
@@ -670,14 +878,25 @@
       const scale = Monsters.boss.scale;
       const fromX = currentX() + geo.size * scale * 0.2;
       const fromY = geo.height - geo.ground - geo.monsterHeight * scale * 0.4;
-      fx.rock(fromX, fromY, geo.heroLeft + hero.WIDTH * 0.4, heroTop() + 12, 650);
-      sound.play("rockThrow");
+      const toX = geo.heroLeft + hero.WIDTH * 0.4;
+      const toY = heroTop() + 12;
+      // Each boss throws its own thing; the robot fires a laser instead.
+      const thing = state.current.monster.throws || "rock";
+      const flight = thing === "laser" ? 300 : 650;
+      if (thing === "laser") {
+        fx.shot(fromX, fromY, toX, toY, flight, "laser");
+        sound.play("shoot", "laser");
+      } else {
+        fx.rock(fromX, fromY, toX, toY, flight, thing);
+        sound.play("rockThrow");
+      }
       bossSays(pick(BOSS_TAUNTS), 1600);
+      const impact = { rock: "TUM!", boulder: "TUM!", fireball: "FOOSH!", snowball: "PLOFT!", barrel: "BOOM!", laser: "ZAP!" };
       later(() => {
         hero.flinch();
         sound.play("rockHit");
-        fx.popText(geo.heroLeft + hero.WIDTH / 2, heroTop() - 6, "TUM!", "pop-attack");
-      }, 650);
+        fx.popText(geo.heroLeft + hero.WIDTH / 2, heroTop() - 6, impact[thing] || "TUM!", "pop-attack");
+      }, flight);
     }
 
     function bossHit() {
@@ -690,7 +909,11 @@
       void art.offsetWidth;
       art.classList.add("is-hurt");
       sound.play("bossHurt");
-      if (boss.hp > 0) bossSays(boss.hp === 1 ? "Isso não vai ficar assim!" : "Ai! Essa doeu!", 1400);
+      if (boss.hp > 0) {
+        // It roars back and threatens the hero.
+        later(() => sound.play("roar", bossVoice(state.current.monster)), 200);
+        bossSays(pick(BOSS_THREATS), 1600);
+      }
       later(() => {
         countBossRound();
         if (boss.hp <= 0) bossEnd();
@@ -734,6 +957,7 @@
 
     function bossEnd() {
       const boss = state.boss;
+      const center = monsterCenter(); // before the fight state goes away (it places the boss)
       const reward = R.bossReward({ hits: boss.hits, lives: state.lives }, config);
       state.score += reward.points;
       const gotLife = reward.lives > state.lives;
@@ -742,23 +966,53 @@
       state.phase = "event";
       ui.setEvent(true);
       renderHud();
-      const center = monsterCenter();
-      if (reward.defeated) {
-        fx.speech(center.x, center.y - geo.monsterHeight * 0.9, "Nãããão!", 1400);
-        monsterEl.classList.add("is-dying");
+      if (!reward.defeated) {
+        bossFinalSmash(reward.points);
+        return;
+      }
+      // A little film: the boss trembles and flashes, cries out, tips over and
+      // falls apart in chunks of its own colors; then the confetti and the reward.
+      const monster = state.current.monster;
+      fx.speech(center.x, center.y - geo.monsterHeight * 0.9, "Nãããão!", 1500);
+      monsterEl.classList.add("is-breaking");
+      sound.play("bossHurt");
+      later(() => sound.play("roar", bossVoice(monster)), 250);
+      later(() => {
+        monsterEl.classList.add("is-falling");
+        fx.debris(center.x, center.y, bossColors(), 16);
+        sound.play("rockHit");
+      }, BOSS_FALL.tip);
+      later(() => {
+        sound.play("stomp");
+        shakeField();
+        fx.debris(center.x, geo.height - geo.ground - 20, bossColors(), 10);
+      }, BOSS_FALL.ground);
+      later(() => {
         fx.confetti(center.x, center.y, config.CONFETTI_COUNT * 2);
         fx.balloon(`Chefão derrotado! +${reward.points} pontos${gotLife ? " e +1 vida" : ""}`, calloutY(), "trophy");
         sound.play("bossDefeated");
         ui.announce(`Chefão derrotado! Mais ${reward.points} pontos${gotLife ? " e uma vida" : ""}.`);
-      } else {
-        bossFinalSmash(reward.points);
-        return;
-      }
+      }, BOSS_FALL.reward);
       later(() => {
+        monsterEl.classList.remove("is-breaking", "is-falling");
         const cheer = state.cheers.find((c) => c.at === state.correct);
         if (cheer) startCheer(cheer.text);
         else nextQuestion();
-      }, 2000);
+      }, BOSS_FALL.next);
+    }
+
+    // Defeated boss scene (ms): trembling, tipping over in pieces, hitting the ground, reward, next question.
+    const BOSS_FALL = Object.freeze({ tip: 1000, ground: 1700, reward: 2300, next: 4600 });
+
+    /** The boss's main colors, read from its drawing (for the flying chunks). */
+    function bossColors() {
+      const count = new Map();
+      monsterEl.querySelectorAll(".m-art [fill]").forEach((el) => {
+        const fill = el.getAttribute("fill");
+        if (/^#[0-9a-f]{3,6}$/i.test(fill)) count.set(fill, (count.get(fill) || 0) + 1);
+      });
+      const colors = [...count].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([c]) => c);
+      return colors.length ? colors : ["#8a8f98", "#5c6168"];
     }
 
     /**
@@ -771,20 +1025,29 @@
       ui.lockAnswers();
       fx.balloon(`O chefão venceu! +${points} pontos pelos acertos`, calloutY(), "star");
       ui.announce(`O chefão venceu esta rodada. Você perdeu uma vida. Mais ${points} pontos pelos acertos.`);
-      monsterEl.style.transition = "transform 700ms ease-in";
-      placeMonster(heroRight() - geo.size * Monsters.boss.scale * 0.35);
+      // The close attack depends on the boss: smash, pound, charge (fast, horns first) or swallow.
+      const finale = state.current.monster.finale || "smash";
+      const charge = finale === "charge";
+      monsterEl.style.transition = `transform ${charge ? 450 : 700}ms ease-in`;
+      placeMonster(heroRight() - geo.size * Monsters.boss.scale * (finale === "swallow" ? 0.15 : 0.35));
       sound.play("bossGrowl");
-      later(() => bossSays("Eu avisei!", 1500), 300);
+      later(() => bossSays(finale === "swallow" ? "Hora do lanche!" : "Eu avisei!", 1500), 300);
+      const finish = {
+        smash: { cls: "atk-smash", fate: "bonked", word: "BLAM!" },
+        pound: { cls: "atk-smash", fate: "bonked", word: "BUM BUM!" },
+        charge: { cls: "atk-jump", fate: "bonked", word: "MUUU!" },
+        swallow: { cls: "atk-chomp", fate: "eaten", word: "NHAM!" },
+      }[finale];
       later(() => {
         const art = artEl();
-        if (art) art.classList.add("atk-smash");
-        hero.setFate("bonked");
+        if (art) art.classList.add(finish.cls);
+        hero.setFate(finish.fate);
         field.classList.remove("is-shaking");
         void field.offsetWidth;
         field.classList.add("is-shaking");
-        fx.popText(geo.heroLeft + hero.WIDTH / 2, heroTop() - 6, "BLAM!", "pop-attack");
+        fx.popText(geo.heroLeft + hero.WIDTH / 2, heroTop() - 6, finish.word, "pop-attack");
         sound.play("rockHit");
-      }, 750);
+      }, charge ? 500 : 750);
       later(() => {
         state.lives -= 1;
         state.streak = 0;
@@ -861,7 +1124,7 @@
         monster: cur.monster,
         lives: state.lives,
         question: cur.question,
-        answerText: cur.question.options[cur.question.answer],
+        answerText: Q.answerText(cur.question),
       });
     }
 
@@ -880,7 +1143,7 @@
     }
 
     /** Saves the game, then shows the dark "GAME OVER" screen before the summary card. */
-    function gameOver() {
+    function gameOver({ quit = false } = {}) {
       const cur = state.current;
       state.phase = "dead";
 
@@ -911,9 +1174,9 @@
       state.best = Math.max(state.best, state.score);
 
       sound.stopMusic();
-      sound.play(newRecord ? "record" : "gameOver");
+      if (newRecord || !quit) sound.play(newRecord ? "record" : "gameOver");
       ui.setBox(false);
-      ui.markAnswer(correctIndex(cur));
+      markCorrect(cur);
       renderHud();
 
       state.gameOverData = {
@@ -922,8 +1185,10 @@
         previous,
         best: state.best,
         question: cur.question,
-        answerText: cur.question.options[cur.question.answer],
+        answerText: Q.answerText(cur.question),
+        quit,
       };
+      if (quit) return showGameOverCard(); // straight to the summary, no dark screen
       ui.showDeath();
       later(showGameOverCard, config.DEATH_SCREEN_MS);
     }
@@ -942,8 +1207,15 @@
      * { questionId, monsterId } force the first question / monster;
      * skipIntro skips "READY? GO!".
      */
+    /** Undoes the dimmed screens of the scripted scenes (a new game or "Início" can cut them short). */
+    function clearScenes() {
+      deps.world.classList.remove("is-boss-coming", "is-traveling");
+      monsterEl.classList.remove("is-silhouette", "is-breaking", "is-falling");
+    }
+
     function start(options = {}) {
       clearTimers();
+      clearScenes();
       fx.clear();
       visitor.remove();
       hero.reset();
@@ -996,6 +1268,7 @@
         return true;
       }
       if (ui.isOpen("life")) return continueAfterLifeLost(), true;
+      if (ui.isOpen("hint")) return closeHint(), true;
       if (ui.isOpen("over")) return start(), true;
       return false;
     }
@@ -1003,6 +1276,7 @@
     /** "Voltar ao início": clears the field and shows the start card (character and mode are chosen again). */
     function goHome() {
       clearTimers();
+      clearScenes();
       fx.clear();
       visitor.remove();
       ui.hideDeath();
@@ -1059,6 +1333,8 @@
       // keeps the first frame after returning from a hidden tab at dt = 0.
       document.addEventListener("visibilitychange", () => {
         lastFrame = null;
+        // Leaving the page (answering a message, switching apps) pauses the game.
+        if (document.hidden) pause();
       });
       root.addEventListener("resize", measure);
     }
@@ -1080,6 +1356,14 @@
       togglePanel,
       freeze,
       skip,
+      openHint,
+      closeHint,
+      pause,
+      resume,
+      togglePause,
+      quit,
+      /** True while the "JOGO PAUSADO" screen is up. */
+      isPaused: () => state.phase === "paused",
       openBox,
       showGameOverCard,
       goHome,

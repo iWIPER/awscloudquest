@@ -83,6 +83,7 @@
       <span class="hud-item hud-best" id="hud-best-item" title="Recorde">
         <span class="hud-icon icon-trophy" data-icon="trophy" data-fill="#fbd51a"></span><span id="hud-best">0</span>
       </span>
+      <button class="hud-item hud-btn" id="btn-pause" type="button" aria-label="Pausar o jogo" title="Pausar (Esc)" disabled><span data-icon="pause" data-size="20"></span></button>
       <button class="hud-item hud-btn" id="btn-sound" type="button" aria-label="Desligar som" title="Som (M)"></button>
       <span class="sound-hint" id="sound-hint" aria-hidden="true" hidden></span>
     </header>
@@ -114,6 +115,7 @@
           <span class="qpanel-bar" id="qpanel-bar"></span>
         </button>
         <div class="qpanel-body" id="qpanel-body">
+          <p class="qpanel-multi" id="q-multi" hidden></p>
           <p class="qpanel-text" id="q-text" tabindex="0">Toque em “Jogar” para começar.</p>
         </div>
       </section>
@@ -161,6 +163,10 @@
           <span data-icon="skip-forward" data-size="20"></span>
           <span class="power-name">Pular</span>
           <span class="power-count" id="skip-count">0</span>
+        </button>
+        <button class="power power-hint" id="btn-hint" type="button" title="Dica de estudo (D)" hidden>
+          <span data-icon="lightbulb" data-size="20"></span>
+          <span class="power-name">Dica</span>
         </button>
       </div>
 
@@ -382,6 +388,25 @@
     </div>
   </div>
 
+  <div class="overlay" id="ov-hint" hidden>
+    <div class="card card-hint" role="dialog" aria-modal="true" aria-labelledby="hint-title">
+      <h2 class="card-title" id="hint-title"><span data-icon="lightbulb" data-size="28"></span> Dica de estudo</h2>
+      <p class="hint-topic" id="hint-topic"></p>
+      <p class="card-meta">O jogo está pausado. A dica não mostra a resposta: ela relembra o assunto.</p>
+      <section class="box">
+        <h3 class="box-title">Macetes</h3>
+        <ul class="hint-tips" id="hint-tips"></ul>
+      </section>
+      <section class="box">
+        <h3 class="box-title">Mapa mental</h3>
+        <div class="hint-map" id="hint-map"></div>
+      </section>
+      <div class="card-actions">
+        <button class="btn btn-go" id="btn-hint-close" type="button" data-autofocus><span data-icon="play" data-fill="currentColor"></span> Voltar ao jogo</button>
+      </div>
+    </div>
+  </div>
+
   <div class="overlay" id="ov-life" hidden>
     <div class="card" role="dialog" aria-modal="true" aria-labelledby="life-title">
       <h2 class="card-title" id="life-title"></h2>
@@ -433,7 +458,7 @@
       </div>
 
       <div class="box qa">
-        <h3>A PERGUNTA QUE TE DERRUBOU</h3>
+        <h3 id="over-q-title">A PERGUNTA QUE TE DERRUBOU</h3>
         <p id="over-q"></p>
         <h3><span data-icon="circle-check" data-size="16"></span> RESPOSTA CERTA</h3>
         <p class="qa-answer" id="over-a"></p>
@@ -498,6 +523,26 @@
 
 
   <!-- Dark "GAME OVER" screen shown before the summary card (tap to skip) -->
+  <div class="pause-screen" id="pause-screen" hidden>
+    <div class="pause-main" id="pause-main">
+      <p class="pause-title" role="alert"><span data-icon="pause" data-size="40"></span> JOGO PAUSADO</p>
+      <div class="pause-actions">
+        <button class="btn btn-go" id="btn-resume" type="button"><span data-icon="play" data-fill="currentColor"></span> Continuar</button>
+        <button class="btn btn-alt" id="btn-quit" type="button"><span data-icon="x"></span> Encerrar partida</button>
+      </div>
+      <p class="curtain-hint">ou tecle Esc para continuar</p>
+    </div>
+    <!-- "Encerrar partida" asks first -->
+    <div class="card card-leave" id="quit-confirm" role="dialog" aria-modal="true" aria-labelledby="quit-title" hidden>
+      <h2 class="card-title" id="quit-title">Encerrar a partida?</h2>
+      <p class="card-lead">Tem certeza que deseja encerrar? Você vê o resumo da partida e pode baixar o relatório.</p>
+      <div class="card-actions">
+        <button class="btn btn-go" id="btn-quit-no" type="button"><span data-icon="play" data-fill="currentColor"></span> Continuar</button>
+        <button class="btn btn-danger" id="btn-quit-yes" type="button"><span data-icon="x"></span> Encerrar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="curtain duel-curtain" id="duel-curtain" hidden>
     <p class="curtain-title" id="duel-curtain-title" role="alert"></p>
     <p class="curtain-hint">toque para continuar</p>

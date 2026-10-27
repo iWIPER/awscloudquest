@@ -76,6 +76,30 @@
       '<circle cx="12" cy="16" r="4.2" fill="#2a1a3a"/><circle cx="12" cy="16" r="1.6" fill="#b9b3c2"/>' +
       '<circle cx="33" cy="16" r="4.2" fill="#2a1a3a"/><circle cx="33" cy="16" r="1.6" fill="#b9b3c2"/>' +
       "</svg>",
+    taxi:
+      '<svg viewBox="0 0 44 22" aria-hidden="true">' +
+      '<path d="M3 15V11Q3 9 6 9H12L17 3H30L36 9H40Q42 9 42 12V15Z" fill="#fbd51a"/>' +
+      '<path d="M18 4.5H24V9H14.5ZM25.5 4.5H29.5L34 9H25.5Z" fill="#bfe3f7"/>' +
+      '<rect x="38" y="10" width="3" height="2" rx="1" fill="#fbd51a"/>' +
+      '<circle cx="12" cy="16" r="4.2" fill="#2a1a3a"/><circle cx="12" cy="16" r="1.6" fill="#b9b3c2"/>' +
+      '<circle cx="33" cy="16" r="4.2" fill="#2a1a3a"/><circle cx="33" cy="16" r="1.6" fill="#b9b3c2"/>' +
+      "</svg>".replace("</svg>", '<rect x="20" y="0.5" width="8" height="3" rx="1" fill="#2a1a3a"/></svg>'),
+    van:
+      '<svg viewBox="0 0 44 22" aria-hidden="true">' +
+      '<path d="M3 15V11Q3 9 6 9H12L17 3H30L36 9H40Q42 9 42 12V15Z" fill="#2b9fdc"/>' +
+      '<path d="M18 4.5H24V9H14.5ZM25.5 4.5H29.5L34 9H25.5Z" fill="#d8f0ff"/>' +
+      '<rect x="38" y="10" width="3" height="2" rx="1" fill="#fbd51a"/>' +
+      '<circle cx="12" cy="16" r="4.2" fill="#2a1a3a"/><circle cx="12" cy="16" r="1.6" fill="#b9b3c2"/>' +
+      '<circle cx="33" cy="16" r="4.2" fill="#2a1a3a"/><circle cx="33" cy="16" r="1.6" fill="#b9b3c2"/>' +
+      "</svg>",
+    bus:
+      '<svg viewBox="0 0 70 26" aria-hidden="true">' +
+      '<rect x="2" y="2" width="66" height="18" rx="4" fill="#3f9a2c"/>' +
+      '<path d="M8 6h9v6H8zM21 6h9v6h-9zM34 6h9v6h-9zM47 6h9v6h-9z" fill="#d8f0ff"/>' +
+      '<path d="M59 5h7v9h-7z" fill="#d8f0ff"/><rect x="64" y="15" width="3" height="2" rx="1" fill="#fbd51a"/>' +
+      '<circle cx="15" cy="21" r="4.4" fill="#2a1a3a"/><circle cx="15" cy="21" r="1.7" fill="#b9b3c2"/>' +
+      '<circle cx="54" cy="21" r="4.4" fill="#2a1a3a"/><circle cx="54" cy="21" r="1.7" fill="#b9b3c2"/>' +
+      "</svg>",
   });
 
   /** Sceneries, in the order they appear during a game. */
@@ -83,7 +107,8 @@
     { id: "field", label: "Campo", icon: "🌼", critters: ["bunny", "squirrel"] },
     { id: "forest", label: "Floresta", icon: "🌲", critters: ["deer", "squirrel"] },
     { id: "desert", label: "Deserto", icon: "🌵", critters: ["camel"] },
-    { id: "city", label: "Cidade", icon: "🏙️", critters: ["car"] },
+    // The city is an avenue: traffic comes more often (every) and also at night and in the rain (always).
+    { id: "city", label: "Cidade", icon: "🏙️", critters: ["car", "taxi", "van", "bus"], every: [3, 7], always: true },
   ]);
 
   /** Duel street in the Wild West: never in the solo rotation, set by duel.js. */
@@ -116,7 +141,11 @@
       );
     }
     if (id === "city") {
-      return repeat(12, (i) => `<span class="building" style="--x:${i * 8.5}%;--h:${22 + ((i * 53) % 30)}%;--w:${7 + ((i * 7) % 4)}%"></span>`);
+      return (
+        repeat(12, (i) => `<span class="building" style="--x:${i * 8.5}%;--h:${22 + ((i * 53) % 30)}%;--w:${7 + ((i * 7) % 4)}%"></span>`) +
+        '<span class="sidewalk"></span>' +
+        repeat(5, (i) => `<span class="lamp" style="--x:${8 + i * 21}%"></span>`)
+      );
     }
     return "";
   }
@@ -254,15 +283,17 @@
         }
       }
 
+      // Passers-by come in daylight without rain, except city traffic, which never stops.
+      const daylight = state.night < 0.5 && !state.rain;
+      if ((daylight || state.scene.always) && (state.nextCritter -= dt) <= 0) {
+        state.nextCritter = between(state.scene.every || config.AMBIENT_CRITTERS_EVERY);
+        spawnCritters();
+      }
       // Birds fly in daylight without rain; crickets sing at night.
-      if (state.night < 0.5 && !state.rain) {
+      if (daylight) {
         if ((state.nextBird -= dt) <= 0) {
           state.nextBird = between(config.AMBIENT_BIRDS_EVERY);
           spawnFlock();
-        }
-        if ((state.nextCritter -= dt) <= 0) {
-          state.nextCritter = between(config.AMBIENT_CRITTERS_EVERY);
-          spawnCritters();
         }
       } else if (state.night >= 0.5 && (state.nextCricket -= dt) <= 0) {
         state.nextCricket = between([1.5, 4]);
@@ -294,6 +325,7 @@
       set,
       setScene,
       follow,
+      flash,
       snapshot: () => ({ time: state.t, night: state.night, rain: state.rain, scene: state.scene.id }),
     });
   }
