@@ -117,6 +117,19 @@
         el.append(title, speed);
       },
 
+      /**
+       * Comic speech bubble whose tail points down at (x, y): a character's
+       * head. It stays inside the layer; the tail keeps pointing at x.
+       */
+      speech(x, y, text, ms = 2400) {
+        const el = spawn("speech", { top: `${y}px`, "--ms": `${ms}ms` }, ms, text);
+        const half = el.offsetWidth / 2;
+        const left = Math.min(Math.max(x, half + 6), layer.clientWidth - half - 6);
+        el.style.left = `${left}px`;
+        el.style.setProperty("--tail", `${x - left}px`);
+        return el;
+      },
+
       /** Animated balloon centered horizontally, with its top edge at `y`. */
       balloon(text, y, iconName) {
         const el = spawn("balloon", { top: `${y}px` }, 2300);

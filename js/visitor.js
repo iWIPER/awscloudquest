@@ -44,8 +44,11 @@
       </g>
     </svg>`;
 
-  /** Phases of the visit, in ms from the start. */
-  const TIMING = Object.freeze({ arrive: 3400, raise: 3800, lower: 9300, leave: 9800, end: 13000 });
+  /**
+   * Phases of the visit, in ms from the start: walk in, raise the
+   * sign for reading, lower it, the hero answers, the visitor replies, walk out.
+   */
+  const TIMING = Object.freeze({ arrive: 3400, raise: 3800, lower: 6800, heroLine: 7000, reply: 9600, leave: 12200, end: 15400 });
 
   function create(layer, { sound, reducedMotion = () => false }) {
     let el = null;
@@ -60,8 +63,10 @@
      * @param {string} text   sign text
      * @param {(fn: () => void, ms: number) => void} later  tracked setTimeout from game.js
      * @param {() => void} done  called when the visitor is gone
+     * @param {{ onHeroLine?: () => void, onReply?: (head: {x: number, y: number}) => void }} talk
+     *   the hero's answer and the visitor's reply (game.js draws the speech bubbles)
      */
-    function play(text, later, done) {
+    function play(text, later, done, talk = {}) {
       remove();
       const width = layer.clientWidth;
       const size = Math.min(150, Math.max(110, width * 0.3));
@@ -84,20 +89,46 @@
 
       later(() => {
         el.classList.remove("is-walking");
-        sound.play("bark");
+        bark();
       }, TIMING.arrive);
       later(() => el && el.classList.add("is-showing"), TIMING.raise);
+      later(() => {
+        if (talk.onHeroLine) talk.onHeroLine();
+        later(() => bark(), 900); // the dog joins in
+      }, TIMING.heroLine);
       later(() => el && el.classList.remove("is-showing"), TIMING.lower);
+      later(() => {
+        if (el && talk.onReply) talk.onReply(head());
+        later(() => bark(), 600);
+      }, TIMING.reply);
       later(() => {
         if (!el) return;
         el.classList.add("is-walking", "is-leaving");
-        sound.play("bark");
+        bark();
         place(width + 20, TIMING.end - TIMING.leave);
       }, TIMING.leave);
       later(() => {
         remove();
         done();
       }, TIMING.end);
+    }
+
+    /** The dog barks: the sound and a little "AU AU!" over its head. */
+    function bark() {
+      sound.play("bark");
+      if (!el) return;
+      const woof = document.createElement("span");
+      woof.className = "v-bark";
+      woof.textContent = "AU AU!";
+      el.appendChild(woof);
+      setTimeout(() => woof.remove(), 900);
+    }
+
+    /** Top of the visitor's head, in layer coordinates (for a speech bubble). */
+    function head() {
+      const r = el.getBoundingClientRect();
+      const l = layer.getBoundingClientRect();
+      return { x: r.left - l.left + r.width * 0.71, y: r.top - l.top + r.height * 0.1 };
     }
 
     return Object.freeze({ play, remove, TIMING });

@@ -259,10 +259,14 @@
       },
       equip: () => melody([392, 523.25], { type: "triangle", step: 0.06, dur: 0.1, vol: 0.06 }),
       bark() {
-        // Two short "woof"s: a pitched drop plus a breathy burst.
-        [0, 0.22].forEach((d) => {
-          tone({ type: "sawtooth", from: 520, to: 260, dur: 0.12, vol: 0.09, at: ctx.currentTime + d });
-          burst({ dur: 0.1, vol: 0.08, freq: 900, at: ctx.currentTime + d });
+        // "Au au!": two loud, low woofs. A quick pitch rise then fall gives the
+        // "w-oof", the noise band adds the breath; loud enough over the music.
+        [0, 0.26].forEach((d) => {
+          const at = ctx.currentTime + d;
+          tone({ type: "sawtooth", from: 300, to: 420, dur: 0.05, vol: 0.18, at });
+          tone({ type: "sawtooth", from: 420, to: 190, dur: 0.16, vol: 0.2, at: at + 0.05 });
+          tone({ type: "triangle", from: 210, to: 120, dur: 0.18, vol: 0.22, at: at + 0.04 });
+          burst({ dur: 0.14, vol: 0.2, freq: 750, q: 1.4, at });
         });
       },
       bossIntro() {

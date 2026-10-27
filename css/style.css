@@ -2190,6 +2190,28 @@ legend.box-title {
 .visitor.is-walking .v-leg-a { animation: step 0.45s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: top center; }
 .visitor.is-walking .v-leg-b { animation: step 0.45s ease-in-out infinite alternate-reverse; transform-box: fill-box; transform-origin: top center; }
 .visitor.is-walking .v-person { animation: bob 0.45s ease-in-out infinite alternate; }
+/* "AU AU!" popping over the dog */
+.v-bark {
+  position: absolute;
+  left: 2%;
+  top: 38%;
+  color: #8b5a2b;
+  font-size: clamp(0.8rem, 2.6vw, 1rem);
+  font-weight: 900;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+  white-space: nowrap;
+  animation: bark-pop 0.9s ease-out forwards;
+}
+
+.visitor.is-leaving .v-bark { left: auto; right: 2%; } /* the dog walks out on the other side */
+
+@keyframes bark-pop {
+  0% { opacity: 0; transform: translateY(6px) scale(0.6); }
+  20% { opacity: 1; transform: translateY(-4px) scale(1.1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-14px); }
+}
+
 .v-tail { transform-box: fill-box; transform-origin: 0% 100%; animation: wag 0.25s ease-in-out infinite alternate; }
 
 .v-arm { transform-box: fill-box; transform-origin: 0% 100%; transition: transform 0.4s; transform: rotate(35deg); }
@@ -2753,4 +2775,40 @@ legend.box-title {
   .hero.is-champion .h-svg,
   .flag-cloth,
   .duel-count.is-tick { animation: none; }
+}
+
+/* ── Speech bubbles (visitor conversation, boss) ────────────────────── */
+.speech {
+  position: absolute;
+  z-index: 3;
+  width: max-content;
+  max-width: min(240px, 70%);
+  padding: 6px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--ink);
+  font-size: clamp(0.8rem, 2.6vw, 1rem);
+  font-weight: 900;
+  line-height: 1.25;
+  text-align: center;
+  transform: translate(-50%, -100%);
+  animation: speech var(--ms, 2400ms) ease-out forwards;
+}
+
+/* The tail points at the speaker's head, even when the bubble is nudged to stay on screen. */
+.speech::after {
+  content: "";
+  position: absolute;
+  left: calc(50% + var(--tail, 0px) - 8px);
+  top: 100%;
+  border: 8px solid transparent;
+  border-top-color: var(--ink);
+}
+
+@keyframes speech {
+  0% { opacity: 0; transform: translate(-50%, -80%) scale(0.6); }
+  8% { opacity: 1; transform: translate(-50%, -100%) scale(1.05); }
+  14%, 88% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -100%); }
 }

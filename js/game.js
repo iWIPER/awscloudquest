@@ -90,6 +90,9 @@
     const geo = { width: 0, height: 0, ground: 0, heroLeft: 0, size: 0, monsterHeight: 0 };
 
     let lastFrame = null;
+    const pick = (list) => list[Math.floor(Math.random() * list.length)];
+    const HERO_LINES = ["Eu vou salvar todo mundo!", "Pode deixar, eu protejo a cidade!", "Ninguém vai machucar essa cidade!"];
+    const BOSS_TAUNTS = ["Toma essa!", "Hahaha! Errou!", "Mais uma pedra pra você!"];
     let bootWarnings = [];
     let lastBossKind = null; // the next boss fight shows a different look
     let soundHintShown = false; // the sound-button hint appears once per visit
@@ -344,10 +347,20 @@
       sound.setIntensity(0);
       sound.setMood("happy");
       ui.announce(text);
-      visitor.play(text, later, () => {
-        sound.setMood(null);
-        nextQuestion();
-      });
+      // A short conversation: the hero promises to protect the city, the visitor thanks them.
+      const heroine = deps.heroEl.dataset.variant === "female";
+      visitor.play(
+        text,
+        later,
+        () => {
+          sound.setMood(null);
+          nextQuestion();
+        },
+        {
+          onHeroLine: () => fx.speech(geo.heroLeft + hero.WIDTH / 2, heroTop() - 8, pick(HERO_LINES), 2600),
+          onReply: (head) => fx.speech(head.x, head.y, heroine ? "Você é minha heroína!" : "Você é o meu herói!", 2400),
+        }
+      );
     }
 
     // ── Mystery box: swaps the hero's weapon ────────────────────────────
@@ -629,6 +642,7 @@
         state.boss = { hp: config.BOSS_HP, hits: 0, round: 1, pos: 0, kind: look.kind };
         nextQuestion();
         placeMonster(geo.width); // start off screen; the transition slides it in
+        later(() => bossSays("Eu vou destruir você!", 2600), 1000);
       }, 1800);
     }
 
@@ -637,6 +651,13 @@
       if (!el || !state.boss) return;
       el.textContent = "❤".repeat(state.boss.hp) + "♡".repeat(config.BOSS_HP - state.boss.hp);
       el.setAttribute("aria-label", `Vida do chefão: ${state.boss.hp} de ${config.BOSS_HP}`);
+    }
+
+    /** Speech bubble over the boss's head. */
+    function bossSays(text, ms = 2000) {
+      if (!state.current || !state.current.isBoss) return;
+      const scale = Monsters.boss.scale;
+      fx.speech(currentX() + geo.size * scale * 0.35, geo.height - geo.ground - geo.monsterHeight * scale * 0.92, text, ms);
     }
 
     /** Rock throw animation: no damage, the hero just staggers. */
@@ -651,6 +672,7 @@
       const fromY = geo.height - geo.ground - geo.monsterHeight * scale * 0.4;
       fx.rock(fromX, fromY, geo.heroLeft + hero.WIDTH * 0.4, heroTop() + 12, 650);
       sound.play("rockThrow");
+      bossSays(pick(BOSS_TAUNTS), 1600);
       later(() => {
         hero.flinch();
         sound.play("rockHit");
@@ -668,6 +690,7 @@
       void art.offsetWidth;
       art.classList.add("is-hurt");
       sound.play("bossHurt");
+      if (boss.hp > 0) bossSays(boss.hp === 1 ? "Isso não vai ficar assim!" : "Ai! Essa doeu!", 1400);
       later(() => {
         countBossRound();
         if (boss.hp <= 0) bossEnd();
@@ -721,6 +744,7 @@
       renderHud();
       const center = monsterCenter();
       if (reward.defeated) {
+        fx.speech(center.x, center.y - geo.monsterHeight * 0.9, "Nãããão!", 1400);
         monsterEl.classList.add("is-dying");
         fx.confetti(center.x, center.y, config.CONFETTI_COUNT * 2);
         fx.balloon(`Chefão derrotado! +${reward.points} pontos${gotLife ? " e +1 vida" : ""}`, calloutY(), "trophy");
@@ -750,6 +774,7 @@
       monsterEl.style.transition = "transform 700ms ease-in";
       placeMonster(heroRight() - geo.size * Monsters.boss.scale * 0.35);
       sound.play("bossGrowl");
+      later(() => bossSays("Eu avisei!", 1500), 300);
       later(() => {
         const art = artEl();
         if (art) art.classList.add("atk-smash");
