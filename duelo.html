@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Você foi chamado para um duelo! · AWS Cloud Quest</title>
+  <meta name="description" content="Duelo 1×1 de perguntas sobre AWS: quem acertar primeiro atira. Toque para entrar na sala.">
+  <!-- Invitation links only: they lead into a room, there is nothing to index here. -->
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#3a1459">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+
+  <!-- Link preview of a duel invitation (WhatsApp, Telegram, social networks) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AWS Cloud Quest">
+  <meta property="og:title" content="⚔️ Você foi chamado para um duelo de AWS!">
+  <meta property="og:description" content="Duelo 1×1 no velho oeste: a mesma pergunta para os dois, quem acertar primeiro atira. Toque para entrar na sala.">
+  <meta property="og:url" content="https://iwiper.github.io/awscloudquest/duelo.html">
+  <meta property="og:image" content="https://iwiper.github.io/awscloudquest/assets/og-duel.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Duelo no AWS Cloud Quest: Jogador 1 e Jogador 2 frente a frente numa cidade do velho oeste, respondendo a mesma pergunta">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="⚔️ Você foi chamado para um duelo de AWS!">
+  <meta name="twitter:description" content="Duelo 1×1 no velho oeste: a mesma pergunta para os dois, quem acertar primeiro atira.">
+  <meta name="twitter:image" content="https://iwiper.github.io/awscloudquest/assets/og-duel.png">
+
+  <style>
+    body { margin: 0; display: grid; min-height: 100vh; place-items: center; background: #3a1459; color: #fff; font: 700 1.1rem system-ui, sans-serif; text-align: center; }
+    a { color: #fbd51a; }
+  </style>
+  <script>
+    // Straight into the room: duelo.html?sala=<room>  →  index.html#duelo=<room> (the game opens the join screen).
+    (function () {
+      var room = new URLSearchParams(location.search).get("sala") || "";
+      var target = "index.html" + (/^[2-9a-hj-km-np-z]{12}$/.test(room) ? "#duelo=" + room : "");
+      location.replace(target);
+    })();
+  </script>
+</head>
+<body>
+  <p>Entrando na sala do duelo… <a href="index.html">Abrir o AWS Cloud Quest</a></p>
+</body>
+</html>

@@ -60,3 +60,16 @@ test("IndexNow key file: name matches its content", () => {
   assert.equal(keys.length, 1, "exactly one IndexNow key file at the root");
   assert.equal(fs.readFileSync(path.join(ROOT, keys[0]), "utf8").trim(), keys[0].replace(".txt", ""));
 });
+
+test("duelo.html: invitation links get a duel preview and lead into the room", () => {
+  const invite = fs.readFileSync(path.join(ROOT, "duelo.html"), "utf8");
+  const tag = (attr, name) => (invite.match(new RegExp(`<meta ${attr}="${name}" content="([^"]*)"`)) || [])[1];
+  assert.equal(tag("property", "og:image"), `${SITE}assets/og-duel.png`);
+  assert.ok(fs.existsSync(local(tag("property", "og:image"))), "the duel preview image exists");
+  assert.match(tag("property", "og:title"), /duelo/i);
+  assert.equal(tag("name", "robots"), "noindex");
+  assert.match(invite, /var target = "index\.html" \+ .*#duelo=/);
+  assert.match(invite, /location\.replace\(target\)/);
+  const deploy = fs.readFileSync(path.join(ROOT, ".github/workflows/pages.yml"), "utf8");
+  assert.match(deploy, /cp -r index\.html duelo\.html/, "the deploy publishes duelo.html");
+});

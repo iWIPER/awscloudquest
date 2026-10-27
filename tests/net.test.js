@@ -48,3 +48,12 @@ test("parser: several packets in one chunk, and a long payload (2-byte length)",
   assert.equal(N.readPublish(got[0].body).payload, long);
   assert.equal(got[1].type, 12);
 });
+
+test("deduper: the first copy of a message passes, copies from other brokers are dropped", () => {
+  const fresh = N.createDeduper(3);
+  assert.equal(fresh({ id: "a-1" }), true);
+  assert.equal(fresh({ id: "a-1" }), false);
+  assert.equal(fresh({ t: "ping" }), true, "messages without an id always pass");
+  for (const id of ["a-2", "a-3", "a-4"]) fresh({ id });
+  assert.equal(fresh({ id: "a-1" }), true, "old ids are forgotten after `max` newer ones");
+});

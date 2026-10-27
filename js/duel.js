@@ -45,7 +45,7 @@
     '<path d="M16.4 16q4.7-1 9.2 1.5" stroke="#fff" stroke-width=".8" fill="none"/></g></svg>';
 
   function create(deps) {
-    const { config, questions, store, ui, sound, ambient, field, onExit, onReport } = deps;
+    const { config, questions, store, ui, sound, ambient, visitor, field, onExit, onReport } = deps;
     const D = NS.duelRules;
     const R = NS.rules;
     const Q = NS.questions;
@@ -78,6 +78,7 @@
       reconnecting: false,
       roundNo: 0,
       round: null,
+      specialDone: false, // the special move happens once per match
       wins: { host: 0, guest: 0 }, // rounds won in this match
       score: { host: 0, guest: 0 }, // matches won in this room
       rematch: { host: false, guest: false },
@@ -122,8 +123,10 @@
     const isHost = () => state.role === "host";
 
     // ── Network ─────────────────────────────────────────────────────────
+    let sent = 0;
     function send(type, data = {}) {
-      if (state.conn) state.conn.send({ t: type, from: myId, ...data });
+      // The id lets the network layer drop the copies that arrive through a second broker.
+      if (state.conn) state.conn.send({ t: type, from: myId, id: `${myId}-${++sent}`, ...data });
     }
 
     const joinRoom = () =>
@@ -346,6 +349,7 @@
         ["crosshair", "Mesma pergunta para os dois: quem acertar primeiro atira e o outro perde 1 vida."],
         ["lock", "Errou? Fica travado até o fim do round."],
         ["clock", "Os dois erraram ou o tempo acabou: os dois perdem 1 vida."],
+        ["zap", `Golpe especial: uma vez por partida, entre os rounds ${DUEL.SPECIAL_FROM} e ${DUEL.SPECIAL_TO}, quem acertar sozinho ataca com uma faca e derruba o outro.`],
         ["gauge", `O tempo de cada round encurta a cada ${DUEL.LEVEL_EVERY} rounds.`],
         ["trophy", "Os dois zeraram juntos? Empate: os dois sobem no pódio. No fim tem revanche e relatório."],
         ["history", `Caiu a conexão? O jogo pausa e espera ${Math.round(DUEL.RECONNECT_MS / 60000)} minutos. A sala expira em 5 minutos se o amigo não entrar.`],
@@ -450,9 +454,13 @@
       return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
     };
 
+    /**
+     * Invitation link. It points to duelo.html, which has its own link preview
+     * (the duel, not the solo game) and forwards to index.html#duelo=<room>.
+     */
     function linkFor(room) {
-      const base = root.location.href.split("#")[0];
-      return `${base}#duelo=${room}`;
+      const folder = root.location.href.split(/[?#]/)[0].replace(/[^/]*$/, "");
+      return `${folder}duelo.html?sala=${room}`;
     }
 
     // ── Presence ────────────────────────────────────────────────────────
@@ -474,6 +482,8 @@
         state.paused = { phase: state.phase };
         state.phase = "paused";
         clearRoundTimers();
+        endCheer();
+        world().classList.remove("is-cinema");
         ui.clearBanner();
         ui.setDanger(false);
         sound.setIntensity(0);
@@ -541,6 +551,8 @@
       for (const id of ["tag-me", "tag-rival", "podium"]) $(id).hidden = true;
       rivalEl.hidden = true;
       offPodium();
+      endCheer();
+      world().classList.remove("is-cinema");
       me.reset();
       rival.reset();
       ambient.follow(false);
@@ -592,6 +604,7 @@
         round: null,
         wins: { host: 0, guest: 0 },
         rematch: { host: false, guest: false },
+        specialDone: false,
         log: [],
         startedAt: Date.now(),
       });
@@ -639,6 +652,7 @@
     }
 
     function nextQuestionId() {
+      if (testHooks.firstQuestionId && state.roundNo === 0) return testHooks.firstQuestionId; // fixed shot for the link preview
       if (state.deck.length === 0) state.deck = Q.buildDeck(questions, config, { lastId: state.lastId });
       state.lastId = state.deck.shift();
       return state.lastId;
@@ -656,31 +670,64 @@
       const level = D.levelForRound(n, DUEL);
       const seconds = Math.round(R.travelSeconds(question, level, config));
       // Lives and wins go along so a player who missed a message is back in sync.
-      const round = { n, qid: question.id, order, seconds, lives: state.lives, wins: state.wins, sky: sky() };
+      const round = { n, qid: question.id, order, seconds, lives: state.lives, wins: state.wins, sky: sky(), replay };
       send("round", round);
       beginRound({ ...round, question });
     }
 
-    /** "ROUND N" presentation (drum hit, question hidden), then the question. */
-    function beginRound({ n, question, order, seconds, lives, wins }) {
+    /**
+     * Before the question, now and then the cheering visitor (both screens play
+     * the same steps, worked out from the round number; the duel always stays in
+     * the Wild West town). Then "ROUND N" (drum hit), then the question.
+     */
+    function beginRound({ n, question, order, seconds, lives, wins, replay }) {
       clearRoundTimers();
       const valid = Array.isArray(order) && order.length === question.options.length && order.every((i) => question.options[i] !== undefined);
       const indexes = valid ? order : question.options.map((_, i) => i);
-      const shown = indexes.map((i) => ({ text: question.options[i], correct: i === question.answer }));
+      const correct = Q.correctIndexes(question);
+      const shown = indexes.map((i) => ({ text: question.options[i], correct: correct.includes(i) }));
       state.phase = "intro";
       state.roundNo = n;
       if (pair(lives)) state.lives = pair(lives);
       if (pair(wins)) state.wins = pair(wins);
-      state.round = { n, question, shown, seconds, started: 0, mine: null, answers: {}, decided: false, grace: 0 };
+      state.round = { n, question, shown, seconds, started: 0, mine: null, picked: new Set(), answers: {}, decided: false, grace: 0 };
       renderHud();
       me.reset();
       rival.reset();
       ui.hide();
       ui.setEvent(true);
       ui.setDanger(false);
-      ui.banner(`ROUND ${n}`, "round");
-      sound.play("drum");
-      roundTimers.push(later(() => revealRound(state.round), DUEL.ROUND_INTRO_MS));
+      let at = 0;
+      if (!replay && D.isCheerRound(n, DUEL)) {
+        roundTimers.push(later(cheer, at));
+        at += visitor.TIMING.end;
+      }
+      roundTimers.push(
+        later(() => {
+          ui.banner(`ROUND ${n}`, "round");
+          sound.play("drum");
+        }, at)
+      );
+      roundTimers.push(later(() => revealRound(state.round), at + DUEL.ROUND_INTRO_MS));
+    }
+
+    const world = () => field.closest(".world");
+
+    /** The cheering visitor and the dog stop by; my hero answers, the visitor wishes both luck. */
+    function cheer() {
+      sound.setMood("happy");
+      const text = D.pick(D.CHEERS);
+      ui.announce(text);
+      const track = (fn, ms) => roundTimers.push(later(fn, ms));
+      visitor.play(text, track, () => sound.setMood(null), {
+        onHeroLine: () => fx.speech(geo().myCenter, geo().heroTop - 8, D.pick(D.HERO_LINES), 2600),
+        onReply: (head) => fx.speech(head.x, head.y, "Boa sorte aos dois!", 2400),
+      });
+    }
+
+    function endCheer() {
+      visitor.remove();
+      sound.setMood(null);
     }
 
     function revealRound(round) {
@@ -715,7 +762,18 @@
       const round = state.round;
       if (state.phase !== "round" || !round || round.mine) return;
       const option = round.shown[index];
-      if (!option) return;
+      if (!option || round.picked.has(index)) return;
+      const needed = R.answersNeeded(round.question);
+      if (option.correct && round.picked.size + 1 < needed) {
+        // "Choose two": the first right pick only counts once the second one is in.
+        round.picked.add(index);
+        ui.pickOption(index);
+        ui.setPicked(round.picked.size, needed);
+        sound.play("unlock");
+        ui.announce("Certo! Marque a outra alternativa.");
+        return;
+      }
+      if (option.correct) ui.setPicked(needed, needed);
       const ms = Math.round(performance.now() - round.started);
       round.mine = { correct: option.correct, ms, pick: option.text };
       ui.lockAnswers();
@@ -750,7 +808,8 @@
       const result = D.decideRound(round.answers, flags);
       if (!result) return;
       round.decided = true;
-      const msg = { n: round.n, result, lives: D.applyResult(state.lives, result), answers: round.answers };
+      const special = D.isSpecialHit(round.n, result, round.answers, state.specialDone, DUEL);
+      const msg = { n: round.n, result, lives: D.applyResult(state.lives, result), answers: round.answers, special };
       send("result", msg);
       showResult(msg);
     }
@@ -791,7 +850,7 @@
         id: q.id,
         q: q.q,
         topic: q.topic,
-        answer: q.options[q.answer],
+        answer: Q.answerText(q),
         explanation: q.explanation,
         wrongPicks: round.mine && round.mine.pick && !round.mine.correct ? [round.mine.pick] : [],
         outcome: D.outcomeFor(myRole(), answers, result),
@@ -801,12 +860,17 @@
       ui.lockAnswers();
       ui.setDanger(false);
       sound.setIntensity(0);
-      ui.markRight(round.shown.findIndex((o) => o.correct));
+      round.shown.forEach((o, i) => o.correct && ui.markRight(i));
 
       const g = geo();
       const centerOf = (role) => (role === myRole() ? g.myCenter : g.rivalCenter);
       const heroOf = (role) => (role === myRole() ? me : rival);
-      if (result.reason === "hit") {
+      if (msg.special) state.specialDone = true;
+      if (result.reason === "hit" && msg.special) {
+        specialMove(result.winner);
+        const target = D.other(result.winner);
+        ui.announce(result.winner === myRole() ? `Golpe especial! ${nameOf(target)} foi ao chão e perdeu uma vida.` : `Golpe especial de ${nameOf(result.winner)}! Você perdeu uma vida.`);
+      } else if (result.reason === "hit") {
         const shooter = result.winner;
         const target = D.other(shooter);
         const fromX = shooter === myRole() ? g.myX : g.rivalX;
@@ -843,8 +907,74 @@
             send("over", { winner });
             endMatch(winner);
           } else hostNextRound();
-        }, DUEL.RESULT_MS);
+        }, msg.special ? DUEL.SPECIAL_MS : DUEL.RESULT_MS);
       }
+    }
+
+    /**
+     * Special move (once per match, rounds SPECIAL_FROM to SPECIAL_TO), played like a
+     * film: the question goes away, black bars close in, and instead of
+     * shooting, the faster player runs to the other one and strikes with a
+     * cartoon knife; the other falls to the ground, the striker runs back
+     * laughing, and the fallen one gets up again.
+     */
+    const SPECIAL = Object.freeze({ run: 900, strike: 2300, fall: 2750, back: 4000, home: 5300, up: 6100, end: 6800 });
+
+    function specialMove(striker) {
+      const g = geo();
+      const mine = striker === myRole();
+      const runner = mine ? { el: $("hero"), tag: $("tag-me") } : { el: rivalEl, tag: $("tag-rival") };
+      const victim = mine ? rival : me;
+      const from = mine ? g.myCenter : g.rivalCenter;
+      const to = mine ? g.rivalCenter : g.myCenter;
+      const reach = to - from - Math.sign(to - from) * NS.hero.WIDTH * 0.75;
+      const run = (x, ms) => {
+        for (const el of [runner.el, runner.tag]) {
+          el.style.transition = `translate ${ms}ms ease-in-out`;
+          el.style.translate = `${x}px 0`;
+        }
+      };
+      ui.setEvent(true); // only the scene: the question goes away
+      world().classList.add("is-cinema");
+      ui.banner("⚔️ GOLPE ESPECIAL!", "boss");
+      sound.play("drum");
+      later(() => {
+        ui.clearBanner();
+        runner.el.classList.add("is-running");
+        run(reach, SPECIAL.strike - SPECIAL.run);
+      }, SPECIAL.run);
+      later(() => {
+        runner.el.classList.remove("is-running");
+        runner.el.classList.add("is-stabbing");
+        sound.play("slash");
+        ambient.flash();
+        fx.popText(to, g.heroTop - 6, "ZÁS!", "pop-attack");
+      }, SPECIAL.strike);
+      later(() => {
+        victim.setFate("fallen");
+        sound.play("ouch");
+        sound.play("stomp");
+        field.classList.remove("is-shaking");
+        void field.offsetWidth;
+        field.classList.add("is-shaking");
+        fx.popText(to, g.heroTop + 10, "AI!", "pop-attack");
+      }, SPECIAL.fall);
+      later(() => {
+        runner.el.classList.remove("is-stabbing");
+        runner.el.classList.add("is-running");
+        run(0, SPECIAL.home - SPECIAL.back);
+        taunt(striker, D.pick(D.TAUNTS));
+        sound.play("laugh");
+      }, SPECIAL.back);
+      later(() => {
+        runner.el.classList.remove("is-running");
+        for (const el of [runner.el, runner.tag]) {
+          el.style.transition = "";
+          el.style.translate = "";
+        }
+      }, SPECIAL.home);
+      later(() => victim.reset(), SPECIAL.up); // back on its feet
+      later(() => world().classList.remove("is-cinema"), SPECIAL.end);
     }
 
     // ── End of a match ──────────────────────────────────────────────────
@@ -874,7 +1004,12 @@
       const climbers = draw
         ? [{ ...mine, to: g.width / 2 - 42 }, { ...theirs, to: g.width / 2 + 42 }]
         : [{ ...(won ? mine : theirs), to: g.width / 2 }];
-      if (!draw) (won ? rival : me).setFate("bonked");
+      if (!draw) {
+        // The loser drops to the knees, then falls to the ground.
+        const loser = won ? rival : me;
+        loser.setFate("kneel");
+        later(() => loser.setFate("fallen"), 1100);
+      }
       $("podium").classList.toggle("is-wide", draw);
       for (const c of climbers) {
         c.hero.celebrate(true);
@@ -1081,6 +1216,7 @@
         wins: { ...state.wins },
         score: { ...state.score },
         questionId: state.round ? state.round.question.id : null,
+        specialDone: state.specialDone,
         locked: Boolean(state.round && state.round.mine),
       }),
     });

@@ -166,24 +166,70 @@
   }
 
   /**
-   * Joins a room. Tries each broker in order and resolves with
-   * `{ send(message), close(), url }`. `onMessage(message)` gets every message
-   * published to the room, including this client's own (filter by sender).
-   * `onClose(reason)` fires if an established connection drops.
+   * Drops repeated messages: with several brokers, each message arrives once
+   * per broker. Messages carry an `id`; the first copy wins (the fastest relay).
+   */
+  function createDeduper(max = 500) {
+    const seen = new Set();
+    return (message) => {
+      const id = message && message.id;
+      if (!id) return true;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      if (seen.size > max) seen.delete(seen.values().next().value); // oldest first
+      return true;
+    };
+  }
+
+  /**
+   * Joins a room on every broker at once and resolves as soon as one is ready
+   * with `{ send(message), close(), url }`. Sending goes through every broker
+   * that is up, so both players meet even if one broker fails for one of them,
+   * and each message travels by the fastest relay. `onMessage(message)` gets
+   * every message published to the room once, including this client's own
+   * (filter by sender). `onClose(reason)` fires when the last broker drops.
    */
   async function join({ room, brokers, onMessage, onClose = () => {}, transport = "mqtt" }) {
     const topic = `awscloudquest/duel/v1/${room}`;
     if (transport === "local") return joinLocal(topic, onMessage);
     const clientId = `acq-${Math.random().toString(36).slice(2, 12)}`;
-    let lastError = null;
-    for (const url of brokers) {
-      try {
-        return await connectBroker(url, { topic, clientId, onMessage, onClose });
-      } catch (error) {
-        lastError = error;
-      }
+    const fresh = createDeduper();
+    const deliver = (message) => fresh(message) && onMessage(message);
+    const links = new Set();
+    let closed = false;
+    const attempts = brokers.map((url) => {
+      const holder = {};
+      const dropped = (reason) => {
+        links.delete(holder.link);
+        if (closed || links.size > 0) return;
+        closed = true; // brokers that connect later close themselves
+        onClose(reason);
+      };
+      return connectBroker(url, { topic, clientId, onMessage: deliver, onClose: dropped }).then((link) => {
+        if (closed) link.close();
+        else links.add((holder.link = link));
+        return link;
+      });
+    });
+    try {
+      await Promise.any(attempts);
+    } catch (error) {
+      closed = true;
+      throw (error.errors && error.errors[0]) || new Error("no broker");
     }
-    throw lastError || new Error("no broker");
+    return {
+      get url() {
+        return [...links].map((link) => link.url).join(" + ");
+      },
+      send(message) {
+        for (const link of links) link.send(message);
+      },
+      close() {
+        closed = true;
+        for (const link of links) link.close();
+        links.clear();
+      },
+    };
   }
 
   /** Same API over BroadcastChannel (pages of one browser; used by tests). */
@@ -200,7 +246,7 @@
     });
   }
 
-  const api = Object.freeze({ encode, encodeLength, createParser, readPublish, join });
+  const api = Object.freeze({ encode, encodeLength, createParser, readPublish, createDeduper, join });
   const NS = (root.AwsCloudQuest = root.AwsCloudQuest || {});
   NS.net = api;
   if (typeof module === "object" && module.exports) module.exports = api;

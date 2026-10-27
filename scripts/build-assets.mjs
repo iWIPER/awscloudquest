@@ -5,6 +5,8 @@
  *   assets/icon-32.png, icon-180.png (apple-touch-icon), icon-192.png, icon-512.png,
  *   icon-maskable-512.png   ← rendered from assets/icon.svg
  *   assets/og-image.png     ← 1200×630 screenshot of a real game (link preview)
+ *   assets/og-duel.png      ← 1200×630 screenshot of a real duel (preview of duelo.html
+ *                             invitation links), with neutral player names
  *
  *   node scripts/build-assets.mjs
  */
@@ -47,17 +49,60 @@ const { server, url } = await startServer();
 const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
 await page.clock.install();
 await page.goto(url);
-await page.evaluate(() => localStorage.setItem("awsCloudQuestHero", JSON.stringify("female")));
+await page.evaluate(() => {
+  localStorage.setItem("awsCloudQuestHero", JSON.stringify("female"));
+  localStorage.setItem("awsCloudQuestMuted", "true");
+});
 await page.reload();
 
 // A short question, the dragon halfway, daylight with a few birds.
-await page.evaluate(() => window.AwsCloudQuest.app.start({ questionId: "lambda-serverless", monsterId: "dragon" }));
+await page.evaluate(() => window.AwsCloudQuest.app.start({ questionId: "lambda-serverless", monsterId: "dragon", skipIntro: true }));
 await page.evaluate(() => window.AwsCloudQuest.scene.set({ time: 0.15, rain: false, bird: true }));
+await page.evaluate(() => (document.getElementById("sound-hint").hidden = true)); // no sound-button balloon in the preview
 const { travel } = await page.evaluate(() => window.AwsCloudQuest.app.snapshot());
 await page.clock.runFor(travel * 1000 * 0.45);
 await page.waitForTimeout(900); // let CSS animations settle (real time)
 await page.screenshot({ path: path.join(assets, "og-image.png") });
 console.log("✔ assets/og-image.png");
+
+// ── Duel invitation preview ──────────────────────────────────────────────
+// Two pages of one browser play through the local transport; "Jogador 1"
+// answers first and shoots, with the taunt sign up.
+const duelContext = await browser.newContext({ viewport: { width: 1200, height: 630 } });
+await duelContext.addInitScript(() => {
+  window.AwsCloudQuestDuelTest = { transport: "local", COUNTDOWN: 1, ROUND_INTRO_MS: 300, firstQuestionId: "lambda-serverless" };
+  localStorage.setItem("awsCloudQuestMuted", "true");
+});
+const join = async (page, name, hero) => {
+  await page.fill("#duel-name", name);
+  await page.locator(`#ov-duel .pick-card:has(input[value="${hero}"])`).click();
+  await page.locator("#btn-duel-go").click();
+};
+const host = await duelContext.newPage();
+await host.goto(url);
+await host.locator("#btn-duel").click();
+await join(host, "Jogador 1", "male");
+await host.waitForSelector("#ov-duel-wait:not([hidden])");
+const guest = await duelContext.newPage();
+await guest.goto(await host.inputValue("#duel-link"));
+await guest.waitForSelector("#ov-duel:not([hidden])");
+await join(guest, "Jogador 2", "female");
+for (const p of [host, guest]) {
+  await p.waitForSelector("#btn-duel-ready:not([hidden])");
+  await p.locator("#btn-duel-ready").click();
+}
+await host.waitForFunction(() => window.AwsCloudQuest.duelApp.snapshot().phase === "round", null, { timeout: 20000 });
+await host.evaluate(() => window.AwsCloudQuest.scene.set({ time: 0.2, rain: false }));
+await host.waitForTimeout(600);
+const right = await host.evaluate(() => {
+  const NS = window.AwsCloudQuest;
+  const q = NS.questions.normalize(window.QUESTIONS, NS.config).questions.find((x) => x.id === "lambda-serverless");
+  return [...document.querySelectorAll("#answers .answer-text")].findIndex((el) => el.textContent === q.options[q.answer]);
+});
+await host.locator(`#answers .answer[data-index="${right}"]`).click();
+await host.waitForTimeout(900); // shot landed, "AI!" and the taunt sign up
+await host.screenshot({ path: path.join(assets, "og-duel.png") });
+console.log("✔ assets/og-duel.png");
 
 await browser.close();
 server.close();

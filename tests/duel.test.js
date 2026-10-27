@@ -83,3 +83,25 @@ test("taunts and victory lines exist", () => {
   assert.ok(D.TAUNTS.length >= 3 && D.VICTORY_LINES.length >= 2);
   assert.ok(D.TAUNTS.includes(D.pick(D.TAUNTS)));
 });
+
+test("isCheerRound: the visitor comes before every CHEER_EVERY-th round, never with 0", () => {
+  assert.equal(D.isCheerRound(7, { CHEER_EVERY: 7 }), true);
+  assert.equal(D.isCheerRound(14, { CHEER_EVERY: 7 }), true);
+  assert.equal(D.isCheerRound(8, { CHEER_EVERY: 7 }), false);
+  assert.equal(D.isCheerRound(7, { CHEER_EVERY: 0 }), false);
+});
+
+test("isSpecialHit: once per match, rounds SPECIAL_FROM to SPECIAL_TO, only when just one player was right", () => {
+  const duel = { SPECIAL_FROM: 4, SPECIAL_TO: 7 };
+  const hit = { reason: "hit", winner: "host", losers: ["guest"] };
+  const oneRight = { host: right(3000), guest: wrong(2000) };
+  const onlyOneAnswered = { host: right(3000) };
+  const bothRight = { host: right(3000), guest: right(3500) };
+  assert.equal(D.isSpecialHit(3, hit, oneRight, false, duel), false, "too early");
+  assert.equal(D.isSpecialHit(4, hit, oneRight, false, duel), true);
+  assert.equal(D.isSpecialHit(7, hit, onlyOneAnswered, false, duel), true, "the other did not answer in time");
+  assert.equal(D.isSpecialHit(8, hit, oneRight, false, duel), false, "too late");
+  assert.equal(D.isSpecialHit(5, hit, bothRight, false, duel), false, "both right: a normal shot");
+  assert.equal(D.isSpecialHit(5, hit, oneRight, true, duel), false, "already happened this match");
+  assert.equal(D.isSpecialHit(5, { reason: "both-wrong", winner: null, losers: ["host", "guest"] }, {}, false, duel), false, "both wrong");
+});

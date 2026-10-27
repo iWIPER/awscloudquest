@@ -39,6 +39,23 @@
     return 1 + Math.floor((Math.max(1, round) - 1) / duel.LEVEL_EVERY);
   }
 
+  /** The cheering visitor stops by before every CHEER_EVERY-th round (never with 0). */
+  function isCheerRound(round, duel) {
+    return duel.CHEER_EVERY > 0 && round > 1 && round % duel.CHEER_EVERY === 0;
+  }
+
+  /**
+   * The special move replaces the shot once per match, in a round from
+   * SPECIAL_FROM to SPECIAL_TO where only one player got it right (not when
+   * both were right, not when both were wrong).
+   */
+  function isSpecialHit(round, result, answers, done, duel) {
+    if (done || !result || result.reason !== "hit") return false;
+    if (round < duel.SPECIAL_FROM || round > duel.SPECIAL_TO) return false;
+    const loser = answers && answers[other(result.winner)];
+    return !(loser && loser.correct);
+  }
+
   /**
    * Decides a round from the answers so far.
    * @param {{host?: {correct: boolean, ms: number}, guest?: {correct: boolean, ms: number}}} answers
@@ -104,6 +121,10 @@
     "Venci! A AWS é minha casa!",
   ]);
 
+  /** Sign of the cheering visitor in the duel, and what each hero answers. */
+  const CHEERS = Object.freeze(["Que duelo incrível!", "Vai, vai, vai!", "Os dois são feras da nuvem!"]);
+  const HERO_LINES = Object.freeze(["Valeu! Eu vou vencer!", "Fica de olho, vou ganhar!", "Obrigado! Esse duelo é meu!"]);
+
   const pick = (list, rng = Math.random) => list[Math.floor(rng() * list.length)];
 
   const api = Object.freeze({
@@ -113,12 +134,16 @@
     roomFromHash,
     cleanName,
     levelForRound,
+    isCheerRound,
+    isSpecialHit,
     decideRound,
     applyResult,
     matchWinner,
     outcomeFor,
     TAUNTS,
     VICTORY_LINES,
+    CHEERS,
+    HERO_LINES,
     pick,
   });
 

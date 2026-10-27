@@ -37,7 +37,8 @@ console.log(`Engine: ${engineName}${useMqtt ? " (public broker)" : ""}`);
 const context = await browser.newContext({ viewport: { width: 390, height: 700 } });
 await context.addInitScript((mqtt) => {
   window.AwsCloudQuestDuelTest = { ...(mqtt ? {} : { transport: "local" }), COUNTDOWN: 2, RESULT_MS: 900, ROUND_INTRO_MS: 400, VICTORY_MS: 2500, CURTAIN_MS: 1500,
-    LIVES: 3, LIVES_OPTIONS: [3, 6], HEARTBEAT_MS: 400, PEER_SILENT_MS: 2000, RECONNECT_MS: 30000 };
+    LIVES: 3, LIVES_OPTIONS: [3, 6], HEARTBEAT_MS: 400, PEER_SILENT_MS: 2000, RECONNECT_MS: 30000,
+    CHEER_EVERY: 0, SPECIAL_MS: 7000 };
 }, useMqtt);
 
 const errors = [];
@@ -52,15 +53,19 @@ const shot = (page, name) => shotsDir && page.screenshot({ path: path.join(shots
 const snap = (page) => page.evaluate(() => window.AwsCloudQuest.duelApp.snapshot());
 const wait = (page, fn, arg) => page.waitForFunction(fn, arg, { timeout: useMqtt ? 30000 : 10000 });
 
-/** Screen index of the correct option on this page. */
-const rightIndex = (page) =>
-  page.evaluate(() => {
+/** Screen indexes of the correct options on this page (two in "choose two" questions). */
+const rightIndexes = (page) => page.evaluate(() => {
     const NS = window.AwsCloudQuest;
     const id = NS.duelApp.snapshot().questionId;
     const q = NS.questions.normalize(window.QUESTIONS, NS.config).questions.find((x) => x.id === id);
-    return [...document.querySelectorAll("#answers .answer-text")].findIndex((el) => el.textContent === q.options[q.answer]);
+    const texts = [...document.querySelectorAll("#answers .answer-text")].map((el) => el.textContent);
+    return q.answers.map((i) => texts.indexOf(q.options[i]));
   });
 const pick = (page, index) => page.locator(`#answers .answer[data-index="${index}"]`).click();
+/** Marks every correct option: one click, or two in a "choose two" question. */
+const answerRight = async (page) => {
+  for (const index of await rightIndexes(page)) await pick(page, index);
+};
 
 // ── Host creates the room ──────────────────────────────────────────────
 const host = await open("host", url);
@@ -75,7 +80,7 @@ await host.click('#ov-duel .pick-card:has(input[value="male"])');
 await host.click("#btn-duel-go");
 await host.waitForSelector("#ov-duel-wait:not([hidden])", { timeout: 20000 });
 const link = await host.inputValue("#duel-link");
-check(/#duelo=[2-9a-hj-km-np-z]{12}$/.test(link), `the room link carries a room id (${link.split("#")[1]})`);
+check(/\/duelo\.html\?sala=[2-9a-hj-km-np-z]{12}$/.test(link), `the invitation link opens duelo.html with the room (${link.split("?")[1]})`);
 check((await host.locator(".poster").count()) === 2 && /Wilk/.test(await host.textContent("#duel-posters")), "the waiting room shows the PROCURADO poster");
 await shot(host, "1-wait");
 
@@ -108,7 +113,7 @@ check(await host.locator("#rival").isVisible(), "the rival stands on the right")
 await shot(guest, "3-round");
 
 // Round 1: the guest answers right first.
-await pick(guest, await rightIndex(guest));
+await answerRight(guest);
 await wait(host, () => window.AwsCloudQuest.duelApp.snapshot().phase === "result");
 s = await snap(host);
 check(s.lives.host === 2 && s.lives.guest === 3, "the first correct answer shoots: the other player loses a life");
@@ -123,7 +128,11 @@ await wait(host, () => window.AwsCloudQuest.duelApp.snapshot().round === 2 && wi
 await wait(guest, () => window.AwsCloudQuest.duelApp.snapshot().round === 2);
 const guestSky = await guest.evaluate(() => window.AwsCloudQuest.scene.snapshot());
 check(guestSky.rain === true && guestSky.night === 1, "the guest gets the host's night and rain");
-const wrongOf = async (page) => ((await rightIndex(page)) + 1) % (await page.locator("#answers .answer").count());
+const wrongOf = async (page) => {
+  const rights = await rightIndexes(page);
+  const count = await page.locator("#answers .answer").count();
+  return [...Array(count).keys()].find((i) => !rights.includes(i));
+};
 await pick(host, await wrongOf(host));
 check((await snap(host)).locked && !(await snap(guest)).locked, "a wrong answer locks only that player");
 await pick(guest, await wrongOf(guest));
@@ -131,11 +140,19 @@ await wait(host, () => window.AwsCloudQuest.duelApp.snapshot().phase === "result
 s = await snap(host);
 check(s.lives.host === 1 && s.lives.guest === 2, "both wrong: both lose a life");
 
-// The host wins the remaining rounds.
+// The host wins the remaining rounds (the guest does not answer).
 for (let round = 3; round < 8; round++) {
   await wait(host, (n) => ["round", "victory", "over"].includes(window.AwsCloudQuest.duelApp.snapshot().phase) && (window.AwsCloudQuest.duelApp.snapshot().round === n || window.AwsCloudQuest.duelApp.snapshot().phase !== "round"), round);
   if ((await snap(host)).phase !== "round") break;
-  await pick(host, await rightIndex(host));
+  if (round === 3) check((await host.locator("#world").getAttribute("data-scene")) === "west", "the duel stays in the Wild West town");
+  if (round === 4) {
+    await answerRight(host);
+    await host.waitForTimeout(1200);
+    check(await host.locator("#world.is-cinema").count() === 1 && (await snap(guest)).specialDone, "round 4, only one right: the special move plays as a film on both screens");
+    await shot(host, "4b-special");
+    continue;
+  }
+  await answerRight(host);
   await wait(host, (n) => window.AwsCloudQuest.duelApp.snapshot().phase !== "round" || window.AwsCloudQuest.duelApp.snapshot().round !== n, round);
 }
 await wait(guest, () => ["victory", "over"].includes(window.AwsCloudQuest.duelApp.snapshot().phase));
@@ -194,7 +211,8 @@ for (let i = 0; i < 6 && (await snap(host)).phase !== "victory"; i++) {
   await wait(guest, (r) => window.AwsCloudQuest.duelApp.snapshot().phase === "round" && window.AwsCloudQuest.duelApp.snapshot().round === r, n);
   await pick(host, await wrongOf(host));
   await pick(guest, await wrongOf(guest));
-  await wait(host, (r) => window.AwsCloudQuest.duelApp.snapshot().round !== r || window.AwsCloudQuest.duelApp.snapshot().phase !== "result", n);
+  // Wait for this round's result (or the end of the match) before the next one.
+  await wait(host, (r) => { const s = window.AwsCloudQuest.duelApp.snapshot(); return s.round !== r || ["result", "victory"].includes(s.phase); }, n);
 }
 await wait(host, () => window.AwsCloudQuest.duelApp.snapshot().phase === "victory");
 await host.waitForTimeout(2200);
