@@ -76,7 +76,7 @@ Tip: on a phone, use the browser's "Add to Home Screen" to open the game like an
 
 - Two characters (man or woman) and two modes (**Fácil** and **Avançado**), chosen before each session.
 - Seven monsters with their own attacks: dinosaur, dragon, snake, alligator, gorilla, wolf and giant spider.
-- **Boss fight** every 15 hits (first at 12): four looks (stone golem, lava golem, ice giant, giant robot), 3 hearts, 4 questions.
+- **Boss fight** every 15 hits (first at 12): four looks (stone golem, lava golem, ice giant, giant robot), 3 hearts, 4 questions. The boss talks in speech bubbles ("Eu vou destruir você!").
 - **Mystery box** every 6–8 questions swaps the weapon: pistol, bow, slingshot or magic wand.
 - **Power-ups**: Gelo freezes the monster for 15 s; Pular swaps the question.
 - A miss locks the answers for a few seconds and makes the monster faster.
@@ -92,7 +92,7 @@ Tip: on a phone, use the browser's "Add to Home Screen" to open the game like an
 
 - Four sceneries that change every 15 hits: field, forest, desert and city.
 - Day and night, rain with thunder, birds, bunnies, squirrels, deer, camels and cars.
-- A visitor with a dog and a sign cheers you on at milestones.
+- A visitor with a dog and a sign cheers you on at milestones, and they talk: your hero promises to protect the city and the visitor answers "Você é minha heroína!" while the dog barks.
 - "READY? / GO!" intro and a dark "GAME OVER" screen.
 - All sound is synthesized in code: effects, rain, a heartbeat when the screen turns red and music per scenery. Mute with one tap or `M`.
 
