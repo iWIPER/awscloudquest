@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Duel 1×1**: create a room, share the link and play a friend in real time. The room creator picks 10 or 20 lives; both tap **Pronto!** before the countdown. Same question for both, opened by a "ROUND N" presentation; the first correct answer shoots the other player. A lock after a miss; both lose a life when both miss or time runs out; a draw when both reach zero together. A dropped connection pauses the match for up to 2 minutes and reconnects by itself. Wild West town with day, night and rain, "PROCURADO" posters, a fast showdown theme, taunt signs, a podium beside the Brazil flag, a dark "<NAME> VENCEU!" screen that waits for a tap, a versus scoreboard with trophies, rematch with a running score, and a report for each player with the duel result and the performance by area.
+- Minimal MQTT client (`js/net.js`) and pure duel rules (`js/duel-rules.js`), with unit tests and a two-page duel smoke test in CI.
+
 ### Changed
 
 - Losing the last life fades the screen slowly to dark before "GAME OVER" appears. The dark screen always says GAME OVER; a new record shows as a "NOVO RECORDE!" badge on the Game Over card.

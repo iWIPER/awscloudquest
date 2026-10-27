@@ -149,3 +149,12 @@ A remembered character and mode looked like a choice the player had already made
 ## 34. No zoom on the game screen
 
 Quick taps on answers triggered double-tap zoom on phones, and a stray two-finger touch did the same. With the page pinned to the viewport ([#32](#32-the-page-never-scrolls)), a zoomed screen cut off every edge and could not be panned back. The page now sets `touch-action: pan-x pan-y` (no double-tap or pinch zoom, scrolling inside panels still works) and `maximum-scale=1`. iOS Safari ignores both for pinch zoom, so `main.js` also cancels its `gesturestart` and `gesturechange` events. The trade-off is losing pinch zoom inside the game. Text is sized for phones, and the layout is tested from 320 px up.
+
+## 35. Duel over a public MQTT relay
+
+Two phones need a relay to find each other, and the game has no server. The options were WebRTC peer-to-peer (still needs a signaling server and often fails behind mobile NATs without a TURN relay), a hosted backend such as Firebase or a Cloudflare Worker (needs an account and keys), or a public message broker. The players asked for "no account, as simple as possible", so the duel uses free public MQTT brokers over secure WebSocket, with a fallback broker. The client is about 200 lines in `net.js`, so no library is added. The trade-offs: the relay is shared and unencrypted at the application level, and it can be down. The room id is random and only lives in the link. Only names, answers and results are sent, and the game says so when no broker answers.
+
+## 36. The room creator is the referee, timing is per player
+
+Someone must decide who answered first. Letting each side decide would let the two screens disagree. The host decides every round, but it compares the time each player took on their own screen, not the arrival time. A player on a slow connection does not lose a round they answered faster. Among friends, trusting the guest's reported time is acceptable; cheat-proofing is a non-goal.
+

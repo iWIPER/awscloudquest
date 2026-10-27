@@ -21,3 +21,6 @@ desktop.ini
 .vscode/
 .idea/
 *.swp
+
+# Brainstorming mockups (local only)
+.superpowers/

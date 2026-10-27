@@ -19,10 +19,13 @@ js/hero.js            → AwsCloudQuest.hero
 js/effects.js         → AwsCloudQuest.effects
 js/ambient.js         → AwsCloudQuest.ambient
 js/visitor.js         → AwsCloudQuest.visitor
+js/net.js             → AwsCloudQuest.net          (encoders and parser are pure)
+js/duel-rules.js      → AwsCloudQuest.duelRules    (pure)
 js/pdf.js             → AwsCloudQuest.pdf          (pure)
 js/report.js          → AwsCloudQuest.report       (builders are pure)
 js/ui.js              → AwsCloudQuest.ui
 js/game.js            → AwsCloudQuest.game
+js/duel.js            → AwsCloudQuest.duel
 js/main.js            → validates the bank, classifies topics, creates everything, wires input, boots
 ```
 
@@ -41,6 +44,9 @@ Each file is an IIFE that attaches its API to `window.AwsCloudQuest`. Pure files
 | `effects` | Short-lived DOM effects that remove themselves | Game state |
 | `ambient` | Sceneries, day/night, weather, birds, critters | Game rules |
 | `visitor` | The cheering visitor's walk, sign and timing | Game rules |
+| `net` | Minimal MQTT 3.1.1 client over WebSocket; BroadcastChannel transport for tests | Game rules |
+| `duelRules` | Room ids, names, round decisions, lives, draw, report outcomes | DOM, network |
+| `duel` | Duel screens, room protocol, referee loop, shots, victory scene, duel report | Solo game state |
 | `pdf` | PDF 1.4 writer: pages, text, wrapping, boxes, links | DOM |
 | `report` | Areas analysis, Markdown and PDF reports, areas screen markup | Storage |
 | `ui` | DOM, Portuguese text, focus, dialogs, power-up buttons | Rules (it shows what it receives) |
@@ -138,6 +144,36 @@ Audio unlocks on the first `pointerup`, `touchend`, `click` or `keydown`. On iPh
 
 The page never scrolls. `body` is fixed to the visible viewport, and `.app` is a column: HUD, world (sky and field), answers. Long text scrolls inside the question panel, the answer list and dialog cards. Safe-area insets keep content clear of notches and the home indicator. A "▼ mais alternativas" hint appears when options are hidden below the answer list.
 
+## Duel 1×1
+
+The duel runs beside the solo game, which stays in its `idle` phase. `duel.js` takes over the field (the solo hero element, a mirrored rival, name tags), the question panel and the answers while a duel is on, and hands back with `game.goHome()`.
+
+**Transport.** GitHub Pages is static, so the two browsers talk through a public MQTT broker over `wss://` (HiveMQ first, EMQX as fallback, both in `CONFIG.DUEL.BROKERS`). Each room is one topic, `awscloudquest/duel/v1/<room>`, where `<room>` is a random 12-character id that only exists in the shared link (`#duelo=<room>`). `net.js` implements CONNECT, SUBSCRIBE, PUBLISH (QoS 0), PINGREQ and DISCONNECT, and buffers WebSocket frames into packets. The broker echoes a client's own messages, so every message carries a `from` id and receivers drop their own.
+
+**Referee.** The room creator (host) decides everything; the guest only displays results.
+
+```
+guest → join {name, hero, bank}            host → accept {to, name, hero, lives}  |  reject {to, reason}
+both  → ready (after "Pronto!")            host → start {countdown}   (once both are ready, or both asked for a rematch)
+host  → round {n, qid, order, seconds, lives, wins}
+both  → answer {n, correct, ms}            host → result {n, result, lives, answers}
+host  → over {winner}                      both → rematch | ping | bye
+```
+
+- `bank` is a hash of the question ids. Different game versions are rejected, so both players can look up every question.
+- The host picks the question and the option order; both render the same screen.
+- `ms` is measured on each player's own screen, from the moment the question appears. The host waits `GRACE_MS` after the first correct answer it receives, then `duelRules.decideRound` awards the round to the smallest `ms`. Network delay does not decide who was first.
+- Round time uses `rules.travelSeconds` with a level that goes up every `LEVEL_EVERY` rounds. The host closes a round `TIMEOUT_GRACE_MS` after its time, so a lagging guest still gets the full time.
+- `duelRules.applyResult` takes the lives down; `matchWinner` returns the winner, or `"draw"` when both reach zero in the same round.
+- Each round opens with a "ROUND N" sign for `ROUND_INTRO_MS`; the timer starts when the question appears on each screen.
+- The room creator picks 10 or 20 lives (`LIVES_OPTIONS`); `accept` and `start` carry the choice, and every `round` message carries the lives and round wins, so a player who missed a message is back in sync.
+
+**Presence.** Both sides send `ping` every `HEARTBEAT_MS`. Leaving sends `bye`, and closing the page tries to. A player silent for `PEER_SILENT_MS` (15 s) pauses the match: both screens show who dropped and a countdown of `RECONNECT_MS` (2 minutes). A browser that loses the relay reconnects by itself every 3 seconds. When the dropped player is heard again, the host starts the interrupted round over. If the time runs out, the room closes. A waiting room with nobody joining expires after `ROOM_TTL_MS` (5 minutes). Closing a room clears every timer and disconnects from the broker. Nothing is stored on the broker (QoS 0, no retained messages), so an abandoned room leaves nothing behind.
+
+**End of a match.** The winner's weapon is put away (`hero.celebrate`), they walk to a podium beside a flagpole and jump for `VICTORY_MS`. Then a curtain, like the solo GAME OVER, fades in "<NAME> VENCEU!" for `CURTAIN_MS`, and the end card shows a versus scoreboard with the matches each player won in the room. **Início** reuses the solo "Voltar ao início?" reminder to download the report.
+
+**Report.** Each player logs their own rounds with the solo outcomes: `first` (answered right, even if slower), `lost` (wrong or out of time) and `skipped` (the rival won before they answered). The report adds `duel: {opponent, won, rounds, lives, score}`. `report.js` puts the result on top and relabels the outcomes for a duel. The history shows it with mode "Duelo".
+
 ## Stored in localStorage
 
 | Key | Shape |
@@ -149,6 +185,7 @@ The page never scrolls. `body` is fixed to the visible viewport, and `.app` is a
 | `awsCloudQuestHero` | `"male"` or `"female"` |
 | `awsCloudQuestMode` | `"easy"` or `"advanced"` |
 | `awsCloudQuestMuted` | boolean |
+| `awsCloudQuestName` | player name for duels |
 
 Every access is wrapped in `try/catch`. With storage blocked, the game plays normally and remembers nothing. **Limpar** removes the history, reports and best score, and keeps the review stats.
 
@@ -156,4 +193,5 @@ Every access is wrapped in `try/catch`. With storage blocked, the game plays nor
 
 - **Unit tests** (`tests/*.test.js`, `node:test`): bank rules, deck building, travel time, score, modes, event schedule, boss rewards, storage, topics, areas analysis, Markdown, the PDF writer, the bank itself and the SEO tags.
 - **Smoke test** (`scripts/smoke.mjs`, Playwright with a fake clock, Chromium and WebKit): start flow, setup dialog, intro, sound hint, misses and lockout, hits, lives, Game Over, history, reports, every monster attack, power-ups, mystery box, visitor, boss win and loss, scenery change and ambience. It fails on any console error.
+- **Duel smoke test** (`scripts/duel-smoke.mjs`, Chromium and WebKit): two pages of one browser play a full duel over the BroadcastChannel transport, with shortened timings set through `window.AwsCloudQuestDuelTest`. It covers the room link, joining, the shared question and option order, a hit, a lock after a miss, both wrong, the victory, both reports, a rematch and leaving. `--mqtt` runs the same test through the public broker.
 - **Layout test** (`scripts/responsive.mjs`): 10 viewports, from 320 × 480 to 1920 × 969, including landscape and Safari's reduced height. It checks that nothing overflows sideways, the HUD and answers stay on screen, and every dialog's buttons are reachable.
