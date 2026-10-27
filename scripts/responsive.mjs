@@ -10,7 +10,10 @@
  *   - nothing scrolls sideways;
  *   - the HUD, the playing field and the first answer button are on screen;
  *   - every card (start, life lost, Game Over, history, areas) fits inside the
- *     screen; long content may scroll inside the card, but never off screen.
+ *     screen; long content may scroll inside the card, but never off screen;
+ *   - the duel screens (setup, waiting room, the duel itself with both heroes
+ *     and name tags, end card) fit too. Two pages of the same browser play
+ *     through the local transport with shortened timings.
  */
 import { mkdirSync } from "node:fs";
 import path from "node:path";
@@ -82,6 +85,27 @@ const measure = (page, overlayId) =>
     return facts;
   }, overlayId);
 
+/** Duel stage facts: scoreboard, both heroes and their name tags, the first answer. */
+const measureDuel = (page) =>
+  page.evaluate(() => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const inside = (el) => {
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.top >= -1 && r.left >= -1 && r.bottom <= vh + 1 && r.right <= vw + 1;
+    };
+    const $ = (id) => document.getElementById(id);
+    const tags = [$("tag-me"), $("tag-rival")].map((el) => el.getBoundingClientRect());
+    return {
+      sideways: document.documentElement.scrollWidth > vw + 1,
+      hudInside: inside($("duel-hud")),
+      heroesInside: inside($("hero")) && inside($("rival")),
+      tagsInside: inside($("tag-me")) && inside($("tag-rival")),
+      tagsApart: tags[0].right <= tags[1].left,
+      answerInside: inside(document.querySelector("#answers .answer")),
+    };
+  });
+
 const { server, url } = await startServer();
 const browser = await engine.launch();
 console.log(`Engine: ${engineName}`);
@@ -90,6 +114,13 @@ for (const vp of VIEWPORTS) {
   const context = await browser.newContext({
     viewport: { width: vp.width, height: vp.height },
     ...(vp.mobile && engineName === "chromium" ? { isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : {}),
+  });
+  // Duel test hooks: local transport, one life, short scenes.
+  await context.addInitScript(() => {
+    window.AwsCloudQuestDuelTest = {
+      transport: "local", COUNTDOWN: 1, ROUND_INTRO_MS: 300, RESULT_MS: 300, VICTORY_MS: 1500, CURTAIN_MS: 400,
+      LIVES: 1, LIVES_OPTIONS: [1], HEARTBEAT_MS: 400, PEER_SILENT_MS: 60000,
+    };
   });
   const page = await context.newPage();
   const errors = [];
@@ -174,6 +205,56 @@ for (const vp of VIEWPORTS) {
   m = await measure(page, "ov-history");
   check(m.cardInside && !m.cardSideways && m.actionsReachable, `${label}: history card ${JSON.stringify(m)}`);
   await shot("6-history");
+
+  // ── Duel screens ──
+  const host = await context.newPage();
+  const guest = await context.newPage();
+  for (const p of [host, guest]) p.on("pageerror", (e) => errors.push(e.message));
+  await host.goto(url);
+  await host.locator("#btn-duel").click();
+  m = await measure(host, "ov-duel");
+  check(m.cardInside && !m.cardSideways && m.actionsReachable, `${label}: duel setup card ${JSON.stringify(m)}`);
+  await host.fill("#duel-name", "Wilk");
+  await host.locator('#ov-duel .pick-card:has(input[value="male"])').click();
+  await host.locator("#btn-duel-go").click();
+  await host.waitForSelector("#ov-duel-wait:not([hidden])");
+  m = await measure(host, "ov-duel-wait");
+  check(m.cardInside && !m.cardSideways && m.actionsReachable, `${label}: duel waiting room ${JSON.stringify(m)}`);
+  if (shotsDir) await host.screenshot({ path: path.join(shotsDir, `${vp.name}-7-duel-wait.png`) });
+
+  await guest.goto(await host.inputValue("#duel-link"));
+  await guest.waitForSelector("#ov-duel:not([hidden])");
+  await guest.fill("#duel-name", "Josiane");
+  await guest.locator('#ov-duel .pick-card:has(input[value="female"])').click();
+  await guest.locator("#btn-duel-go").click();
+  await host.waitForSelector("#btn-duel-ready:not([hidden])");
+  m = await measure(host, "ov-duel-wait");
+  check(m.cardInside && !m.cardSideways && m.actionsReachable, `${label}: duel room with both posters ${JSON.stringify(m)}`);
+  await guest.waitForSelector("#btn-duel-ready:not([hidden])");
+  await host.locator("#btn-duel-ready").click();
+  await guest.locator("#btn-duel-ready").click();
+  await host.waitForFunction(() => window.AwsCloudQuest.duelApp.snapshot().phase === "round", null, { timeout: 15000 });
+  await host.waitForTimeout(300);
+  const d = await measureDuel(host);
+  check(
+    !d.sideways && d.hudInside && d.heroesInside && d.tagsInside && d.tagsApart && d.answerInside,
+    `${label}: duel stage ${JSON.stringify(d)}`
+  );
+  if (shotsDir) await host.screenshot({ path: path.join(shotsDir, `${vp.name}-8-duel.png`) });
+
+  // One life each: the host's right answer ends the match.
+  const right = await host.evaluate(() => {
+    const NS = window.AwsCloudQuest;
+    const id = NS.duelApp.snapshot().questionId;
+    const q = NS.questions.normalize(window.QUESTIONS, NS.config).questions.find((x) => x.id === id);
+    return [...document.querySelectorAll("#answers .answer-text")].findIndex((el) => el.textContent === q.options[q.answer]);
+  });
+  await host.locator(`#answers .answer[data-index="${right}"]`).click();
+  await host.waitForSelector("#ov-duel-end:not([hidden])", { timeout: 15000 });
+  await host.waitForTimeout(400);
+  m = await measure(host, "ov-duel-end");
+  check(m.cardInside && !m.cardSideways && m.actionsReachable, `${label}: duel end card ${JSON.stringify(m)}`);
+  if (shotsDir) await host.screenshot({ path: path.join(shotsDir, `${vp.name}-9-duel-end.png`) });
 
   check(errors.length === 0, `${label}: page errors ${errors.join(" | ")}`);
   console.log(`${failures === before ? "✔" : "✖"} ${label}`);
