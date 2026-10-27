@@ -140,3 +140,18 @@ test("toMarkdown: works with a stored report (timestamp `t` instead of `date`)",
   const stored = JSON.parse(JSON.stringify({ ...game([entry("first")]), date: undefined, t: new Date(2026, 9, 22, 14, 5).getTime() }));
   assert.match(R.toMarkdown(stored), /\*\*Data:\*\* 22\/10\/2026 14:05/);
 });
+
+test("toMarkdown: each question shows its exam tag (task, topic and domain)", () => {
+  const tagged = { ...guide, topics: { ...guide.topics, IAM: { ...guide.topics.IAM, task: "2.3" } } };
+  const text = R.toMarkdown(game([entry("lost", { topic: "IAM" })]), tagged);
+  assert.match(text, /- \*\*Tema do exame:\*\* 2\.3 IAM · Segurança/);
+});
+
+test("toMarkdown: a duel names its sections and shows rounds instead of a streak", () => {
+  const duel = { opponent: "Josi", won: true, rounds: { me: 2, rival: 1 }, lives: { me: 3, rival: 0 }, score: { me: 1, rival: 0 } };
+  const text = R.toMarkdown({ ...game([entry("first"), entry("skipped"), entry("lost")]), duel });
+  assert.match(text, /## Acertei\n/);
+  assert.match(text, /## O adversário foi mais rápido/);
+  assert.doesNotMatch(text, /## Pulei|Melhor sequência/);
+  assert.match(text, /\| Pontos \| Acertos \| Erros \| Precisão \| Nível \| Rounds \| Tempo \|/);
+});

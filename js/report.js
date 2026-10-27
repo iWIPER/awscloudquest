@@ -89,6 +89,8 @@
       if (!topics.has(name)) {
         topics.set(name, {
           topic: name,
+          // Shown name: the official task number first ("2.3 IAM e identidade").
+          label: name !== OTHER && topicInfo[name].task ? `${topicInfo[name].task} ${name}` : name,
           domain: name === OTHER ? OTHER : topicInfo[name].domain,
           answered: 0,
           correct: 0,
@@ -112,7 +114,9 @@
         const list = scored.filter((t) => t.domain === domain).sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));
         if (list.length === 0) return null;
         const sum = (key) => list.reduce((acc, t) => acc + t[key], 0);
-        return { ...score({ domain, answered: sum("answered"), correct: sum("correct"), skipped: sum("skipped") }), topics: list };
+        const weight = guide && guide.weights ? guide.weights[domain] : undefined;
+        const label = weight ? `${domain} (${weight}% da prova)` : domain;
+        return { ...score({ domain, answered: sum("answered"), correct: sum("correct"), skipped: sum("skipped") }), label, topics: list };
       })
       .filter(Boolean);
 
@@ -152,6 +156,26 @@
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}`;
   }
 
+  /** Exam tag of a question's topic: "2.3 IAM e identidade · Segurança e conformidade" (the bare name without a guide). */
+  function examTag(topic, guide) {
+    const info = guide && guide.topics && guide.topics[topic];
+    if (!info) return topic;
+    return `${info.task ? `${info.task} ` : ""}${topic} · ${info.domain}`;
+  }
+
+  /** Summary figures. A duel has no streak, so it shows the rounds played instead. */
+  function summaryCells(game, { short = false } = {}) {
+    return [
+      ["Pontos", game.score],
+      ["Acertos", game.correct],
+      ["Erros", game.misses],
+      ["Precisão", `${game.accuracy}%`],
+      ["Nível", game.level],
+      game.duel ? ["Rounds", game.log.length] : [short ? "Sequência" : "Melhor sequência", game.maxStreak],
+      ["Tempo", formatDuration(game.seconds)],
+    ];
+  }
+
   const fraction = (a) => (a.pct === null ? `pulou ${a.skipped}` : `${a.correct}/${a.answered}`);
   const percent = (a) => (a.pct === null ? "—" : `${a.pct}%`);
 
@@ -169,20 +193,20 @@
       "|---|---:|---:|---|",
     ];
     for (const d of a.domains) {
-      lines.push(`| **${md(d.domain)}** | **${fraction(d)}** | **${percent(d)}** | **${d.rating.mark} ${d.rating.label}** |`);
-      for (const t of d.topics) lines.push(`| ↳ ${md(t.topic)} | ${fraction(t)} | ${percent(t)} | ${t.rating.mark} ${t.rating.label} |`);
+      lines.push(`| **${md(d.label)}** | **${fraction(d)}** | **${percent(d)}** | **${d.rating.mark} ${d.rating.label}** |`);
+      for (const t of d.topics) lines.push(`| ↳ ${md(t.label)} | ${fraction(t)} | ${percent(t)} | ${t.rating.mark} ${t.rating.label} |`);
     }
     lines.push("");
 
     lines.push("### ✓ Pontos fortes", "");
-    if (a.strengths.length) a.strengths.forEach((t) => lines.push(`- **${md(t.topic)}**: ${t.pct}% (${fraction(t)})`));
+    if (a.strengths.length) a.strengths.forEach((t) => lines.push(`- **${md(t.label)}**: ${t.pct}% (${fraction(t)})`));
     else lines.push("- Nenhuma área com 80% ou mais nesta partida.");
     lines.push("");
 
     lines.push("### ✗ Onde melhorar", "");
     if (a.weaknesses.length === 0) lines.push("- Nenhuma área abaixo de 60% nesta partida. Mandou bem!", "");
     for (const t of a.weaknesses) {
-      lines.push("<details>", `<summary><strong>${md(t.topic)}</strong>: ${percent(t)} (${fraction(t)}) · ${t.rating.label}</summary>`, "");
+      lines.push("<details>", `<summary><strong>${md(t.label)}</strong>: ${percent(t)} (${fraction(t)}) · ${t.rating.label}</summary>`, "");
       if (t.missed.length) {
         lines.push("**O que você errou:**", "");
         t.missed.forEach((e) => lines.push(`- ${md(e.q)} → **Resposta certa:** ${md(e.answer)}`));
@@ -216,9 +240,9 @@
       "",
       "## Resumo",
       "",
-      "| Pontos | Acertos | Erros | Precisão | Nível | Melhor sequência | Tempo |",
+      `| ${summaryCells(game).map(([label]) => label).join(" | ")} |`,
       "|---:|---:|---:|---:|---:|---:|---:|",
-      `| ${game.score} | ${game.correct} | ${game.misses} | ${game.accuracy}% | ${game.level} | ${game.maxStreak} | ${formatDuration(game.seconds)} |`,
+      `| ${summaryCells(game).map(([, value]) => value).join(" | ")} |`,
       "",
       ...areasMarkdown(game, guide),
       "## Perguntas",
@@ -230,10 +254,14 @@
       "",
     ];
 
+    // In a duel, "skipped" means the rival answered first.
+    const titles = game.duel
+      ? ["Errei ou o tempo acabou", "Acertei", "O adversário foi mais rápido"]
+      : ["Errei ou não respondi a tempo", "Acertei de primeira", "Pulei"];
     const sections = [
-      ["Errei ou não respondi a tempo", game.log.filter((e) => e.outcome === "lost" || e.outcome === "late")],
-      ["Acertei de primeira", game.log.filter((e) => e.outcome === "first")],
-      ["Pulei", game.log.filter((e) => e.outcome === "skipped")],
+      [titles[0], game.log.filter((e) => e.outcome === "lost" || e.outcome === "late")],
+      [titles[1], game.log.filter((e) => e.outcome === "first")],
+      [titles[2], game.log.filter((e) => e.outcome === "skipped")],
     ];
 
     for (const [title, entries] of sections) {
@@ -241,7 +269,7 @@
       lines.push(`## ${title}`, "");
       entries.forEach((e, i) => {
         lines.push(`### ${i + 1}. ${outcomes.byKey[e.outcome].mark} ${md(e.q)}`, "");
-        if (e.topic) lines.push(`- **Tema:** ${md(e.topic)}`);
+        if (e.topic) lines.push(`- **Tema do exame:** ${md(examTag(e.topic, guide))}`);
         if (e.wrongPicks.length) lines.push(`- **Você marcou:** ${e.wrongPicks.map(md).join("; ")}`);
         lines.push(`- **Resposta certa:** ${md(e.answer)}`);
         if (e.explanation) lines.push(`- **Por quê:** ${md(e.explanation)}`);
@@ -282,15 +310,15 @@
     const section = h("section", "areas");
     for (const d of analysis.domains) {
       const block = h("div", "area-domain");
-      block.append(row(d.domain, d, "is-domain"));
-      d.topics.forEach((t) => block.append(row(t.topic, t, "is-topic")));
+      block.append(row(d.label, d, "is-domain"));
+      d.topics.forEach((t) => block.append(row(t.label, t, "is-topic")));
       section.append(block);
     }
 
     const strong = h("div", "areas-strong");
     strong.append(h("h3", "", "✓ Pontos fortes"));
     const strongList = h("ul");
-    if (analysis.strengths.length) analysis.strengths.forEach((t) => strongList.append(h("li", "", `${t.topic}: ${t.pct}% (${fraction(t)})`)));
+    if (analysis.strengths.length) analysis.strengths.forEach((t) => strongList.append(h("li", "", `${t.label}: ${t.pct}% (${fraction(t)})`)));
     else strongList.append(h("li", "", "Nenhuma área com 80% ou mais nesta partida."));
     strong.append(strongList);
 
@@ -299,7 +327,7 @@
     if (analysis.weaknesses.length === 0) weak.append(h("p", "", "Nenhuma área abaixo de 60% nesta partida. Mandou bem!"));
     analysis.weaknesses.forEach((t, i) => {
       const item = h("div", "weak-item");
-      const title = `${t.topic} · ${percent(t)} (${fraction(t)}) · ${t.rating.label}`;
+      const title = `${t.label} · ${percent(t)} (${fraction(t)}) · ${t.rating.label}`;
       const body = h("div", "weak-body");
       body.id = `weak-${i}`;
       if (t.missed.length) {
@@ -419,15 +447,7 @@
     paragraph(meta, { size: 10, color: MUTED, gap: 10 });
 
     // Summary tiles
-    const tiles = [
-      ["Pontos", game.score],
-      ["Acertos", game.correct],
-      ["Erros", game.misses],
-      ["Precisão", `${game.accuracy}%`],
-      ["Nível", game.level],
-      ["Sequência", game.maxStreak],
-      ["Tempo", formatDuration(game.seconds)],
-    ];
+    const tiles = summaryCells(game, { short: true });
     const tileW = (CW - 6 * 6) / 7;
     tiles.forEach(([label, value], i) => {
       const x = M + i * (tileW + 6);
@@ -442,7 +462,7 @@
     if (guide && game.log.length) {
       const a = analyzeAreas(game.log, guide);
       heading("Desempenho por área");
-      paragraph("Acerto de primeira por área do exame. Ótimo: 80% ou mais · Bom: 60–79% · Atenção: 40–59% · Precisa estudar: abaixo de 40%.", { size: 8.5, color: MUTED, gap: 6 });
+      paragraph(`Acerto de primeira por área do exame${guide.exam ? ` ${guide.exam.name}` : ""}. Ótimo: 80% ou mais · Bom: 60–79% · Atenção: 40–59% · Precisa estudar: abaixo de 40%.`, { size: 8.5, color: MUTED, gap: 6 });
       const colName = M + 6;
       const colBar = M + CW * 0.42;
       const barW = CW * 0.25;
@@ -450,7 +470,7 @@
       const colRating = M + CW - 90;
       for (const d of a.domains) {
         ensure(22 + d.topics.length * 16);
-        const rows = [{ name: d.domain, area: d, bold: true, indent: 0 }, ...d.topics.map((t) => ({ name: t.topic, area: t, bold: false, indent: 12 }))];
+        const rows = [{ name: d.label, area: d, bold: true, indent: 0 }, ...d.topics.map((t) => ({ name: t.label, area: t, bold: false, indent: 12 }))];
         doc.strokeRect(M, top, CW, rows.length * 16 + 8, LINE);
         top += 4;
         rows.forEach(({ name, area, bold, indent }) => {
@@ -466,7 +486,7 @@
       }
 
       heading("Pontos fortes", 12);
-      if (a.strengths.length) a.strengths.forEach((t) => paragraph(`+ ${t.topic}: ${t.pct}% (${fraction(t)})`, { size: 10, gap: 1 }));
+      if (a.strengths.length) a.strengths.forEach((t) => paragraph(`+ ${t.label}: ${t.pct}% (${fraction(t)})`, { size: 10, gap: 1 }));
       else paragraph("Nenhuma área com 80% ou mais nesta partida.", { size: 10, color: MUTED });
 
       heading("Onde melhorar", 12);
@@ -475,7 +495,7 @@
         ensure(60);
         top += 4;
         doc.rect(M, top, 4, 16, t.rating.color);
-        doc.text(M + 10, top + 12, `${t.topic} · ${percent(t)} (${fraction(t)}) · ${t.rating.label}`, { size: 11, bold: true });
+        doc.text(M + 10, top + 12, `${t.label} · ${percent(t)} (${fraction(t)}) · ${t.rating.label}`, { size: 11, bold: true });
         top += 20;
         if (t.missed.length) {
           label("O QUE VOCÊ ERROU");
@@ -536,7 +556,7 @@
       const o = outcomes.byKey[e.outcome];
       top += 4;
       doc.rect(M, top, 4, 12, o.color);
-      doc.text(M + 10, top + 10, `${i + 1}. ${o.label}${e.topic ? ` · ${e.topic}` : ""}`, { size: 8.5, bold: true, color: MUTED });
+      doc.text(M + 10, top + 10, `${i + 1}. ${o.label}${e.topic ? ` · ${examTag(e.topic, guide)}` : ""}`, { size: 8.5, bold: true, color: MUTED });
       top += 14;
       paragraph(e.q, { x: M + 10, width: CW - 10, size: 9.5, bold: true, gap: 1 });
       if (e.wrongPicks.length) paragraph(`Você marcou: ${e.wrongPicks.join("; ")}`, { x: M + 10, width: CW - 10, size: 9, color: "#a12626", gap: 1 });
