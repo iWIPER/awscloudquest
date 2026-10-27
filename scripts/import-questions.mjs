@@ -4,17 +4,20 @@
  *
  *   node scripts/import-questions.mjs bank.json --prefix sim01 [--dry-run]
  *
- * Accepted input (either form):
- *   - { "perguntas": [ { numero, pergunta, selecione, alternativas: [{ letra, texto }],
+ * Accepted input:
+ *   - { "perguntas": [ { numero, pergunta, alternativas: [{ letra, texto }],
  *                        corretas: ["B"], explicacao, aviso } ] }
+ *   - { "questoes": [ { id, pergunta, alternativas: { "A": "…" },
+ *                       resposta: "A" | ["A", "C"]  (or resposta_correta), revisao } ] }
  *   - [ { id?, topic?, q, options, answer, explanation? } ]   (the game's own format)
  *
  * Rules:
  *   - Answers are copied exactly as given; nothing is inferred or fixed.
- *   - Questions with more than one correct answer ("Selecione DUAS") are skipped:
- *     multi-answer questions are not supported yet (see README roadmap).
- *   - Questions whose id or text already exist in the bank are skipped.
- *   - `aviso` is kept as `note` (not shown in the game) so it can be reviewed later.
+ *   - "Selecione DUAS" questions keep all their answers: answer: ["A", "C"].
+ *   - Questions whose id or text already exist in the bank are skipped
+ *     (same text, ignoring case and spaces); a different question with the same
+ *     answer is kept.
+ *   - `aviso` / `revisao` is kept as `note` (not shown in the game) so it can be reviewed.
  *   - Each new question gets a `topic` from the automatic classifier (js/topics.js),
  *     listed at the end so it can be reviewed.
  *   - Every new item is validated with the game's rules before anything is written.
@@ -45,9 +48,9 @@ if (!input || !prefix) {
 }
 
 const data = JSON.parse(readFileSync(path.resolve(input), "utf8"));
-const source = Array.isArray(data) ? data : data.perguntas;
+const source = Array.isArray(data) ? data : data.perguntas || data.questoes;
 if (!Array.isArray(source)) {
-  console.error('✖ Expected a JSON array or an object with a "perguntas" array.');
+  console.error('✖ Expected a JSON array or an object with a "perguntas" or "questoes" array.');
   process.exit(1);
 }
 
@@ -55,18 +58,37 @@ if (!Array.isArray(source)) {
 function convert(item, position) {
   if (!("pergunta" in item)) return { item }; // already in the game format
 
-  const correct = Array.isArray(item.corretas) ? item.corretas : [];
-  const label = `#${item.numero ?? position + 1}`;
-  if (correct.length !== 1) return { skip: `${label}: ${correct.length} correct answers (multi-answer not supported yet)` };
+  // Practice-exam exports come in a few shapes: options as [{ letra, texto }] or
+  // { "A": "…" }; the key in "corretas", "resposta" or "resposta_correta" (a
+  // letter or a list); the number in "numero" or "id"; a review flag in
+  // "aviso" or "revisao".
+  const answerField = item.corretas ?? item.resposta ?? item.resposta_correta;
+  const correct = (Array.isArray(answerField) ? answerField : answerField ? [answerField] : []).map((l) => String(l).trim().toUpperCase());
+  const number = item.numero ?? item.id ?? position + 1;
+  const label = `#${number}`;
+  if (correct.length === 0) return { skip: `${label}: no correct answer` };
 
-  const options = (item.alternativas || []).map((a) => a.texto);
-  const letters = (item.alternativas || []).map((a) => a.letra);
-  const answerIndex = letters.indexOf(correct[0]);
-  if (answerIndex < 0) return { skip: `${label}: correct letter "${correct[0]}" not found among the options` };
+  const choices = Array.isArray(item.alternativas)
+    ? item.alternativas.map((a) => [String(a.letra).trim().toUpperCase(), a.texto])
+    : Object.entries(item.alternativas || {}).map(([letter, text]) => [letter.trim().toUpperCase(), text]).sort((a, b) => a[0].localeCompare(b[0]));
+  const options = choices.map(([, text]) => text);
+  const letters = choices.map(([letter]) => letter);
+  const indexes = correct.map((letter) => letters.indexOf(letter));
+  const missing = correct.find((letter, i) => indexes[i] < 0);
+  if (missing) return { skip: `${label}: correct letter "${missing}" not found among the options` };
 
-  const out = { id: `${prefix}-${String(item.numero ?? position + 1).padStart(2, "0")}`, topic: "", q: item.pergunta, options, answer: Questions.LETTERS[answerIndex] };
+  // One answer → "B"; "choose two" → ["A", "E"] (letters follow the option order kept here).
+  const answer = indexes.length === 1 ? Questions.LETTERS[indexes[0]] : indexes.map((i) => Questions.LETTERS[i]);
+  const out = { id: `${prefix}-${String(number).padStart(2, "0")}`, topic: "", q: item.pergunta, options, answer };
   if (item.explicacao) out.explanation = item.explicacao;
+  const review = item.revisao;
   if (item.aviso) out.note = item.aviso;
+  else if (typeof review === "string") out.note = review;
+  else if (review) {
+    // { gabarito_sugerido: ["C"], motivo: "…" }: keep both, the answer key itself is not changed.
+    const suggested = [].concat(review.gabarito_sugerido || []).join(" e ");
+    out.note = `Revisar gabarito: o simulado marca ${correct.join(" e ")}${suggested ? `; a documentação da AWS sugere ${suggested}` : ""}. ${review.motivo || ""}`.trim();
+  }
   return { item: out };
 }
 
@@ -84,8 +106,8 @@ source.forEach((raw, position) => {
 
   const label = item.id || `#${position + 1}`;
   if (!item.topic || !guide.topics[item.topic]) {
-    const answer = Questions.parseAnswer(item.answer, Array.isArray(item.options) ? item.options.length : 0);
-    item.topic = (answer >= 0 && Topics.classify({ ...item, answer }, compiledTopics)) || "";
+    const answers = Questions.parseAnswers(item.answer, Array.isArray(item.options) ? item.options.length : 0);
+    item.topic = (answers.length > 0 && Topics.classify({ ...item, answer: answers[0], answers }, compiledTopics)) || "";
     if (!item.topic) delete item.topic; // no keyword matched: leave it for review
     classified.push(`${label} → ${item.topic || "(sem tema: revisar)"}`);
   }

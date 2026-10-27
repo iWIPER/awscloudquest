@@ -28,7 +28,7 @@
     return "q" + hash.toString(16).padStart(8, "0");
   }
 
-  /** Converts `answer` (letter "A"–"F" or 0-based index) to an index, or -1. */
+  /** Converts one answer (letter "A"–"F" or 0-based index) to an index, or -1. */
   function parseAnswer(answer, optionCount) {
     let index = -1;
     if (Number.isInteger(answer)) index = answer;
@@ -36,6 +36,18 @@
       index = LETTERS.indexOf(answer.trim().toUpperCase());
     }
     return index >= 0 && index < optionCount ? index : -1;
+  }
+
+  /**
+   * All correct indexes, sorted. `answer` is one answer ("B") or a list for
+   * "choose two" questions (["A", "E"]). Returns [] if anything is invalid:
+   * an unknown letter, a repeat, or as many answers as options.
+   */
+  function parseAnswers(answer, optionCount) {
+    const list = Array.isArray(answer) ? answer : [answer];
+    const indexes = list.map((a) => parseAnswer(a, optionCount));
+    const valid = list.length > 0 && list.length < optionCount && indexes.every((i) => i >= 0) && new Set(indexes).size === indexes.length;
+    return valid ? indexes.sort((a, b) => a - b) : [];
   }
 
   /** Lists the problems of a single item (empty list = valid item). */
@@ -62,8 +74,8 @@
         if (seen.has(key)) problems.push(`option ${label} repeats another option`);
         seen.add(key);
       });
-      if (n <= config.MAX_OPTIONS && parseAnswer(item.answer, n) < 0) {
-        const range = n > 0 ? `"A"–"${LETTERS[n - 1]}" or 0–${n - 1}` : "no options";
+      if (n <= config.MAX_OPTIONS && parseAnswers(item.answer, n).length === 0) {
+        const range = n > 0 ? `"A"–"${LETTERS[n - 1]}" or 0–${n - 1}, or a list of different ones (fewer than the options)` : "no options";
         problems.push(`invalid "answer" (${JSON.stringify(item.answer)}); use ${range}`);
       }
     }
@@ -81,7 +93,7 @@
    * Validates and normalizes the whole bank. Invalid items are dropped and
    * described in `problems`.
    * @returns {{ questions: Question[], problems: Problem[] }}
-   *   Question = { id, topic, q, options, answer (index), explanation }
+   *   Question = { id, topic, q, options, answer (first correct index), answers (all correct indexes), explanation }
    *   Problem  = { index, preview, message }   (index -1 = problem with the whole bank)
    */
   function normalize(list, config) {
@@ -112,7 +124,8 @@
             topic: isText(item.topic) ? item.topic.trim() : "",
             q: item.q.trim(),
             options: item.options.map((o) => o.trim()),
-            answer: parseAnswer(item.answer, item.options.length),
+            answer: parseAnswers(item.answer, item.options.length)[0],
+            answers: parseAnswers(item.answer, item.options.length),
             explanation: isText(item.explanation) ? item.explanation.trim() : "",
           });
         }
@@ -201,9 +214,15 @@
     return candidates[candidates.length - 1];
   }
 
+  /** Correct indexes of a normalized question (older saved data may only have `answer`). */
+  const correctIndexes = (question) => (Array.isArray(question.answers) ? question.answers : [question.answer]);
+
+  /** The correct answer(s) as text, joined for display: "Amazon EFS + Amazon S3". */
+  const answerText = (question) => correctIndexes(question).map((i) => question.options[i]).join(" + ");
+
   /** Options shuffled for display: [{ text, correct }] in on-screen order. */
   function shuffledOptions(question, rng = Math.random) {
-    const items = question.options.map((text, i) => ({ text, correct: i === question.answer }));
+    const items = question.options.map((text, i) => ({ text, correct: correctIndexes(question).includes(i) }));
     return shuffle(items, rng);
   }
 
@@ -219,6 +238,9 @@
     textKey,
     hashId,
     parseAnswer,
+    parseAnswers,
+    correctIndexes,
+    answerText,
     checkItem,
     normalize,
     formatProblem,

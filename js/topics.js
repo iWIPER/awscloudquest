@@ -53,7 +53,8 @@
    * @returns {{ topic: string, score: number }[]} best first (score > 0 only)
    */
   function rank(question, compiled) {
-    const answerText = typeof question.answer === "number" ? question.options[question.answer] : question.answer;
+    const indexes = Array.isArray(question.answers) ? question.answers : typeof question.answer === "number" ? [question.answer] : [];
+    const answerText = indexes.length ? indexes.map((i) => question.options[i]).join(" ") : question.answer;
     const parts = {
       answer: plain(answerText),
       question: plain(question.q),

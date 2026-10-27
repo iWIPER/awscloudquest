@@ -53,3 +53,14 @@ test("classifier agrees with the hand-picked topics of the bank on most question
   const agree = questions.filter((q) => T.classify(q, compiled) === q.topic).length;
   assert.ok(agree / questions.length >= 0.85, `only ${agree}/${questions.length} agree`);
 });
+
+test("study guide follows the official exam guide: weights, task statements, hints", () => {
+  assert.equal(Object.values(guide.weights).reduce((a, b) => a + b, 0), 100);
+  assert.deepEqual(Object.keys(guide.weights), guide.domains);
+  for (const [name, info] of Object.entries(guide.topics)) {
+    assert.ok(guide.tasks[info.task], `${name}: unknown task "${info.task}"`);
+    assert.equal(info.task[0], String(guide.domains.indexOf(info.domain) + 1), `${name}: task ${info.task} is outside its domain`);
+    assert.ok(info.tips.length >= 1 && info.map.length >= 3, `${name}: needs tips and a mind map for the study hint`);
+    assert.ok(info.map.every((pair) => Array.isArray(pair) && pair.length === 2), `${name}: map items are [service, what it does]`);
+  }
+});

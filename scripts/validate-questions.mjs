@@ -12,7 +12,7 @@ import path from "node:path";
 
 const require = createRequire(import.meta.url);
 const { loadBank, loadGuide, DEFAULT_BANK, ROOT } = require("./load-bank.js");
-const { formatProblem, parseAnswer } = require("../js/questions.js");
+const { formatProblem, parseAnswers } = require("../js/questions.js");
 const Topics = require("../js/topics.js");
 
 const file = process.argv[2] ? path.resolve(process.argv[2]) : DEFAULT_BANK;
@@ -40,8 +40,9 @@ result.raw.forEach((item, index) => {
     problems.push({ index, preview: String(item.q || "").slice(0, 60), message: `unknown "topic" ("${item.topic}"); use one of the topics in data/study-guide.js` });
   } else if (!item.topic) {
     // Raw answers may be letters ("B"); the classifier needs the index.
-    const answer = Array.isArray(item.options) ? parseAnswer(item.answer, item.options.length) : -1;
-    const topic = answer >= 0 ? Topics.classify({ ...item, answer }, compiled) : null;
+    const answers = Array.isArray(item.options) ? parseAnswers(item.answer, item.options.length) : [];
+    const answer = answers.length ? answers[0] : -1;
+    const topic = answer >= 0 ? Topics.classify({ ...item, answer, answers }, compiled) : null;
     autoClassified.push(`${item.id || `#${index + 1}`} → ${topic || "Outros"}`);
   }
 });

@@ -7,7 +7,7 @@ All questions live in [`data/questions.js`](../data/questions.js). It is a plain
 ```js
 {
   id: "vpc-nacl-stateless",        // optional
-  topic: "Segurança de rede",      // optional
+  topic: "Redes e VPC",      // optional
   q: "As network ACLs de uma VPC são stateful ou stateless?",
   options: ["Stateful", "Stateless"],
   answer: "B",
@@ -20,9 +20,9 @@ All questions live in [`data/questions.js`](../data/questions.js). It is a plain
 |---|---|---|
 | `q` | yes | Question text. Long scenario questions are fine: the panel scrolls, and the monster's travel time grows with the text length. |
 | `options` | yes | 2 to 6 options. The order does not matter: options are shuffled every time the question is shown. |
-| `answer` | yes | The correct option, as a letter (`"A"`–`"F"`, any case) or a 0-based index (`0` = first option). |
+| `answer` | yes | The correct option, as a letter (`"A"`–`"F"`, any case) or a 0-based index (`0` = first option). For "Selecione DUAS" questions, a list: `["A", "E"]` (fewer answers than options, no repeats). The player must mark all of them, and gets `MULTI_ANSWER_BONUS` (15 s) extra per additional answer. |
 | `explanation` | no | Why the answer is right. Shown when a life is lost and on Game Over. Strongly recommended. |
-| `topic` | no | One of the 18 topics in [`data/study-guide.js`](../data/study-guide.js). Leave it out and the classifier picks one (see below). |
+| `topic` | no | One of the 20 topics in [`data/study-guide.js`](../data/study-guide.js). Leave it out and the classifier picks one (see below). |
 | `id` | no | Stable identifier. If missing, one is derived from the question text. Per-question review stats are keyed by id, so set one if you expect to edit the text later. |
 | `note` | no | Maintainer note (for example, "answer key under review"). The game ignores it. |
 
@@ -30,18 +30,18 @@ The game **never** changes, infers or generates answers. What is in this file is
 
 ## Topics
 
-**Desempenho por área** groups results by the CLF-C02 domains and topics in [`data/study-guide.js`](../data/study-guide.js):
+**Desempenho por área** groups results the way the official score report does: by the four CLF-C02 domains of the [exam guide](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html), with their weights. Each topic belongs to one task statement of the guide, and its number shows on the question tag ("2.3 IAM e identidade").
 
-| Domain | Topics |
+| Domain (weight) | Topics (task statement) |
 |---|---|
-| Conceitos de nuvem | Benefícios da nuvem, Well-Architected, Migração e CAF |
-| Segurança e conformidade | Responsabilidade compartilhada, IAM e identidade, Proteção de dados, Detecção de ameaças e vulnerabilidades, Governança e auditoria, Segurança de rede |
-| Tecnologia e serviços de nuvem | Computação, Armazenamento, Banco de dados, Infraestrutura global, Análise de dados, IA e machine learning |
-| Faturamento, preços e suporte | Preços e compras, Gestão de custos, Suporte e parceiros |
+| Conceitos de nuvem (24%) | 1.1 Benefícios da nuvem, 1.2 Well-Architected, 1.3 Migração e CAF |
+| Segurança e conformidade (30%) | 2.1 Responsabilidade compartilhada, 2.2 Proteção de dados, 2.2 Governança e auditoria, 2.3 IAM e identidade, 2.4 Detecção de ameaças e vulnerabilidades |
+| Tecnologia e serviços de nuvem (34%) | 3.1 Implantação e operação, 3.2 Infraestrutura global, 3.3 Computação, 3.4 Banco de dados, 3.5 Redes e VPC, 3.6 Armazenamento, 3.7 Análise de dados, 3.7 IA e machine learning, 3.8 Integração e outros serviços |
+| Faturamento, preços e suporte (12%) | 4.1 Preços e compras, 4.2 Gestão de custos, 4.3 Suporte e parceiros |
 
 You do not have to set `topic`. When it is missing, `js/topics.js` matches the question against each topic's keywords (answer × 3, question × 2, explanation × 1) and picks the best score. The importer does the same and writes the topic into the file. `npm run validate` lists the questions it classified automatically, so you can review them, and rejects a `topic` that is not in the guide.
 
-To add a topic or improve matching, edit `data/study-guide.js`: each topic has a `domain`, `keywords`, `study` notes and `links`.
+To add a topic or improve matching, edit `data/study-guide.js`: each topic has a `domain`, a `task` statement, `keywords`, `study` notes, `links`, and the easy mode's study hint (`tips` and a `map` of services).
 
 ## Adding a question on github.com
 
@@ -54,7 +54,7 @@ To add a topic or improve matching, edit `data/study-guide.js`: each topic has a
 
 ```bash
 node scripts/validate-questions.mjs
-# ✔ 60 valid questions in data/questions.js (59 with 4 options, 1 with 5 options)
+# ✔ 201 valid questions in data/questions.js (166 with 4 options, 35 with 5 options)
 ```
 
 It runs the same `normalize()` the game uses and exits with code 1 if anything is wrong:
@@ -77,12 +77,15 @@ node scripts/import-questions.mjs my-bank.json --prefix sim02             # writ
 npm run validate
 ```
 
-Two input formats are accepted:
+Accepted input formats:
 
 - **The game's own format:** a JSON array of `{ id?, topic?, q, options, answer, explanation? }`.
-- **Practice-exam export:** `{ "perguntas": [ { "numero", "pergunta", "alternativas": [{ "letra", "texto" }], "corretas": ["B"], "explicacao", "aviso" } ] }`. Ids become `<prefix>-<numero>`, and `aviso` is kept as `note`.
+- **Practice-exam export, list of options:** `{ "perguntas": [ { "numero", "pergunta", "alternativas": [{ "letra", "texto" }], "corretas": ["B"], "explicacao", "aviso" } ] }`.
+- **Practice-exam export, options by letter:** `{ "questoes": [ { "id", "pergunta", "alternativas": { "A": "…", "B": "…" }, "resposta": "A" | ["A", "C"] } ] }`, also with `resposta_correta` and a `revisao` review flag (`{ "gabarito_sugerido", "motivo" }`).
 
-The importer copies answer keys exactly as given and assigns a topic to each question. It skips questions with more than one correct answer (not supported yet, see the roadmap), questions whose id or text is already in the bank, and anything that fails validation. Imported items that carry a note are listed at the end so you can review their answer keys.
+Ids become `<prefix>-<numero or id>`. Questions with several correct answers keep all of them. `aviso` and `revisao` become the `note`; the answer key itself is never changed.
+
+The importer assigns a topic to each question and skips repeats: a question whose text is already in the bank (ignoring case and spaces) is left out, while a different question with the same answer is kept. It also skips anything that fails validation. Imported items that carry a note are listed at the end so you can review their answer keys.
 
 ## Common mistakes
 
@@ -102,4 +105,4 @@ The importer copies answer keys exactly as given and assigns a topic to each que
 - Base each answer on current AWS documentation and put the reasoning in `explanation`.
 - Make the wrong options plausible. Options that are obviously wrong teach nothing.
 - Prefer `answer: "B"` over indexes, because it matches what the editor sees.
-- Keep one idea per question. Multi-answer questions ("choose two") are not supported yet.
+- Keep one idea per question. For "choose two" questions, say it in the text ("Selecione DUAS.") and list both answers.

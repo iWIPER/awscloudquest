@@ -171,3 +171,30 @@ test("recordResult: counts misses and hits without mutating the input", () => {
   assert.deepEqual(before, { a: { w: 1, r: 0 } });
   assert.deepEqual(after, { a: { w: 1, r: 1 }, b: { w: 1, r: 0 } });
 });
+
+test('multi-answer: answer ["A", "E"] marks both options correct (a "choose two" question)', () => {
+  const item = { q: "Which two store files?", options: ["EFS", "EC2", "Lambda", "IAM", "S3"], answer: ["E", "a"] };
+  const { questions, problems } = Q.normalize([item], CONFIG);
+  assert.equal(problems.length, 0);
+  assert.deepEqual(questions[0].answers, [0, 4]);
+  assert.equal(questions[0].answer, 0);
+  assert.equal(Q.answerText(questions[0]), "EFS + S3");
+  const shown = Q.shuffledOptions(questions[0], seededRng(7));
+  assert.deepEqual(shown.filter((o) => o.correct).map((o) => o.text).sort(), ["EFS", "S3"]);
+});
+
+test("multi-answer: repeats, unknown letters and as many answers as options are rejected", () => {
+  assert.deepEqual(Q.parseAnswers(["A", "A"], 4), []);
+  assert.deepEqual(Q.parseAnswers(["A", "Z"], 4), []);
+  assert.deepEqual(Q.parseAnswers(["A", "B"], 2), []);
+  assert.deepEqual(Q.parseAnswers([], 4), []);
+  assert.deepEqual(Q.parseAnswers("B", 4), [1]);
+  const { problems } = Q.normalize([{ q: "Bad?", options: ["a", "b", "c"], answer: ["A", "A"] }], CONFIG);
+  assert.match(problems[0].message, /invalid "answer"/);
+});
+
+test("answerText and correctIndexes also work with older data that only has `answer`", () => {
+  const old = { options: ["x", "y"], answer: 1 };
+  assert.deepEqual(Q.correctIndexes(old), [1]);
+  assert.equal(Q.answerText(old), "y");
+});
