@@ -111,6 +111,12 @@
     },
   });
 
+  /** Both arms raised, no weapon: the duel winner celebrating. */
+  const cheerArms = (sleeve) =>
+    `<path d="M15 35Q8 27 9 15" stroke="${sleeve}" stroke-width="6" fill="none" stroke-linecap="round"/>
+     <path d="M33 35Q40 27 39 15" stroke="${sleeve}" stroke-width="6" fill="none" stroke-linecap="round"/>
+     <circle cx="9" cy="13" r="3.2" fill="${SKIN}"/><circle cx="39" cy="13" r="3.2" fill="${SKIN}"/>`;
+
   const COILS = `
     <svg class="h-coils" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}" aria-hidden="true">
       <ellipse cx="25" cy="32" rx="21" ry="6" fill="none" stroke="#4e9a33" stroke-width="6"/>
@@ -139,22 +145,26 @@
   const DEFAULT_VARIANT = "male";
   const DEFAULT_WEAPON = "blaster";
 
-  /** Standalone SVG markup for a character holding a weapon (also used by the character picker). */
-  function artFor(variant, weapon = DEFAULT_WEAPON) {
+  /**
+   * Standalone SVG markup for a character holding a weapon (also used by the
+   * character picker). With `cheer`, the weapon is put away and both arms go up.
+   */
+  function artFor(variant, weapon = DEFAULT_WEAPON, cheer = false) {
     const v = BODIES[variant] ? variant : DEFAULT_VARIANT;
     const w = WEAPONS[weapon] || WEAPONS[DEFAULT_WEAPON];
-    return `<svg class="h-svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}" aria-hidden="true">${BODIES[v]}${w.art(SLEEVES[v])}</svg>`;
+    const arms = cheer ? cheerArms(SLEEVES[v]) : w.art(SLEEVES[v]);
+    return `<svg class="h-svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}" aria-hidden="true">${BODIES[v]}${arms}</svg>`;
   }
 
   const FATES = ["eaten", "burned", "squeezed", "bonked", "webbed"];
 
   /** Creates the hero view inside `el`. */
   function create(el, variant = DEFAULT_VARIANT) {
-    let current = { variant: BODIES[variant] ? variant : DEFAULT_VARIANT, weapon: DEFAULT_WEAPON };
+    let current = { variant: BODIES[variant] ? variant : DEFAULT_VARIANT, weapon: DEFAULT_WEAPON, cheer: false };
 
     function draw() {
       // Keep fate/blink classes: only the artwork is replaced.
-      el.innerHTML = artFor(current.variant, current.weapon) + COILS + WEB + STARS;
+      el.innerHTML = artFor(current.variant, current.weapon, current.cheer) + COILS + WEB + STARS;
       el.dataset.variant = current.variant;
       el.dataset.weapon = current.weapon;
     }
@@ -180,6 +190,12 @@
         restart("is-equipping");
       },
       weapon: () => current.weapon,
+      /** Puts the weapon away and raises both arms (true), or back to normal (false). */
+      celebrate(on) {
+        if (current.cheer === on) return;
+        current = { ...current, cheer: on };
+        draw();
+      },
       /** Puts the hero in an attack end state (kept on Game Over). */
       setFate(fate) {
         el.classList.add(`fate-${fate}`);

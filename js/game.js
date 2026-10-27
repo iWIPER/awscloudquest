@@ -984,6 +984,8 @@
       ui.setBox(false);
       monsterEl.hidden = true;
       hero.reset();
+      hero.setVariant(store.getHero() || NS.hero.DEFAULT_VARIANT); // a duel may have drawn another look
+      hero.setWeapon(NS.hero.DEFAULT_WEAPON);
       sound.stopMusic();
       showStartScreen(bootWarnings);
     }

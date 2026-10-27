@@ -67,6 +67,11 @@
     <!-- 1. HUD -->
     <header class="hud">
       <span class="hud-title">AWS <b>Cloud Quest</b></span>
+      <div class="duel-hud" id="duel-hud" hidden>
+        <span class="duel-side"><b id="duel-hud-me"></b> <span class="duel-hearts" id="duel-lives-me"></span></span>
+        <span class="duel-round" id="duel-round"></span>
+        <span class="duel-side duel-side-rival"><span class="duel-hearts" id="duel-lives-rival"></span> <b id="duel-hud-rival"></b></span>
+      </div>
       <span class="hud-item hud-lives" id="hud-lives" role="img" title="Vidas"></span>
       <span class="hud-item" title="Pontos">
         <span class="hud-icon icon-gold" data-icon="star" data-fill="currentColor"></span><span id="hud-score">0</span>
@@ -122,6 +127,11 @@
         <div class="critters" id="critters"></div>
         <div class="ground"></div>
         <div class="hero" id="hero"></div>
+        <div class="hero rival" id="rival" hidden></div>
+        <span class="duel-tag" id="tag-me" hidden></span>
+        <span class="duel-tag duel-tag-rival" id="tag-rival" hidden></span>
+        <div class="podium" id="podium" hidden><span>1º</span></div>
+        <div class="flagpole" id="flagpole" hidden></div>
         <div class="monster" id="monster" hidden></div>
         <div class="visitors" id="visitors"></div>
       </section>
@@ -209,6 +219,106 @@
       <div class="card-actions">
         <button class="btn btn-go" id="btn-play" type="button" data-autofocus><span data-icon="play" data-fill="currentColor"></span> Jogar</button>
         <button class="btn btn-alt" id="btn-history-start" type="button"><span data-icon="chart-column"></span> Histórico</button>
+      </div>
+      <button class="btn btn-duel" id="btn-duel" type="button"><span data-icon="crosshair"></span> Duelo 1×1 com um amigo</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="ov-duel" hidden>
+    <div class="card card-duel" role="dialog" aria-modal="true" aria-labelledby="duel-title">
+      <h2 class="card-title" id="duel-title">Duelo 1×1</h2>
+      <p class="card-lead" id="duel-lead">Crie uma sala e mande o link para um amigo. Quem acertar primeiro atira!</p>
+
+      <label class="box duel-name">
+        <span class="box-title"><span data-icon="user" data-size="18"></span> Seu nome</span>
+        <input class="text-input" id="duel-name" type="text" maxlength="10" autocomplete="nickname" enterkeyhint="done" placeholder="Como quer ser chamado?">
+      </label>
+
+      <fieldset class="box pick">
+        <legend class="box-title">Seu boneco</legend>
+        <div class="pick-grid">
+          <label class="pick-card">
+            <input type="radio" name="duel-hero" value="male">
+            <span class="pick-art" data-hero-art="male"></span>
+            <span class="pick-name">Homem</span>
+          </label>
+          <label class="pick-card">
+            <input type="radio" name="duel-hero" value="female">
+            <span class="pick-art" data-hero-art="female"></span>
+            <span class="pick-name">Mulher</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="box modes" id="duel-lives-box">
+        <legend class="box-title"><span data-icon="heart" data-size="18"></span> Vidas de cada um</legend>
+        <div class="mode-grid">
+          <label class="mode-card">
+            <input type="radio" name="duel-lives" value="10">
+            <span class="mode-name">10 vidas</span>
+            <span class="mode-summary">duelo rápido</span>
+          </label>
+          <label class="mode-card">
+            <input type="radio" name="duel-lives" value="20">
+            <span class="mode-name">20 vidas</span>
+            <span class="mode-summary">duelo longo</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <section class="box howto" id="duel-howto">
+        <button class="box-title box-toggle" id="duel-howto-toggle" type="button" aria-expanded="false" aria-controls="duel-rules">
+          <span data-icon="list-checks" data-size="18"></span> Como funciona o duelo
+          <span class="box-hint">toque para ver</span>
+          <span class="box-chevron" data-icon="chevron-down" data-size="20"></span>
+        </button>
+        <ul class="rules" id="duel-rules" hidden></ul>
+      </section>
+      <p class="warn" id="duel-error" hidden></p>
+
+      <div class="card-actions">
+        <button class="btn btn-go" id="btn-duel-go" type="button" disabled><span data-icon="crosshair"></span> <span class="btn-label" id="duel-go-label">Criar sala</span></button>
+        <button class="btn btn-alt" id="btn-duel-back" type="button">Voltar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ov-duel-wait" hidden>
+    <div class="card card-duel" role="dialog" aria-modal="true" aria-labelledby="duel-wait-title">
+      <h2 class="card-title" id="duel-wait-title">Sala do duelo</h2>
+      <div class="posters" id="duel-posters"></div>
+      <div class="duel-share" id="duel-share">
+        <p class="card-meta">Mande este link para o seu amigo:</p>
+        <input class="text-input duel-link" id="duel-link" type="text" readonly aria-label="Link da sala">
+        <div class="card-actions">
+          <button class="btn btn-alt" id="btn-duel-copy" type="button"><span data-icon="file-text" data-size="18"></span> <span class="btn-label">Copiar link</span></button>
+          <button class="btn btn-alt" id="btn-duel-share" type="button"><span data-icon="share-2" data-size="18"></span> <span class="btn-label">Compartilhar</span></button>
+        </div>
+      </div>
+      <p class="duel-status" id="duel-wait-status" role="status"></p>
+      <p class="duel-count" id="duel-count" hidden></p>
+      <div class="card-actions">
+        <button class="btn btn-go" id="btn-duel-ready" type="button" hidden><span data-icon="circle-check"></span> <span class="btn-label">Pronto!</span></button>
+        <button class="btn btn-alt" id="btn-duel-cancel" type="button">Sair da sala</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ov-duel-end" hidden>
+    <div class="card card-duel" role="dialog" aria-modal="true" aria-labelledby="duel-end-title">
+      <h2 class="card-title" id="duel-end-title"></h2>
+      <p class="duel-end-sub" id="duel-end-sub"></p>
+      <div class="versus" id="duel-end-score"></div>
+      <p class="card-meta" id="duel-end-details"></p>
+      <p class="duel-status" id="duel-end-status" role="status"></p>
+      <div class="card-actions">
+        <button class="btn btn-go" id="btn-duel-rematch" type="button"><span data-icon="rotate-ccw"></span> <span class="btn-label">Revanche</span></button>
+        <button class="btn btn-areas" id="btn-duel-areas" type="button"><span data-icon="target" data-size="20"></span> Desempenho</button>
+      </div>
+      <div class="card-actions card-actions-small">
+        <button class="btn btn-small" id="btn-duel-pdf" type="button"><span data-icon="file-text" data-size="18"></span> <span>PDF</span></button>
+        <button class="btn btn-small" id="btn-duel-md" type="button"><span data-icon="download" data-size="18"></span> <span>.md</span></button>
+        <button class="btn btn-small" id="btn-duel-leave" type="button"><span data-icon="house" data-size="18"></span> <span>Início</span></button>
       </div>
     </div>
   </div>
@@ -388,6 +498,11 @@
 
 
   <!-- Dark "GAME OVER" screen shown before the summary card (tap to skip) -->
+  <div class="curtain duel-curtain" id="duel-curtain" hidden>
+    <p class="curtain-title" id="duel-curtain-title" role="alert"></p>
+    <p class="curtain-hint">toque para continuar</p>
+  </div>
+
   <div class="curtain" id="curtain" hidden>
     <p class="curtain-title" id="curtain-title" role="alert">GAME OVER</p>
     <p class="curtain-hint">toque para continuar</p>
@@ -427,10 +542,13 @@
   <script src="js/effects.js"></script>
   <script src="js/ambient.js"></script>
   <script src="js/visitor.js"></script>
+  <script src="js/net.js"></script>
+  <script src="js/duel-rules.js"></script>
   <script src="js/pdf.js"></script>
   <script src="js/report.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/duel.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

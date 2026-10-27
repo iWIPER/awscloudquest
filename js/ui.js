@@ -51,7 +51,7 @@
   function create(baseConfig) {
     let config = baseConfig;
     const modeConfig = (mode) => root.AwsCloudQuest.rules.configFor(baseConfig, mode);
-    const modeLabel = (mode) => (baseConfig.MODES[mode] ? baseConfig.MODES[mode].label : "");
+    const modeLabel = (mode) => (mode === "duel" ? "Duelo" : baseConfig.MODES[mode] ? baseConfig.MODES[mode].label : "");
     const el = {
       app: $("app"),
       world: $("world"),
@@ -78,6 +78,9 @@
         start: $("ov-start"),
         setup: $("ov-setup"),
         leave: $("ov-leave"),
+        duel: $("ov-duel"),
+        duelWait: $("ov-duel-wait"),
+        duelEnd: $("ov-duel-end"),
         life: $("ov-life"),
         over: $("ov-over"),
         history: $("ov-history"),
@@ -89,6 +92,7 @@
     let answerButtons = [];
     const SOUND_HINT_MS = 6500;
     let soundHintTimer = 0;
+    let leaveReturnTo = "over"; // card to go back to from "Voltar ao início?"
     let openOverlay = null;     // key of the overlay currently shown
     let historyReturnTo = null; // overlay to go back to when history closes
     let areasReturnTo = null;   // overlay to go back to when the areas screen closes
@@ -594,9 +598,14 @@
       showSetup,
       updateSetup,
       backToStart: () => show("start"),
+      /** Shows any registered overlay by key (the duel screens use this). */
+      showOverlay: (key) => show(key),
       /** "Início" on Game Over: reminds the player to download the report first. */
-      askLeave: () => show("leave"),
-      cancelLeave: () => show("over"),
+      askLeave(returnTo = "over") {
+        leaveReturnTo = returnTo;
+        show("leave");
+      },
+      cancelLeave: () => show(leaveReturnTo),
       markRight,
       markAnswer,
       setDanger,

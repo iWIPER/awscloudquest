@@ -45,6 +45,29 @@
       bass: [65.41, 65.41, 77.78, 98, 87.31, 65.41], plucks: [523.25, 622.25, 783.99, 622.25],
       bassWave: "triangle", pluckWave: "sine", bpm: [84, 156], drone: [65.41, 98], tense: true,
     },
+    // Duel in the Wild West (original tune): a fast showdown in E minor, a
+    // trumpet-like lead, a galloping guitar on every beat and a kick/snare
+    // drive. No pad and no heartbeat: low sustained tones hummed on phones.
+    // 0 = rest; one step per beat; one chord per bar of 4 beats.
+    west: {
+      bass: [
+        164.81, 123.47, 164.81, 123.47, 130.81, 196, 130.81, 196, 146.83, 220, 146.83, 220, 123.47, 185, 123.47, 185,
+        164.81, 123.47, 164.81, 123.47, 130.81, 196, 130.81, 196, 146.83, 220, 146.83, 220, 164.81, 123.47, 164.81, 123.47,
+      ],
+      plucks: [],
+      lead: [
+        659.25, 0, 659.25, 783.99, 880, 0, 987.77, 0, 1174.66, 987.77, 880, 783.99, 739.99, 0, 0, 0,
+        659.25, 0, 659.25, 783.99, 880, 0, 987.77, 0, 1318.5, 1174.66, 987.77, 880, 987.77, 0, 0, 0,
+      ],
+      leadWave: "triangle",
+      strum: [
+        [164.81, 196, 246.94], [130.81, 164.81, 196], [146.83, 185, 220], [123.47, 155.56, 185],
+        [164.81, 196, 246.94], [130.81, 164.81, 196], [146.83, 185, 220], [164.81, 196, 246.94],
+      ],
+      strumEvery: 1, // gallop: a strum on every beat
+      drums: true,
+      bassWave: "sine", pluckWave: "sine", bpm: [152, 152], drone: [], tense: false,
+    },
     // Visitor with the sign: bright C-major bounce, no pad, no heartbeat.
     happy: {
       bass: [130.81, 174.61, 196, 130.81], plucks: [523.25, 659.25, 783.99, 880, 783.99, 659.25],
@@ -321,6 +344,42 @@
       cricket() {
         for (let i = 0; i < 3; i++) tone({ type: "sine", from: 4200, dur: 0.04, vol: 0.025, at: ctx.currentTime + i * 0.06 });
       },
+      // ── Duel ──
+      tick: () => tone({ type: "square", from: 1800, dur: 0.03, vol: 0.05 }),
+      draw() {
+        // "SAQUE!": a ricochet whistle over a low hit.
+        tone({ type: "sine", from: 2400, to: 900, dur: 0.45, vol: 0.06 });
+        burst({ dur: 0.3, vol: 0.18, freq: 200, type: "lowpass" });
+      },
+      bang() {
+        // Gunshot with a canyon echo.
+        burst({ dur: 0.16, vol: 0.32, freq: 1400, q: 0.5 });
+        burst({ dur: 0.35, vol: 0.2, freq: 220, type: "lowpass" });
+        [0.28, 0.56].forEach((d, i) => burst({ dur: 0.3, vol: 0.09 / (i + 1), freq: 700, q: 0.6, at: ctx.currentTime + d }));
+      },
+      ouch() {
+        // A short "ai!": a voice-like drop through a vowel-ish band.
+        tone({ type: "sawtooth", from: 620, to: 330, dur: 0.22, vol: 0.06 });
+        tone({ type: "sine", from: 900, to: 500, dur: 0.2, vol: 0.05 });
+      },
+      laugh() {
+        // "Ha ha ha": three bouncing syllables.
+        [0, 0.17, 0.34].forEach((d, i) => tone({ type: "triangle", from: 440 - i * 30, to: 380 - i * 30, dur: 0.12, vol: 0.08, at: ctx.currentTime + d }));
+      },
+      drum() {
+        // "Tum… tum!" for the round presentation: two low drum hits and a cymbal.
+        [0, 0.32].forEach((d, i) => {
+          tone({ type: "sine", from: 150 - i * 20, to: 60, dur: 0.35, vol: 0.28, at: ctx.currentTime + d });
+          burst({ dur: 0.18, vol: 0.16, freq: 180, type: "lowpass", at: ctx.currentTime + d });
+        });
+        burst({ dur: 0.7, vol: 0.06, freq: 6500, type: "highpass", at: ctx.currentTime + 0.32 });
+      },
+      joined: () => melody([523.25, 659.25, 783.99], { type: "triangle", step: 0.1, dur: 0.18, vol: 0.08 }),
+      fanfare() {
+        melody([523.25, 523.25, 523.25, 659.25, 783.99, 659.25, 783.99, 1046.5], { type: "triangle", step: 0.14, dur: 0.2, vol: 0.1 });
+        tone({ type: "sine", from: 130.81, dur: 1.4, vol: 0.12, at: ctx.currentTime + 1 });
+      },
+      defeat: () => melody([392, 369.99, 349.23, 329.63], { type: "triangle", step: 0.36, dur: 0.42, vol: 0.09 }),
       thunder() {
         burst({ dur: 2.2, vol: 0.35, freq: 120, type: "lowpass", at: ctx.currentTime + 0.15 });
         burst({ dur: 0.4, vol: 0.2, freq: 900, type: "lowpass" });
@@ -407,8 +466,24 @@
       const i = theme.tense ? music.intensity : 0;
       const beat = music.beat++;
       tone({ type: theme.bassWave, from: theme.bass[beat % theme.bass.length], dur: 0.32, vol: (theme.bassWave === "triangle" || theme.bassWave === "sine" ? 0.2 : 0.07) + 0.08 * i, at });
-      if (beat % 2 === 1) {
+      if (beat % 2 === 1 && theme.plucks.length) {
         tone({ type: theme.pluckWave, from: theme.plucks[(beat >> 1) % theme.plucks.length], dur: 0.25, vol: (theme.pluckWave === "sine" ? 0.035 : 0.02) + 0.03 * i, at });
+      }
+      if (theme.lead) {
+        // Lead line: a whistle (sine sliding into the note) or a short brassy triangle.
+        const note = theme.lead[beat % theme.lead.length];
+        const brass = theme.leadWave === "triangle";
+        if (note) tone({ type: brass ? "triangle" : "sine", from: note * (brass ? 1 : 0.97), to: note, dur: brass ? 0.3 : 0.42, vol: brass ? 0.065 : 0.075, at });
+      }
+      if (theme.drums) {
+        // Kick on the beat, snare on the off-beat.
+        if (beat % 2 === 0) tone({ type: "sine", from: 130, to: 55, dur: 0.16, vol: 0.18, at });
+        else burst({ dur: 0.09, vol: 0.06, freq: 2600, type: "highpass", at });
+      }
+      if (theme.strum && beat % (theme.strumEvery || 2) === 0) {
+        // Guitar strum: the chord's notes a few milliseconds apart.
+        const chord = theme.strum[Math.floor(beat / 4) % theme.strum.length];
+        chord.forEach((f, k) => tone({ type: "triangle", from: f, dur: 0.22, vol: 0.035, at: at + k * 0.018 }));
       }
       if (theme.tense && i > HEARTBEAT_FROM) heartbeat(at);
     }

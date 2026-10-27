@@ -63,6 +63,11 @@
       '<ellipse cx="36.5" cy="7.5" rx="3.2" ry="2.3" fill="#d9a85f"/><circle cx="37" cy="6.8" r=".7" fill="#1f1a24"/>' +
       '<path d="M7 19q-3 1-3 4" stroke="#b98a4e" stroke-width="1.3" fill="none"/>' +
       "</svg>",
+    tumbleweed:
+      '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+      '<circle cx="12" cy="12" r="10" fill="none" stroke="#a8743c" stroke-width="2"/>' +
+      '<path d="M4 9Q12 3 20 10M3 14Q11 21 21 13M8 4Q14 12 9 21M15 3Q10 12 17 20M5 18Q12 10 19 6" stroke="#c08a4a" stroke-width="1.4" fill="none"/>' +
+      "</svg>",
     car:
       '<svg viewBox="0 0 44 22" aria-hidden="true">' +
       '<path d="M3 15V11Q3 9 6 9H12L17 3H30L36 9H40Q42 9 42 12V15Z" fill="#e8272d"/>' +
@@ -81,6 +86,9 @@
     { id: "city", label: "Cidade", icon: "🏙️", critters: ["car"] },
   ]);
 
+  /** Duel street in the Wild West: never in the solo rotation, set by duel.js. */
+  const DUEL_SCENE = Object.freeze({ id: "west", label: "Velho Oeste", icon: "🤠", critters: ["tumbleweed"] });
+
   /** Background pieces of each scenery, drawn with CSS (see .scenery in style.css). */
   function sceneryMarkup(id) {
     const repeat = (n, fn) => Array.from({ length: n }, (_, i) => fn(i)).join("");
@@ -91,6 +99,20 @@
       return (
         '<span class="dune dune-1"></span><span class="dune dune-2"></span>' +
         repeat(4, (i) => `<span class="cactus" style="--x:${18 + i * 22}%;--s:${0.8 + ((i * 3) % 4) / 10}"></span>`)
+      );
+    }
+    if (id === "west") {
+      // A row of false-front buildings, the saloon in the middle. "is-extra" ones hide on narrow screens.
+      const shop = (sign, h, color, extra = "") =>
+        `<span class="shop ${extra}" style="--h:${h}%;--c:${color}"><span class="shop-sign">${sign}</span><span class="shop-door"></span></span>`;
+      return (
+        '<span class="mesa mesa-1"></span><span class="mesa mesa-2"></span><span class="town">' +
+        shop("XERIFE", 62, "#9b6a3c", "is-extra") +
+        shop("BANCO", 74, "#7c8794") +
+        '<span class="shop is-saloon" style="--h:100%;--c:#8a5a2e"><span class="shop-sign">SALOON</span><span class="saloon-doors"></span></span>' +
+        shop("HOTEL", 82, "#a0523a") +
+        shop("LOJA", 58, "#6f7f4a", "is-extra") +
+        "</span>"
       );
     }
     if (id === "city") {
@@ -129,7 +151,7 @@
 
     /** Switches the scenery (background pieces, colors, passers-by and music theme). */
     function setScene(id) {
-      const scene = SCENES.find((s) => s.id === id) || SCENES[0];
+      const scene = [...SCENES, DUEL_SCENE].find((s) => s.id === id) || SCENES[0];
       state.scene = scene;
       world.dataset.scene = scene.id;
       if (scenery) scenery.innerHTML = sceneryMarkup(scene.id);
@@ -212,19 +234,24 @@
       applyNight();
 
       if (state.rain) {
-        state.rainLeft -= dt;
         state.nextThunder -= dt;
         if (state.nextThunder <= 0) {
           state.nextThunder = between(config.AMBIENT_THUNDER_EVERY);
           flash();
           sound.play("thunder");
         }
-        if (state.rainLeft <= 0) {
-          setRain(false);
-          state.nextRain = between(config.AMBIENT_RAIN_EVERY);
+      }
+      // A follower (the duel guest) gets its weather from set(); it never rolls its own.
+      if (!state.following) {
+        if (state.rain) {
+          state.rainLeft -= dt;
+          if (state.rainLeft <= 0) {
+            setRain(false);
+            state.nextRain = between(config.AMBIENT_RAIN_EVERY);
+          }
+        } else if ((state.nextRain -= dt) <= 0) {
+          setRain(true);
         }
-      } else if ((state.nextRain -= dt) <= 0) {
-        setRain(true);
       }
 
       // Birds fly in daylight without rain; crickets sing at night.
@@ -254,6 +281,11 @@
       if (critter) spawnCritters(typeof critter === "string" ? critter : undefined);
     }
 
+    /** Follow another screen's weather (true): no random rain; time and rain come from set(). */
+    function follow(on) {
+      state.following = on;
+    }
+
     applyNight();
     setScene(SCENES[0].id);
 
@@ -261,10 +293,11 @@
       update,
       set,
       setScene,
+      follow,
       snapshot: () => ({ time: state.t, night: state.night, rain: state.rain, scene: state.scene.id }),
     });
   }
 
   const NS = (root.AwsCloudQuest = root.AwsCloudQuest || {});
-  NS.ambient = Object.freeze({ create, nightAmount, SCENES });
+  NS.ambient = Object.freeze({ create, nightAmount, SCENES, DUEL_SCENE });
 })(typeof window !== "undefined" ? window : globalThis);

@@ -24,6 +24,7 @@
     muted: "awsCloudQuestMuted",
     reports: "awsCloudQuestReports",
     mode: "awsCloudQuestMode",
+    name: "awsCloudQuestName",
   });
 
   const HEROES = Object.freeze(["male", "female"]);
@@ -114,6 +115,14 @@
       },
       setMode(mode) {
         return MODES.includes(mode) ? write(KEYS.mode, mode) : false;
+      },
+      /** Player name used in duels ("" if never typed). */
+      getName() {
+        const name = read(KEYS.name, "");
+        return typeof name === "string" ? name.slice(0, 40) : "";
+      },
+      setName(name) {
+        return write(KEYS.name, String(name));
       },
       getMuted() {
         return read(KEYS.muted, false) === true;

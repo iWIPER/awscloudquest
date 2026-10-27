@@ -113,7 +113,10 @@
 
   $("answers").addEventListener("click", (event) => {
     const button = event.target.closest("button.answer");
-    if (button) game.shoot(Number(button.dataset.index));
+    if (!button) return;
+    const index = Number(button.dataset.index);
+    if (duel.active()) duel.answer(index);
+    else game.shoot(index);
   });
   $("qpanel-toggle").addEventListener("click", () => game.togglePanel());
   $("btn-freeze").addEventListener("click", () => game.freeze());
@@ -232,12 +235,56 @@
   // Game Over: the game that just ended.
   $("btn-areas").addEventListener("click", () => showAreas(game.lastReport()));
   $("btn-home").addEventListener("click", () => ui.askLeave());
-  $("btn-leave-pdf").addEventListener("click", () => exportPdf(game.lastReport()));
-  $("btn-leave-go").addEventListener("click", () => game.goHome());
+  // "Voltar ao início?" serves the solo Game Over and the duel end card.
+  $("btn-leave-pdf").addEventListener("click", () => exportPdf(duel.active() ? duel.lastReport() : game.lastReport()));
+  $("btn-leave-go").addEventListener("click", () => (duel.active() ? duel.leave() : game.goHome()));
   $("btn-leave-cancel").addEventListener("click", () => ui.cancelLeave());
   $("btn-md").addEventListener("click", () => exportMarkdown(game.lastReport()));
   $("btn-pdf").addEventListener("click", () => exportPdf(game.lastReport()));
   $("btn-areas-close").addEventListener("click", () => ui.closeAreas());
+
+  // ── Duel 1×1 ──────────────────────────────────────────────────────
+  const duel = NS.duel.create({
+    config,
+    questions,
+    store,
+    ui,
+    sound,
+    ambient,
+    field,
+    onExit: () => game.goHome(),
+    onReport(kind, report) {
+      if (kind === "areas") showAreas(report);
+      else if (kind === "pdf") exportPdf(report);
+      else exportMarkdown(report);
+    },
+    async copy(text, button) {
+      try {
+        await copyText(text);
+        flashLabel(button, "Copiado!");
+        ui.announce("Link copiado.");
+      } catch {
+        flashLabel(button, "Não deu");
+      }
+    },
+    async share(data, button) {
+      try {
+        if (navigator.share) return await navigator.share(data);
+        await copyText(`${data.text} ${data.url}`);
+        flashLabel(button, "Link copiado!");
+      } catch (error) {
+        if (!error || error.name !== "AbortError") flashLabel(button, "Não deu");
+      }
+    },
+  });
+  NS.duelApp = duel; // for the smoke test
+  $("btn-duel").disabled = questions.length === 0;
+  $("btn-duel").addEventListener("click", () => duel.openSetup());
+  const joinFromLink = () => {
+    const room = NS.duelRules.roomFromHash(root.location.hash);
+    if (room && questions.length > 0) duel.openSetup(room);
+  };
+  root.addEventListener("hashchange", joinFromLink);
 
   // History: any saved game, one at a time.
   $("hist-list").addEventListener("click", (event) => {
@@ -292,6 +339,16 @@
 
     if (ui.anyOpen()) return;
 
+    if (duel.active()) {
+      // In a duel only the answer keys work (no power-ups, no panel toggle).
+      const index = key.length === 1 ? Math.max("123456".indexOf(key), "abcdef".indexOf(key.toLowerCase())) : -1;
+      if (index >= 0) {
+        duel.answer(index);
+        event.preventDefault();
+      }
+      return;
+    }
+
     const lower = key.toLowerCase();
     const shortcuts = { q: game.togglePanel, g: game.freeze, p: game.skip, x: game.openBox };
     if (shortcuts[lower]) {
@@ -312,4 +369,5 @@
   });
 
   game.boot(warnings);
+  joinFromLink();
 })(typeof window !== "undefined" ? window : globalThis);

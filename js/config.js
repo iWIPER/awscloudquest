@@ -106,6 +106,29 @@
     BOSS_BONUS: 100,                   // points for defeating it (plus +1 life up to MAX_LIVES)
     BOSS_HIT_BONUS: 15,                // points per hit when the fight is lost
 
+    // ── Duel 1×1 (see js/duel.js) ──────────────────────────────────────
+    DUEL: Object.freeze({
+      LIVES: 10,                  // lives per player (default choice)…
+      LIVES_OPTIONS: Object.freeze([10, 20]), // …picked by the room creator
+      COUNTDOWN: 10,              // seconds counted down before round 1
+      LEVEL_EVERY: 3,             // rounds per level: round time shrinks like the solo levels
+      GRACE_MS: 350,              // after the first correct answer, wait this long for a faster one
+      TIMEOUT_GRACE_MS: 3000,     // the referee waits this long past the round time (public relays can lag 1–3 s)
+      RESULT_MS: 2600,            // pause after a round result, before the next round
+      ROUND_INTRO_MS: 2800,       // "ROUND N" presentation before each question
+      VICTORY_MS: 7400,           // victory scene: the winner walks to the podium and jumps for joy
+      CURTAIN_MS: 12000,          // then the screen darkens and "<NAME> VENCEU!" stays (time for a screenshot; a tap skips)
+      HEARTBEAT_MS: 5000,         // "still here" message interval
+      PEER_SILENT_MS: 15000,      // no message for this long: the other player dropped, the match pauses…
+      RECONNECT_MS: 120000,       // …and waits this long for them to come back before closing the room
+      ROOM_TTL_MS: 300000,        // an empty room expires after 5 minutes
+      NAME_MAX: 10,               // longest player name
+      BROKERS: Object.freeze([    // public MQTT brokers (WebSocket), tried in order
+        "wss://broker.hivemq.com:8884/mqtt",
+        "wss://broker.emqx.io:8084/mqtt",
+      ]),
+    }),
+
     // ── Ambience (seconds; [min, max] are random ranges) ───────────────
     AMBIENT_CYCLE_SECONDS: 240,       // one full day → night → day cycle
     AMBIENT_CYCLE_START: 0.1,         // where the cycle starts (0–1; 0.55–0.8 is night)

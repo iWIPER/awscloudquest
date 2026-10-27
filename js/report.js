@@ -23,6 +23,36 @@
 
   const byKey = Object.fromEntries(OUTCOMES.map((o) => [o.key, o]));
 
+  // In a duel the same outcomes read differently: there is no monster, and
+  // "skipped" means the rival answered first.
+  const DUEL_LABELS = Object.freeze({
+    first: "Acertou",
+    late: "Acertou depois de errar",
+    lost: "Errou ou o tempo acabou",
+    skipped: "O adversário foi mais rápido",
+  });
+
+  /** Outcome list (and lookup) with labels for this game: solo or duel. */
+  function outcomesFor(game) {
+    const list = game.duel ? OUTCOMES.map((o) => ({ ...o, label: DUEL_LABELS[o.key] })) : OUTCOMES;
+    return { list, byKey: Object.fromEntries(list.map((o) => [o.key, o])) };
+  }
+
+  /**
+   * Duel summary lines, from the player's point of view:
+   * game.duel = { opponent, won, rounds: {me, rival}, lives: {me, rival}, score: {me, rival} }.
+   */
+  function duelHeadline(game) {
+    const d = game.duel;
+    if (d.won === null) return `Empate com ${d.opponent}!`;
+    return d.won ? `Você venceu o duelo contra ${d.opponent}!` : `${d.opponent} venceu o duelo.`;
+  }
+
+  function duelDetails(game) {
+    const d = game.duel;
+    return `Rounds ganhos ${d.rounds.me} × ${d.rounds.rival} · Vidas no fim ${d.lives.me} × ${d.lives.rival} · Placar da sala ${d.score.me} × ${d.score.rival}`;
+  }
+
   // ── Performance by area ─────────────────────────────────────────────
   /** Ratings by first-try hit rate, best first. Colors: reference status palette. */
   const RATINGS = Object.freeze([
@@ -176,9 +206,11 @@
    */
   function toMarkdown(game, guide) {
     const s = summarize(game.log);
+    const outcomes = outcomesFor(game);
     const lines = [
-      "# AWS Cloud Quest — Relatório da partida",
+      game.duel ? "# AWS Cloud Quest — Relatório do duelo" : "# AWS Cloud Quest — Relatório da partida",
       "",
+      ...(game.duel ? [`## ${md(duelHeadline(game))}`, "", duelDetails(game), ""] : []),
       `**Data:** ${formatDate(dateOf(game))}  `,
       `**Personagem:** ${game.hero === "female" ? "Mulher" : "Homem"}${game.modeLabel ? `  \n**Modo:** ${game.modeLabel}` : ""}`,
       "",
@@ -193,7 +225,7 @@
       "",
       "| Resultado | Quantidade |",
       "|---|---:|",
-      ...OUTCOMES.map((o) => `| ${o.mark} ${o.label} | ${s.counts[o.key]} |`),
+      ...outcomes.list.map((o) => `| ${o.mark} ${o.label} | ${s.counts[o.key]} |`),
       `| **Total** | **${s.total}** |`,
       "",
     ];
@@ -208,7 +240,7 @@
       if (entries.length === 0) continue;
       lines.push(`## ${title}`, "");
       entries.forEach((e, i) => {
-        lines.push(`### ${i + 1}. ${byKey[e.outcome].mark} ${md(e.q)}`, "");
+        lines.push(`### ${i + 1}. ${outcomes.byKey[e.outcome].mark} ${md(e.q)}`, "");
         if (e.topic) lines.push(`- **Tema:** ${md(e.topic)}`);
         if (e.wrongPicks.length) lines.push(`- **Você marcou:** ${e.wrongPicks.map(md).join("; ")}`);
         lines.push(`- **Resposta certa:** ${md(e.answer)}`);
@@ -377,7 +409,12 @@
 
     newPage();
     const s = summarize(game.log);
-    paragraph("AWS Cloud Quest — Relatório da partida", { size: 20, bold: true, gap: 2 });
+    const outcomes = outcomesFor(game);
+    paragraph(game.duel ? "AWS Cloud Quest — Relatório do duelo" : "AWS Cloud Quest — Relatório da partida", { size: 20, bold: true, gap: 2 });
+    if (game.duel) {
+      paragraph(duelHeadline(game), { size: 15, bold: true, color: game.duel.won ? "#0b7a0b" : "#b3261e", gap: 1 });
+      paragraph(duelDetails(game), { size: 10, gap: 2 });
+    }
     const meta = `${formatDate(dateOf(game))} · Personagem: ${game.hero === "female" ? "Mulher" : "Homem"}${game.modeLabel ? ` · Modo: ${game.modeLabel}` : ""}`;
     paragraph(meta, { size: 10, color: MUTED, gap: 10 });
 
@@ -472,7 +509,7 @@
     if (s.total > 0) {
       ensure(50);
       let x = M;
-      const parts = OUTCOMES.filter((o) => s.counts[o.key] > 0);
+      const parts = outcomes.list.filter((o) => s.counts[o.key] > 0);
       const usable = CW - 2 * (parts.length - 1);
       parts.forEach((o) => {
         const w = (s.counts[o.key] / s.total) * usable;
@@ -483,7 +520,7 @@
       });
       top += 34;
       let lx = M;
-      OUTCOMES.forEach((o) => {
+      outcomes.list.forEach((o) => {
         const label = `${o.label}: ${s.counts[o.key]}`;
         doc.rect(lx, top - 8, 9, 9, o.color);
         doc.text(lx + 13, top, label, { size: 8.5 });
@@ -496,7 +533,7 @@
     heading("Todas as perguntas", 12);
     game.log.forEach((e, i) => {
       ensure(50);
-      const o = byKey[e.outcome];
+      const o = outcomes.byKey[e.outcome];
       top += 4;
       doc.rect(M, top, 4, 12, o.color);
       doc.text(M + 10, top + 10, `${i + 1}. ${o.label}${e.topic ? ` · ${e.topic}` : ""}`, { size: 8.5, bold: true, color: MUTED });

@@ -1651,7 +1651,8 @@ legend.box-title {
 }
 
 .confirm[hidden],
-.card-actions[hidden] { display: none; }
+.card-actions[hidden],
+.btn[hidden] { display: none; }
 
 .confirm p { margin: 0 0 10px; font-weight: 700; line-height: 1.4; }
 
@@ -1762,11 +1763,11 @@ legend.box-title {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  max-width: 90%;
-  white-space: nowrap;
+  width: max-content;
+  max-width: 90%; /* long lines wrap instead of running off the screen */
   padding: 8px 16px;
   border: 3px solid var(--yellow);
-  border-radius: 999px;
+  border-radius: 18px;
   background: var(--ink-2);
   font-weight: 800;
   text-align: center;
@@ -1977,6 +1978,27 @@ legend.box-title {
 .banner.is-on { animation: banner-pop 1.6s ease-out forwards; }
 .banner-intro-go { background: var(--green-dark); }
 .banner-boss { background: var(--red-dark); font-size: clamp(1.3rem, 5.5vw, 2.3rem); }
+
+/* Duel round presentation: a big wooden sign that slams in */
+.banner-round {
+  padding: 10px 28px;
+  border-color: #5e3a1b;
+  border-radius: 10px;
+  background: repeating-linear-gradient(to bottom, #8a5a2e 0 9px, #7a4e27 9px 11px);
+  color: #ffe9b0;
+  font-size: clamp(2rem, 10vw, 3.6rem);
+  letter-spacing: 0.08em;
+}
+
+.banner-round.is-on { animation: round-slam 2.8s ease-out forwards; }
+
+@keyframes round-slam {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(2.4); }
+  12% { opacity: 1; transform: translate(-50%, -50%) scale(0.92); }
+  18% { transform: translate(-50%, -50%) scale(1.05); }
+  24%, 86% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.1); }
+}
 .banner-scene { top: 30%; font-size: clamp(1.1rem, 4.5vw, 1.8rem); }
 
 /* Dark "GAME OVER" screen */
@@ -2296,6 +2318,96 @@ legend.box-title {
 .building:nth-child(3n + 1) { --facade: #6c7fa6; }
 .world.is-night[data-scene="city"] .building { --facade: #3c3a5c; --window: rgba(255, 214, 110, 0.9); }
 
+/* Wild West (duel): sunset, red mesas, a saloon and tumbleweeds */
+.world[data-scene="west"] .hill { display: none; }
+.world[data-scene="west"] { --sky-top: #f6a75c; --sky-bottom: #ffe0a3; }
+.world[data-scene="west"] .ground { background: #c98d4e; border-top-color: #e3b36f; }
+.world[data-scene="west"] .sun { background: #ffb347; box-shadow: 0 0 40px 18px rgba(255, 140, 60, 0.55); }
+
+.mesa {
+  position: absolute;
+  bottom: calc(var(--ground-h) - 4px);
+  background: #b5532e;
+  clip-path: polygon(0 100%, 12% 18%, 30% 0, 74% 0, 88% 22%, 100% 100%);
+}
+
+.mesa-1 { left: -6%; width: 46%; height: 22%; }
+.mesa-2 { right: -8%; width: 52%; height: 17%; background: #9c4527; }
+
+/* The town: buildings side by side, between the two duelists */
+.town {
+  position: absolute;
+  left: 21%;
+  right: 21%;
+  bottom: calc(var(--ground-h) + var(--ground-border) - 2px);
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: clamp(96px, 36%, 160px);
+}
+
+.shop {
+  position: relative;
+  flex: 1;
+  height: var(--h);
+  border-radius: 3px 3px 0 0;
+  /* Two lit windows over wooden planks */
+  background:
+    linear-gradient(#f3c97a, #f3c97a) 22% 46% / 22% 14% no-repeat,
+    linear-gradient(#f3c97a, #f3c97a) 78% 46% / 22% 14% no-repeat,
+    repeating-linear-gradient(to bottom, var(--c) 0 8px, rgba(0, 0, 0, 0.18) 8px 10px),
+    var(--c);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.3);
+}
+
+.shop.is-saloon { flex: 1.5; background: repeating-linear-gradient(to bottom, var(--c) 0 9px, #6e4522 9px 11px); }
+
+.shop-sign {
+  position: absolute;
+  left: 50%;
+  top: 8%;
+  transform: translateX(-50%);
+  padding: 0 4px;
+  border: 2px solid #5e3a1b;
+  border-radius: 3px;
+  background: #f3d9a4;
+  color: #5e3a1b;
+  font-size: clamp(7px, 1.5vw, 12px);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.shop-door {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 26%;
+  height: 34%;
+  transform: translateX(-50%);
+  border-radius: 2px 2px 0 0;
+  background: #4a2e16;
+}
+
+/* Swinging half doors */
+.saloon-doors {
+  position: absolute;
+  left: 50%;
+  bottom: 12%;
+  width: 34%;
+  height: 34%;
+  transform: translateX(-50%);
+  background: linear-gradient(to right, #c79354 0 48%, transparent 48% 52%, #c79354 52%) top / 100% 70% no-repeat;
+}
+
+@media (max-width: 520px) {
+  .shop.is-extra { display: none; }
+}
+
+.critter-tumbleweed { width: 26px; }
+.critter-tumbleweed svg { animation: roll 0.9s linear infinite; }
+@keyframes roll { to { transform: rotate(360deg); } }
+
 /* Passers-by sizes per type */
 .critter-deer { width: 34px; }
 .critter-camel { width: 42px; }
@@ -2413,4 +2525,232 @@ legend.box-title {
   .rain::before,
   .rain::after { animation: none; }
   .card { animation: none; }
+}
+
+/* ── Duel 1×1 (Wild West) ───────────────────────────────────────────── */
+.btn-duel {
+  width: 100%;
+  margin-top: 10px;
+  background: linear-gradient(#c0662b, #8a4318);
+}
+
+.text-input {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 8px 12px;
+  border: 2px solid var(--yellow);
+  border-radius: 12px;
+  background: var(--cream);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px; /* 16px or more: iOS does not zoom into the field */
+  font-weight: 700;
+}
+
+.duel-name { display: block; }
+.duel-status { min-height: 1.3em; margin: 8px 0; font-weight: 800; text-align: center; color: var(--yellow); }
+.duel-link { font-size: 13px; font-weight: 600; }
+.duel-share[hidden] { display: none; }
+
+/* Big countdown number before round 1 */
+.duel-count {
+  margin: 4px 0;
+  color: var(--yellow);
+  font-size: clamp(3rem, 18vw, 6rem);
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
+}
+
+.duel-count.is-tick { animation: count-pop 0.5s ease-out; }
+@keyframes count-pop { from { transform: scale(1.6); opacity: 0.3; } }
+
+/* "PROCURADO" posters: aged paper, a framed portrait, straight (rotated text renders jagged) */
+.posters { display: flex; justify-content: center; gap: 10px; margin: 6px 0 10px; }
+
+.poster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 46%;
+  max-width: 156px;
+  padding: 10px 8px 12px;
+  border: 3px solid #6b4423;
+  border-radius: 3px;
+  background: radial-gradient(circle at 50% 40%, #f8e8c2, #e9cf98 75%, #d9b878);
+  color: #4a2a12;
+  font-family: Georgia, "Times New Roman", serif;
+  box-shadow: inset 0 0 0 2px #f8e8c2, 0 5px 0 rgba(0, 0, 0, 0.3);
+}
+
+.poster.is-empty {
+  justify-content: center;
+  min-height: 180px;
+  font-family: inherit;
+  font-weight: 800;
+  text-align: center;
+  opacity: 0.75;
+}
+
+.poster-title { font-size: 1.15rem; font-weight: 900; letter-spacing: 0.06em; }
+
+.poster-photo {
+  position: relative;
+  display: block;
+  width: 84px;
+  height: 84px;
+  margin: 6px 0;
+  border: 2px solid #6b4423;
+  background: linear-gradient(#f3dca8, #dcbc80);
+}
+
+.poster-photo .h-svg { left: 8px; top: 8px; right: auto; bottom: auto; }
+.poster-name { max-width: 100%; overflow: hidden; font-size: 1.15rem; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+.poster-label { margin-top: 2px; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.18em; }
+.poster-reward { display: flex; align-items: center; gap: 4px; font-size: 0.95rem; font-weight: 900; }
+
+/* Duel layout: scoreboard instead of the solo HUD, no monster, no power-ups */
+.duel-hud { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; }
+.duel-hud[hidden] { display: none; }
+.duel-side { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; }
+.duel-side b { overflow: hidden; text-overflow: ellipsis; }
+.duel-hearts { color: #ff6b8b; font-weight: 900; }
+.duel-round { flex: none; padding: 2px 10px; border: 2px solid var(--yellow); border-radius: 999px; font-weight: 900; font-size: 0.85rem; }
+
+.app.is-duel .hud > :not(.duel-hud):not(#btn-sound):not(.sound-hint) { display: none; }
+.app.is-duel .duel-hud { display: flex; }
+.app.is-duel .powers,
+.app.is-duel .weapon-box,
+.app.is-duel .monster { display: none !important; }
+
+/* The rival stands on the right, facing left */
+.hero.rival { right: max(8px, 3.5%); transform: scaleX(-1); }
+.hero.rival[hidden] { display: none; }
+/* Jumping for joy on the podium */
+.hero.is-champion .h-svg { animation: champ-jump 0.42s ease-in-out infinite alternate; }
+@keyframes champ-jump { from { transform: translateY(0); } to { transform: translateY(-18px); } }
+
+.duel-tag {
+  position: absolute;
+  left: max(8px, 3.5%);
+  bottom: calc(var(--ground-h) + var(--ground-border) + 78px);
+  z-index: 3;
+  max-width: 120px;
+  padding: 1px 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(58, 20, 89, 0.85);
+  color: var(--white);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.duel-tag-rival { left: auto; right: max(8px, 3.5%); }
+.duel-tag[hidden] { display: none; }
+
+/* Taunt sign raised by whoever wins the round */
+.taunt {
+  position: absolute;
+  max-width: 46%;
+  padding: 6px 10px;
+  border: 3px solid #8b5a2b;
+  border-radius: 8px;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: clamp(0.8rem, 2.6vw, 1rem);
+  font-weight: 900;
+  text-align: center;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25);
+  animation: taunt-up 2.3s ease-out forwards;
+}
+
+.taunt.is-left { left: max(8px, 3.5%); }
+.taunt.is-right { right: max(8px, 3.5%); }
+
+@keyframes taunt-up {
+  0% { opacity: 0; transform: translateY(20px) scale(0.6); }
+  12% { opacity: 1; transform: none; }
+  85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Victory: podium, trophy and flag */
+.podium {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--ground-h) + var(--ground-border));
+  z-index: 1;
+  width: 96px;
+  height: 34px;
+  border-radius: 6px 6px 0 0;
+  background: linear-gradient(#ffe066, #e0b400);
+  color: #6b4a00;
+  font-weight: 900;
+  text-align: center;
+  line-height: 34px;
+  transform: translateX(-50%);
+  animation: podium-up 0.5s ease-out;
+}
+
+.podium[hidden] { display: none; }
+.podium.is-wide { width: 180px; } /* a draw: both climb */
+.podium.is-wide + .flagpole { left: calc(50% + 96px); }
+@keyframes podium-up { from { transform: translate(-50%, 34px); } }
+
+/* Brazil flag on a pole beside the podium */
+.flagpole {
+  position: absolute;
+  left: calc(50% + 50px);
+  bottom: calc(var(--ground-h) + var(--ground-border));
+  z-index: 1;
+  width: 40px;
+  height: 96px;
+}
+
+.flagpole[hidden] { display: none; }
+.flagpole svg { display: block; width: 100%; height: 100%; }
+.flag-cloth { transform-box: fill-box; transform-origin: 0 50%; animation: flag-wave 1.2s ease-in-out infinite alternate; }
+@keyframes flag-wave { from { transform: skewY(-4deg) scaleX(1); } to { transform: skewY(4deg) scaleX(0.94); } }
+
+/* Winner's dark screen: same fade as GAME OVER, gold title */
+/* Long lines ("WILK E JOSIANE EMPATARAM!") wrap centered and smaller than GAME OVER */
+.duel-curtain .curtain-title {
+  max-width: 92%;
+  color: var(--yellow);
+  font-size: clamp(1.8rem, 8.5vw, 4rem);
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  text-align: center;
+  text-shadow: 0 4px 0 #6b4a00, 0 0 24px rgba(251, 213, 26, 0.6);
+}
+
+.duel-end-sub { margin: 0 0 6px; font-weight: 700; text-align: center; }
+
+/* Versus scoreboard on the end card */
+.versus { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 6px 0; }
+.versus:empty { display: none; }
+.vs-side {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  max-width: 140px;
+  padding: 8px 6px;
+  border-radius: 14px;
+  background: rgba(40, 10, 60, 0.45);
+}
+.vs-side:last-child .vs-art { transform: scaleX(-1); } /* the rival faces left */
+.vs-art { position: relative; display: block; width: 67px; height: 72px; }
+.vs-name { max-width: 100%; overflow: hidden; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+.vs-wins { display: flex; align-items: center; gap: 4px; color: var(--yellow); font-size: 1.3rem; }
+.vs-x { color: var(--yellow); font-size: 1.8rem; font-weight: 900; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero.is-champion .h-svg,
+  .flag-cloth,
+  .duel-count.is-tick { animation: none; }
 }
