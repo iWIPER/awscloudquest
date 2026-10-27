@@ -21,6 +21,7 @@
     "import": "node scripts/import-questions.mjs",
     "serve": "node scripts/serve.mjs",
     "smoke": "node scripts/smoke.mjs",
+    "smoke:duel": "node scripts/duel-smoke.mjs",
     "assets": "node scripts/build-assets.mjs",
     "ci": "npm run check && npm run validate && npm test"
   },

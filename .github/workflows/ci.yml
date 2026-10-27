@@ -43,6 +43,8 @@ jobs:
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - name: Smoke test (360 px and 1280 px)
         run: node scripts/smoke.mjs --browser ${{ matrix.browser }} --shots smoke-shots
+      - name: Duel smoke test (two pages, local transport)
+        run: node scripts/duel-smoke.mjs --browser ${{ matrix.browser }} --shots smoke-shots
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v7

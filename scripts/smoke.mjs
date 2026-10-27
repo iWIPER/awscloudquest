@@ -137,13 +137,13 @@ for (const viewport of VIEWPORTS) {
   check((await page.locator("#ov-setup input:checked").count()) === 0, "nothing comes pre-selected");
   check(await page.locator("#btn-begin").isDisabled(), "Começar is disabled until both choices are made");
   const heroChoice = viewport.name === "mobile" ? "female" : "male";
-  await page.locator(`.pick-card:has(input[value="${heroChoice}"])`).click();
+  await page.locator(`#ov-setup .pick-card:has(input[value="${heroChoice}"])`).click();
   check((await snapshot(page)).hero === heroChoice, `the ${heroChoice} character is in the field`);
   check(await page.locator("#btn-begin").isDisabled(), "a character alone does not enable Começar");
 
   // Difficulty: mobile plays Fácil, desktop plays Avançado.
   const modeChoice = viewport.name === "mobile" ? "easy" : "advanced";
-  await page.locator(`.mode-card:has(input[value="${modeChoice}"])`).click();
+  await page.locator(`#ov-setup .mode-card:has(input[value="${modeChoice}"])`).click();
   const modeConfig = await page.evaluate(() => window.AwsCloudQuest.app.config());
   check(modeConfig.mode === modeChoice, `mode "${modeChoice}" selected`);
   check(await page.locator("#btn-begin").isEnabled(), "character and mode enable Começar");
