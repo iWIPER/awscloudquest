@@ -1,6 +1,6 @@
 {
   "name": "aws-cloud-quest",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "private": true,
   "description": "Real-time quiz game to practice for AWS certifications. Plain HTML/CSS/JS, no build step.",
   "license": "MIT",
