@@ -68,15 +68,19 @@ Tip: on a phone, use the browser's "Add to Home Screen" to open the game like an
 
 - Every lost life and every Game Over shows the question, the correct answer and the explanation.
 - Questions you miss more than you get right come back more often.
+- 201 practice questions, 36 of them "Selecione DUAS": mark both right options to bring the monster down (+15 s on those).
 - Reading time scales with the length of the question and its options. Very long questions get +30 s.
-- **Desempenho por área**: hits and misses per CLF-C02 domain and topic, with strengths, weak areas, what to study and links to the official AWS docs.
-- Reports per game as **PDF** (view or download, no print dialog) or **Markdown**, from the Game Over card or from the history.
+- **Dica** (easy mode): pauses the game and opens a study card for the question's topic, with memory tricks and a mind map of services, without giving the answer away.
+- **Desempenho por área**: hits and misses per CLF-C02 domain (with its weight in the exam) and topic, like the official score report, with strengths, weak areas, what to study and links to the official AWS docs. Each question shows its exam task statement ("2.3 IAM e identidade").
+- Reports per game as **PDF** (view or download, no print dialog) or **Markdown**, from the Game Over card or from the history. Every question in the report carries its exam tag ("2.3 IAM e identidade · Segurança e conformidade").
 
 **Gameplay**
 
 - Two characters (man or woman) and two modes (**Fácil** and **Avançado**), chosen before each session.
-- Seven monsters with their own attacks: dinosaur, dragon, snake, alligator, gorilla, wolf and giant spider.
-- **Boss fight** every 15 hits (first at 12): four looks (stone golem, lava golem, ice giant, giant robot), 3 hearts, 4 questions. The boss talks in speech bubbles ("Eu vou destruir você!").
+- **Pause** with the HUD button or Esc; the game also pauses by itself when you leave the page to answer a message. From the pause screen you can also end the game (it asks first) and get the summary and the report.
+- Eleven monsters with their own attacks: dinosaur, dragon, snake, alligator, gorilla, wolf, giant spider, giant scorpion, and three that fly (giant bat, pterodactyl, giant wasp). The hero aims up at the flying ones.
+- **Boss fight** every 15 hits (first at 12), against three species with 11 looks: golem (stone, lava, ice, robot, Cyclops), King Kong (Kong, fire Kong, Yeti) and minotaur (minotaur, lava, ice). A fight never repeats the previous species. 3 hearts, 4 questions.
+- The boss arrives like a film: the screen goes dark and flickers, heavy steps shake the ground and lightning shows its silhouette walking in, then a flash and a roar. Each boss throws its own thing (rock, boulder, fireball, snowball, barrel, laser), threatens the hero when hit and has its own finishing attack. Defeated, it trembles, tips over and falls apart in pieces.
 - **Mystery box** every 6–8 questions swaps the weapon: pistol, bow, slingshot or magic wand.
 - **Power-ups**: Gelo freezes the monster for 15 s; Pular swaps the question.
 - A miss locks the answers for a few seconds and makes the monster faster.
@@ -85,13 +89,15 @@ Tip: on a phone, use the browser's "Add to Home Screen" to open the game like an
 **Duel 1×1**
 
 - Play a friend in real time: create a room, share the link, and the match starts when they join.
-- Same question for both; the first correct answer shoots the other player. 10 or 20 lives each.
-- Wild West town with day, night and rain, "PROCURADO" posters, a fast showdown theme, a "ROUND N" presentation, taunt signs, a podium beside the Brazil flag, rematch with a running score, and a report for each player.
+- Same question for both, "Selecione DUAS" included; the first correct answer shoots the other player. 10 or 20 lives each.
+- Always in a Wild West town, without monsters or bosses: day, night and rain shared by both screens, and the visitor with the dog drops by every 7 rounds, like in the solo game.
+- Once per match, in rounds 4 to 7, the first round only one player gets right becomes a short film: black bars, the winner runs over, strikes with a cartoon knife and the other falls to the ground.
+- "PROCURADO" posters, a fast showdown theme, a "ROUND N" presentation, taunt signs, the loser falling to their knees, a podium beside the Brazil flag, rematch with a running score, and a report for each player.
 
 **World and sound**
 
-- Four sceneries that change every 15 hits: field, forest, desert and city.
-- Day and night, rain with thunder, birds, bunnies, squirrels, deer, camels and cars.
+- Four sceneries that change every 15 hits: field, forest, desert and a city avenue with street lamps and traffic. A change is a short scene: the hero runs off, the place's name shows, the hero runs into the new place.
+- Day and night, rain with thunder, birds, bunnies, squirrels, deer, camels, and cars, taxis, vans and buses.
 - A visitor with a dog and a sign cheers you on at milestones, and they talk: your hero promises to protect the city and the visitor answers "Você é minha heroína!" while the dog barks.
 - "READY? / GO!" intro and a dark "GAME OVER" screen.
 - All sound is synthesized in code: effects, rain, a heartbeat when the screen turns red and music per scenery. Mute with one tap or `M`.
@@ -113,6 +119,8 @@ Tip: on a phone, use the browser's "Add to Home Screen" to open the game like an
 | Open the mystery box | Tap the box | `X` |
 | Mute / unmute | 🔊 button in the HUD | `M` |
 | Start, continue, play again | Tap the button | `Enter` or `Space` |
+| Pause / resume | ⏸ button in the HUD | `Esc` |
+| Study hint (Fácil) | **Dica** on the ground | `D` |
 | Close a screen | **Fechar** / **Voltar** | `Esc` |
 
 1. Tap **Jogar**, choose a character and a mode, then tap **Começar**.
@@ -123,20 +131,20 @@ Tip: on a phone, use the browser's "Add to Home Screen" to open the game like an
 
 | | Fácil | Avançado |
 |---|---|---|
-| Time per question | +10 s | normal |
+| Time per question | +15 s | normal |
 | Gelo (freeze 15 s) | 5 per game | 3 per game |
 | Pular (skip) | 3 per game | 2 per game |
 | Lockout after a miss | 5 s | 8 s |
 | Speed-up per miss | +30% | +40% |
 
-**Boss fight.** The boss stands still and throws rocks. Hit 3 of 4 questions to win +100 points and +1 life. A miss or a timeout only staggers the hero, and the boss steps closer. If you lose the fight, the boss crushes you and you lose a life. Gelo and Pular are disabled during the fight.
+**Boss fight.** The boss stands still and throws things at you. Hit 3 of 4 questions to win +100 points and +1 life. A miss or a timeout only staggers the hero, and the boss steps closer. If you lose the fight, the boss crushes you and you lose a life. Gelo and Pular are disabled during the fight.
 
 **Score per hit:** `10 + min(streak, 10) × 2 + 10 if fast`. You level up every 3 hits.
 
 ## Duel 1×1
 
 1. On the start screen, tap **Duelo 1×1 com um amigo**, type your name, pick your character, choose **10 or 20 lives** and tap **Criar sala**.
-2. Send the link (**Copiar link** or **Compartilhar**). The room waits 5 minutes.
+2. Send the link (**Copiar link** or **Compartilhar**). It shows a duel preview in WhatsApp and other apps. The room waits 5 minutes.
 3. Your friend opens the link, types a name, picks a character and taps **Entrar no duelo**.
 4. Both tap **Pronto!**. A 10-second countdown starts, then "SAQUE!" and round 1.
 5. Each round, both players get the same question with the options in the same order. You stand on the left; your friend stands on the right on your screen, and the other way around on theirs.
@@ -147,12 +155,13 @@ Tip: on a phone, use the browser's "Add to Home Screen" to open the game like an
 | Wrong answer | That player is locked until the round ends; the other can still answer |
 | Both wrong, or time runs out | Both lose 1 life |
 | Both reach 0 in the same round | Draw: both climb a wide podium, "<A> E <B> EMPATARAM!", nobody gets the trophy |
-| A player reaches 0 | The other puts the gun away, climbs the podium beside the Brazil flag and jumps for joy; the screen darkens with "<NAME> VENCEU!" until you tap (time for a screenshot), then the end card |
+| Rounds 4 to 7, only one player right (once per match) | Special move: the question goes away and, as a short film, that player runs over and strikes with a cartoon knife; the other falls, then gets up (1 life lost) |
+| A player reaches 0 | That player drops to their knees and falls; the other puts the gun away, climbs the podium beside the Brazil flag and jumps for joy; the screen darkens with "<NAME> VENCEU!" until you tap (time for a screenshot), then the end card |
 | A connection drops | The match pauses: "<Nome> caiu. Esperando reconectar… 2:00". If they come back, the round starts over; if not, the room closes |
 
 Each round opens with a "ROUND N" sign and a drum hit; the question appears about 3 seconds later. Each player starts with 10 or 20 lives, as the room creator chose. The round time follows the solo formula and gets shorter every 3 rounds. "First" means the shortest time on each player's own screen, so a slow connection does not lose the round. At the end, the card shows both characters with the matches each one won in this room. **Revanche** starts a new match when both tap it, and the score carries over. **Desempenho**, **PDF** and **.md** give each player their own report: the duel result on top, then the usual performance by area. **Início** asks you to download the report first, then leaves the room. The other player sees "<Nome> saiu da sala." A dropped player gets 2 minutes to come back before the room closes; the browser also reconnects by itself.
 
-**How the two phones talk.** The game is a static site with no server of its own. Messages go through a free public MQTT relay (HiveMQ, with EMQX as fallback) over a secure connection, inside a room whose random id only exists in the link. Only player names, character choices, the question and option order, answers and results are sent. Nothing else leaves the browser, and no account is needed. Rooms are not stored anywhere: a room is just a channel name while both browsers are connected. Messages are not kept by the relay. When a player leaves, or after 5 minutes without anyone joining, the browser disconnects and the room is gone. While connected, each browser sends one small "still here" message every 5 seconds.
+**How the two phones talk.** The game is a static site with no server of its own. Messages go through two free public MQTT relays at once (HiveMQ and EMQX) over a secure connection: each message goes through both, the first copy to arrive counts, and the match goes on if one relay fails. Everything travels inside a room whose random id only exists in the link. Only player names, character choices, the question and option order, answers and results are sent. Nothing else leaves the browser, and no account is needed. Rooms are not stored anywhere: a room is just a channel name while both browsers are connected. Messages are not kept by the relays. When a player leaves, or after 5 minutes without anyone joining, the browser disconnects and the room is gone. While connected, each browser sends one small "still here" message every 5 seconds.
 
 # For contributors
 
@@ -189,7 +198,7 @@ Questions live in [`data/questions.js`](data/questions.js), a script that sets `
 },
 ```
 
-`topic` is optional. Without it, a keyword classifier assigns one of the 18 topics in [`data/study-guide.js`](data/study-guide.js), so new questions show up in **Desempenho por área** automatically.
+`answer` can also be a list for "Selecione DUAS" questions: `answer: ["A", "E"]`. `topic` is optional. Without it, a keyword classifier assigns one of the 20 topics in [`data/study-guide.js`](data/study-guide.js), so new questions show up in **Desempenho por área** automatically.
 
 ```bash
 npm run validate                                                  # check the bank
@@ -207,8 +216,8 @@ Every gameplay number lives in [`js/config.js`](js/config.js). `MODES` holds eac
 | Key | Default | Meaning |
 |---|---|---|
 | `START_LIVES` / `MAX_LIVES` | `1` / `3` | Lives at the start / life cap |
-| `THINK_SECONDS` | `20` | Base seconds before the monster arrives |
-| `READ_CHARS_PER_SEC` | `25` | Extra time per character of question and options |
+| `THINK_SECONDS` | `30` (`45` in Fácil) | Thinking time before the monster arrives; levels shorten it |
+| `READ_CHARS_PER_SEC` | `15` | Reading speed: question and options add this time, never shortened |
 | `LONG_READ_CHARS` / `LONG_READ_BONUS` | `500` / `30` | Long-read threshold / extra seconds |
 | `LEVEL_SPEEDUP` / `MIN_FACTOR` | `0.05` / `0.55` | Speed-up per level / speed cap |
 | `WRONG_LOCK_SECONDS` / `WRONG_SPEEDUP` | `8` / `0.4` | Lockout and speed-up after a miss |
@@ -228,7 +237,7 @@ Every gameplay number lives in [`js/config.js`](js/config.js). `MODES` holds eac
 | `DUEL.ROOM_TTL_MS` | `300000` | An empty room expires after 5 minutes |
 | `DUEL.BROKERS` | HiveMQ, EMQX | Public MQTT relays, tried in order |
 
-**Travel time** = `(THINK_SECONDS + characters / READ_CHARS_PER_SEC) × max(MIN_FACTOR, 1 − LEVEL_SPEEDUP × (level − 1))`, plus `LONG_READ_BONUS` for long reads.
+**Travel time** = `THINK_SECONDS × max(MIN_FACTOR, 1 − LEVEL_SPEEDUP × (level − 1)) + characters / READ_CHARS_PER_SEC`, plus `LONG_READ_BONUS` for long reads and `MULTI_ANSWER_BONUS` per extra answer. A typical question (about 290 characters) gives 49 s at level 1 and 36 s at level 10 in Avançado.
 
 ## How it was built
 
@@ -303,7 +312,6 @@ The page ships a canonical URL, JSON-LD, Open Graph and Twitter tags, a web app 
 
 ## Roadmap
 
-- [ ] Multiple-answer questions ("choose two").
 - [ ] Filter by topic and a "review my mistakes" mode.
 - [ ] Import questions from the UI and export/import the history.
 - [ ] Offline play (PWA cache).

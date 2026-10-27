@@ -91,10 +91,10 @@ After each question, `questionDone()` decides what comes next, in this order: my
 One `requestAnimationFrame` loop runs for the whole session:
 
 1. `dt = min(now − lastFrame, MAX_DT_MS)`. A hidden tab or a slow frame cannot teleport the monster.
-2. The field is measured every frame. Positions are computed in pixels from that, so rotation and resizing just work.
+2. The field is measured again only after a resize (a `ResizeObserver` flags it). Positions are computed in pixels from that, so rotation and resizing just work.
 3. `ambient.update(dt)` runs in every phase.
 4. Only in `play`: progress advances (`dt × speed / travel`), and the lockout, freeze and panel timers count down. The red vignette and the music intensity follow the progress.
-5. The hero and monsters move with `transform` only.
+5. The hero and monsters move with `transform` only, and the loop writes a style only when its value changed, so still frames cost almost nothing.
 
 All game timeouts go through `later()`, which tracks them so a new game or **Início** cancels everything at once.
 
@@ -103,11 +103,12 @@ All game timeouts go through `later()`, which tracks them so a new game or **In�
 ```
 chars  = length(question) + Σ length(options)
 factor = max(MIN_FACTOR, 1 − LEVEL_SPEEDUP × (level − 1))
-travel = (THINK_SECONDS + chars / READ_CHARS_PER_SEC) × factor
+travel = THINK_SECONDS × factor + chars / READ_CHARS_PER_SEC
        + LONG_READ_BONUS if chars ≥ LONG_READ_CHARS
+       + MULTI_ANSWER_BONUS × (answers − 1)
 ```
 
-A short question (150 characters) takes 26 s at level 1. The longest one in the bank (1,245 characters) takes about 100 s. Each miss adds `WRONG_SPEEDUP` to the speed, up to `MAX_SPEED`.
+Levels shorten only the thinking time; the reading time (15 characters per second, careful reading of technical text) never shrinks, so a player can always read the whole question. A typical question (about 290 characters) takes 49 s at level 1 and 36 s at level 10 in Avançado (64 s and 44 s in Fácil). The longest one (1,245 characters) takes about 143 s. Each miss adds `WRONG_SPEEDUP` to the speed, up to `MAX_SPEED`.
 
 ## Events
 
@@ -118,13 +119,25 @@ A short question (150 characters) takes 26 s at level 1. The longest one in the 
 | Visitor | First at `CHEER_FIRST` (5–7) hits, then at each `CHEERS` milestone | `rules.cheerMilestones` |
 | Scenery | Every `SCENE_EVERY` (15) hits, cycling | `rules.sceneFor` |
 
-**Boss fight.** The boss (one of four looks, never the same twice in a row) stands at the right. Each round is a normal question with a timer. A hit takes a heart. A miss or a timeout makes the boss throw a rock: the hero staggers, no life is lost, and the boss steps closer (`BOSS_STEP`, never past `BOSS_LIMIT`). After `BOSS_ROUNDS`, or when the hearts run out, `rules.bossReward` settles it. Winning gives `BOSS_BONUS` points and a life. Losing pays `BOSS_HIT_BONUS` per hit, then the boss crushes the hero for one life.
+**Boss fight.** The boss is one of three species (golem, King Kong, minotaur) in 11 looks (`monsters.BOSS_LOOKS`); a fight never repeats the previous species. Each look names what it throws (`throws`) and its finishing attack (`finale`: smash, pound, charge or swallow). Its arrival is a scripted scene (`BOSS_SCENE` in `game.js`): the world dims and flickers (`.is-boss-coming`), heavy steps shake the field and lightning flashes while a black silhouette walks in, then a flash reveals it. Defeated, it trembles, tips over and breaks into chunks of its own colors (`BOSS_FALL`, `effects.debris`) before the reward. In the fight it stands at the right. Each round is a normal question with a timer. A hit takes a heart. A miss or a timeout makes the boss throw a rock: the hero staggers, no life is lost, and the boss steps closer (`BOSS_STEP`, never past `BOSS_LIMIT`). After `BOSS_ROUNDS`, or when the hearts run out, `rules.bossReward` settles it. Winning gives `BOSS_BONUS` points and a life. Losing pays `BOSS_HIT_BONUS` per hit, then the boss crushes the hero for one life.
 
 ## Topics and performance by area
 
-`data/study-guide.js` lists the four CLF-C02 domains and 18 topics. Each topic has keywords, study notes and AWS documentation links. On load, `main.js` gives every question without a valid `topic` the best match from `topics.classify()`. Matches in the answer weigh 3, in the question 2, in the explanation 1. Old saved reports get the same treatment.
+`data/study-guide.js` follows the official CLF-C02 exam guide: the four domains with their weights, the task statements ("2.3"), and 20 topics, each tied to one task statement. Each topic has keywords, study notes, AWS documentation links and the easy mode's study hint (memory tricks and a mind map of services). The question tag shows the task number; the report shows each domain's weight. On load, `main.js` gives every question without a valid `topic` the best match from `topics.classify()`. Matches in the answer weigh 3, in the question 2, in the explanation 1. Old saved reports get the same treatment.
 
 `report.analyzeAreas(log, guide)` groups the game log by domain and topic and rates each one: Ótimo (≥ 80%), Bom (≥ 60%), Atenção (≥ 40%) or Precisa estudar. Strengths and weak areas come from those ratings. Weak areas carry their study notes and links.
+
+## Multi-answer questions
+
+A question's `answer` can be a list (`["A", "E"]`). `questions.normalize` keeps `answers` (every correct index) and `answer` (the first one, for older code and saved data). In play, a right option that is not the last one is marked and locked ("1 de 2") and the monster staggers; only the final right option kills it. A wrong option is a normal miss. The duel works the same: a player's answer is sent once all right options are marked. `rules.travelSeconds` adds `MULTI_ANSWER_BONUS` per additional answer.
+
+## Pause
+
+`game.pause()` moves the game from `play` to a `paused` phase, where the loop advances nothing, stops the music and shows the pause screen; the app behind it turns sepia and its CSS animations stop. The HUD button and Esc toggle it, and `visibilitychange` pauses when the page is hidden. The duel has no pause: the other player keeps waiting on the other side.
+
+## Study hint (easy mode)
+
+`CONFIG.MODES.easy.HINTS` shows a **Dica** button on the ground strip (key `D`). It switches the game to a `hint` phase, where nothing moves, and opens a card with the topic's task statement, memory tricks and a mind map from the study guide. The card covers the answers and never says which option is right.
 
 ## Reports
 
@@ -148,15 +161,17 @@ The page never scrolls. `body` is fixed to the visible viewport, and `.app` is a
 
 The duel runs beside the solo game, which stays in its `idle` phase. `duel.js` takes over the field (the solo hero element, a mirrored rival, name tags), the question panel and the answers while a duel is on, and hands back with `game.goHome()`.
 
-**Transport.** GitHub Pages is static, so the two browsers talk through a public MQTT broker over `wss://` (HiveMQ first, EMQX as fallback, both in `CONFIG.DUEL.BROKERS`). Each room is one topic, `awscloudquest/duel/v1/<room>`, where `<room>` is a random 12-character id that only exists in the shared link (`#duelo=<room>`). `net.js` implements CONNECT, SUBSCRIBE, PUBLISH (QoS 0), PINGREQ and DISCONNECT, and buffers WebSocket frames into packets. The broker echoes a client's own messages, so every message carries a `from` id and receivers drop their own.
+**Invitation link.** The link is `duelo.html?sala=<room>`. That page has its own Open Graph tags and image (`assets/og-duel.png`, a real duel between "Jogador 1" and "Jogador 2", made by `scripts/build-assets.mjs`), so chat apps preview the duel. Its script forwards to `index.html#duelo=<room>`, which opens the join screen.
+
+**Transport.** GitHub Pages is static, so the two browsers talk through public MQTT brokers over `wss://` (HiveMQ and EMQX, in `CONFIG.DUEL.BROKERS`). `net.join` connects to all of them at once and is ready as soon as one is; every message is published through each broker that is up and carries an `id`, and `net.createDeduper` drops the later copies. The fastest relay wins each message, and both players still meet if a broker fails for one of them. The connection only counts as lost when the last broker drops. Each room is one topic, `awscloudquest/duel/v1/<room>`, where `<room>` is a random 12-character id that only exists in the shared link (`#duelo=<room>`). `net.js` implements CONNECT, SUBSCRIBE, PUBLISH (QoS 0), PINGREQ and DISCONNECT, and buffers WebSocket frames into packets. The broker echoes a client's own messages, so every message carries a `from` id and receivers drop their own.
 
 **Referee.** The room creator (host) decides everything; the guest only displays results.
 
 ```
 guest → join {name, hero, bank}            host → accept {to, name, hero, lives}  |  reject {to, reason}
 both  → ready (after "Pronto!")            host → start {countdown}   (once both are ready, or both asked for a rematch)
-host  → round {n, qid, order, seconds, lives, wins}
-both  → answer {n, correct, ms}            host → result {n, result, lives, answers}
+host  → round {n, qid, order, seconds, lives, wins, sky, replay}
+both  → answer {n, correct, ms}            host → result {n, result, lives, answers, special}
 host  → over {winner}                      both → rematch | ping | bye
 ```
 
@@ -166,11 +181,13 @@ host  → over {winner}                      both → rematch | ping | bye
 - Round time uses `rules.travelSeconds` with a level that goes up every `LEVEL_EVERY` rounds. The host closes a round `TIMEOUT_GRACE_MS` after its time, so a lagging guest still gets the full time.
 - `duelRules.applyResult` takes the lives down; `matchWinner` returns the winner, or `"draw"` when both reach zero in the same round.
 - Each round opens with a "ROUND N" sign for `ROUND_INTRO_MS`; the timer starts when the question appears on each screen.
+- The duel always stays in the Wild West town; day, night and rain follow the room creator. Before every `CHEER_EVERY`-th "ROUND N" sign, both screens show the cheering visitor (`duelRules.isCheerRound`, worked out from the round number, so no extra message). A replayed round skips the visitor.
+- Special move: in rounds `SPECIAL_FROM` to `SPECIAL_TO` (4 to 7), the first hit where the other player was not right (`duelRules.isSpecialHit`) is flagged `special` in the `result` message, once per match. Both screens then play a short film instead of the shot (question hidden, black bars, run, knife strike, the other falls and gets up), and the host waits `SPECIAL_MS` instead of `RESULT_MS`.
 - The room creator picks 10 or 20 lives (`LIVES_OPTIONS`); `accept` and `start` carry the choice, and every `round` message carries the lives and round wins, so a player who missed a message is back in sync.
 
 **Presence.** Both sides send `ping` every `HEARTBEAT_MS`. Leaving sends `bye`, and closing the page tries to. A player silent for `PEER_SILENT_MS` (15 s) pauses the match: both screens show who dropped and a countdown of `RECONNECT_MS` (2 minutes). A browser that loses the relay reconnects by itself every 3 seconds. When the dropped player is heard again, the host starts the interrupted round over. If the time runs out, the room closes. A waiting room with nobody joining expires after `ROOM_TTL_MS` (5 minutes). Closing a room clears every timer and disconnects from the broker. Nothing is stored on the broker (QoS 0, no retained messages), so an abandoned room leaves nothing behind.
 
-**End of a match.** The winner's weapon is put away (`hero.celebrate`), they walk to a podium beside a flagpole and jump for `VICTORY_MS`. Then a curtain, like the solo GAME OVER, fades in "<NAME> VENCEU!" for `CURTAIN_MS`, and the end card shows a versus scoreboard with the matches each player won in the room. **Início** reuses the solo "Voltar ao início?" reminder to download the report.
+**End of a match.** The loser drops to their knees, then falls (hero fates `kneel` and `fallen`). The winner's weapon is put away (`hero.celebrate`), they walk to a podium beside a flagpole and jump for `VICTORY_MS`. Then a curtain, like the solo GAME OVER, fades in "<NAME> VENCEU!" for `CURTAIN_MS`, and the end card shows a versus scoreboard with the matches each player won in the room. **Início** reuses the solo "Voltar ao início?" reminder to download the report.
 
 **Report.** Each player logs their own rounds with the solo outcomes: `first` (answered right, even if slower), `lost` (wrong or out of time) and `skipped` (the rival won before they answered). The report adds `duel: {opponent, won, rounds, lives, score}`. `report.js` puts the result on top and relabels the outcomes for a duel. The history shows it with mode "Duelo".
 

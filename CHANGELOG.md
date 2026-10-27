@@ -6,19 +6,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-10-27
+
 ### Added
 
-- **Duel 1×1**: create a room, share the link and play a friend in real time. The room creator picks 10 or 20 lives; both tap **Pronto!** before the countdown. Same question for both, opened by a "ROUND N" presentation; the first correct answer shoots the other player. A lock after a miss; both lose a life when both miss or time runs out; a draw when both reach zero together. A dropped connection pauses the match for up to 2 minutes and reconnects by itself. Wild West town with day, night and rain, "PROCURADO" posters, a fast showdown theme, taunt signs, a podium beside the Brazil flag, a dark "<NAME> VENCEU!" screen that waits for a tap, a versus scoreboard with trophies, rematch with a running score, and a report for each player with the duel result and the performance by area.
-- Speech bubbles: the cheering visitor and the hero have a short conversation (the dog barks along), and the boss talks ("Eu vou destruir você!", taunts on each rock, "Nãããão!" when beaten).
-- Minimal MQTT client (`js/net.js`) and pure duel rules (`js/duel-rules.js`), with unit tests and a two-page duel smoke test in CI.
+**Duel 1×1**
+
+- Play a friend in real time: create a room, share the link, both tap **Pronto!**, and a 10-second countdown starts. The room creator picks 10 or 20 lives.
+- Same question and option order for both, opened by a "ROUND N" sign with a drum hit. The first correct answer shoots the other player; a wrong answer locks that player until the round ends; both wrong or time out costs both a life; both at zero together is a draw.
+- Wild West town (saloon, bank, sheriff, hotel, store) with day, night and rain shared by both screens, "PROCURADO" posters, a fast showdown theme, taunt signs and an "AI!" for each hit.
+- Victory scene: the winner puts the gun away, climbs a podium beside the Brazil flag and jumps for joy (both climb a wide podium in a draw); the screen darkens with "<NOME> VENCEU!" until a tap.
+- End card with a versus scoreboard (both characters and the matches each won), **Revanche**, and a report for each player: the duel result plus the usual performance by area.
+- A dropped connection pauses the match for up to 2 minutes and the browser reconnects by itself; a player who leaves is announced to the other.
+- Invitations link to `duelo.html`, which shows a duel preview in WhatsApp and other apps ("Jogador 1" × "Jogador 2") and forwards into the room.
+- The visitor with the dog also drops by in the duel, every 7 rounds, on both screens.
+- Special move, once per match: in rounds 4 to 7, the first round only one player gets right becomes a short film. The question goes away, black bars close in, the winner runs over and strikes with a cartoon knife, and the other falls to the ground and gets up.
+- The loser of a match drops to their knees, then falls to the ground.
+- Built without a server or account: a minimal MQTT client (`js/net.js`) over free public brokers, and pure referee rules (`js/duel-rules.js`). The room creator's browser is the referee, and "first" is measured on each player's own screen.
+
+**Questions and study**
+
+- 141 new practice questions: 201 in total, from four practice-exam files, with repeats skipped. Five answer keys flagged for review in the source keep their note and the suggested key.
+- "Selecione DUAS" questions (`answer: ["A", "E"]`): mark both right options to bring the monster down; the first is marked "1 de 2". They get 15 extra seconds. 36 in the bank; they work in the duel too.
+- Topics follow the official CLF-C02 exam guide: each topic maps to a task statement, shown on the question tag ("2.3 IAM e identidade"), and the report shows each domain's weight ("Segurança e conformidade (30% da prova)"). New topics 3.1 Implantação e operação and 3.8 Integração e outros serviços.
+- **Dica** in the easy mode (key D): pauses the game and opens a study card for the question's topic, with memory tricks and a mind map of services, without giving the answer away.
+- The importer reads the new practice-exam formats (options by letter, `resposta` / `resposta_correta`, `revisao`).
+
+**Gameplay and world**
+
+- Pause: the ⏸ button or Esc shows a dim "JOGO PAUSADO" screen; leaving the page (answering a message, switching apps) pauses by itself. **Encerrar partida** on the pause screen asks "Tem certeza que deseja encerrar?" and ends the game with a "PARTIDA ENCERRADA" summary and its report.
+- Four monsters: three flying ones that hover, flap and dive (giant bat, pterodactyl, giant wasp) and a giant scorpion. The wasp and the scorpion leave the hero poisoned. The hero aims up at flying monsters.
+- Two new boss species with color variants: King Kong (Kong, fire Kong, Yeti) and minotaur (minotaur, lava, ice), besides the golem (stone, lava, ice, robot, and the new Cyclops). A fight never repeats the previous species.
+- Bosses roar their own way when they arrive and when hit, and threaten the hero in a speech bubble ("Eu vou acabar com você!"). Each throws its own thing (rock, boulder, fireball, snowball, barrel, laser) and finishes a won fight with its own close attack (smash, pound, horn charge, or the Cyclops swallowing the hero).
+- Speech bubbles: the cheering visitor and the hero have a short conversation ("Você é minha heroína!"), with a louder dog bark and a visible "AU AU!".
+- The boss arrives like a film: the screen goes dark and flickers, heavy steps shake the ground and lightning flashes while its silhouette walks in, then a flash shows it and it roars.
+- A defeated boss trembles, tips over and falls apart in pieces of its own colors before the reward.
+- Scenery changes are a short scene: the question goes away, the hero runs off, the new place's name shows, the scenery appears with the hero running back in, then the question.
 
 ### Changed
 
-- Losing the last life fades the screen slowly to dark before "GAME OVER" appears. The dark screen always says GAME OVER; a new record shows as a "NOVO RECORDE!" badge on the Game Over card.
+- More time to answer: Avançado 30 s base (was 20), Fácil 45 s (was 30, so +15 s over Avançado), reading counted at 15 characters per second (was 25), and levels shorten only the thinking time, never the reading time.
+- Bosses are upright giants: head on top and the arm from the shoulder (it looked like an elephant's trunk). Against a boss, a miss only locks the answers: no speed-up, no speed badge or speed lines.
+- The city is an avenue: asphalt with lane marks, sidewalk, street lamps that light up at night, and cars, taxis, vans and buses passing by day and night.
+- Losing the last life fades the screen slowly to dark before "GAME OVER" appears; a new record shows as a "NOVO RECORDE!" badge on the Game Over card instead of replacing the title.
+- "Segurança de rede" became "Redes e VPC" (task 3.5, domain 3), as in the exam guide.
+- The README starts with a short guide for players; contributor sections come after.
+- "Como jogar" and the mode cards describe the new rules: Fácil shows "+15s por pergunta" and "dicas"; there are lines for the hint, the pause and the boss.
+
+- The duel connects to both public relays at once and sends each message through both; the first copy to arrive counts. Joining no longer waits for a slow relay, messages take the fastest path, and a relay that fails for one player no longer leaves the two in different places.
+- The game loop measures the screen only after a resize and writes a style only when it changes, so still frames cost almost nothing.
 
 ### Fixed
 
 - The screen could zoom in by itself on phones (double tap on an answer or a two-finger touch), cutting off every edge. Double-tap and pinch zoom are now disabled in the game.
+- The guest's screen could stay shifted up after typing a name on iPhone (the keyboard scrolled the page).
+- Speed badges and speed lines sat in the wrong place on flying and low monsters (snake, alligator); the boss showed a speed badge behind its hearts.
+- Boss speech bubbles piled up; a new line now replaces the one on screen.
+- The snake's speed badge covered its head; it now sits just above it.
+- Reports: every question shows its exam tag (task, topic and domain) instead of the bare topic name, the PDF names the exam above the areas, and a duel report names its sections for a duel ("Acertei", "O adversário foi mais rápido") and shows the rounds played instead of a best streak that a duel does not have.
 
 ## [2.2.0] - 2026-10-26
 
@@ -105,7 +150,8 @@ First public release of the game. Earlier prototypes were never published in thi
 - Keyboard play, `aria-live` feedback, focus management in dialogs, AA contrast and `prefers-reduced-motion` support.
 - Documentation: README, architecture, decisions, question guide and contributing guide.
 
-[Unreleased]: https://github.com/iWIPER/awscloudquest/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/iWIPER/awscloudquest/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/iWIPER/awscloudquest/compare/v2.2.0...v3.0.0
 [2.2.0]: https://github.com/iWIPER/awscloudquest/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/iWIPER/awscloudquest/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/iWIPER/awscloudquest/releases/tag/v2.0.0

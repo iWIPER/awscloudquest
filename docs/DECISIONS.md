@@ -61,7 +61,7 @@ Real games take minutes, since monsters walk for 25 s or more at level 1. `page.
 
 ## 14. Imported practice questions keep their answer key
 
-The 51 questions with ids `clf-sim01-*` were imported with `scripts/import-questions.mjs` from the maintainer's practice-exam notes. Following the "never fix answers" rule, answer keys were copied as recorded. Items whose source carried a warning keep it as `note` for the maintainer to review. Questions with two correct answers were not imported, because multi-answer questions are on the roadmap.
+The 51 questions with ids `clf-sim01-*` were imported with `scripts/import-questions.mjs` from the maintainer's practice-exam notes. Following the "never fix answers" rule, answer keys were copied as recorded. Items whose source carried a warning keep it as `note` for the maintainer to review. Questions with two correct answers were left out at first; they were imported later, with all their answers, once multi-answer questions were supported (see #37).
 
 ## 15. Code and docs in English, game in Portuguese
 
@@ -152,9 +152,36 @@ Quick taps on answers triggered double-tap zoom on phones, and a stray two-finge
 
 ## 35. Duel over a public MQTT relay
 
-Two phones need a relay to find each other, and the game has no server. The options were WebRTC peer-to-peer (still needs a signaling server and often fails behind mobile NATs without a TURN relay), a hosted backend such as Firebase or a Cloudflare Worker (needs an account and keys), or a public message broker. The players asked for "no account, as simple as possible", so the duel uses free public MQTT brokers over secure WebSocket, with a fallback broker. The client is about 200 lines in `net.js`, so no library is added. The trade-offs: the relay is shared and unencrypted at the application level, and it can be down. The room id is random and only lives in the link. Only names, answers and results are sent, and the game says so when no broker answers.
+Two phones need a relay to find each other, and the game has no server. The options were WebRTC peer-to-peer (still needs a signaling server and often fails behind mobile NATs without a TURN relay), a hosted backend such as Firebase or a Cloudflare Worker (needs an account and keys), or a public message broker. The players asked for "no account, as simple as possible", so the duel uses free public MQTT brokers over secure WebSocket, all of them at once (see #43). The client is about 200 lines in `net.js`, so no library is added. The trade-offs: the relay is shared and unencrypted at the application level, and it can be down. The room id is random and only lives in the link. Only names, answers and results are sent, and the game says so when no broker answers.
 
 ## 36. The room creator is the referee, timing is per player
 
 Someone must decide who answered first. Letting each side decide would let the two screens disagree. The host decides every round, but it compares the time each player took on their own screen, not the arrival time. A player on a slow connection does not lose a round they answered faster. Among friends, trusting the guest's reported time is acceptable; cheat-proofing is a non-goal.
 
+## 37. Multi-answer questions: every right option, one kill
+
+The CLF-C02 exam has "multiple response" questions (two or more right answers out of five or more). They are kept in the bank as `answer: ["A", "E"]`; the single-answer format did not change. In play, the first right option is marked and the monster only staggers, so the player has to know both answers; a wrong option is a normal miss. They get 15 extra seconds because reading and checking five options takes longer.
+
+## 38. Topics mapped to the exam guide's task statements
+
+The official score report shows performance by section, and the exam guide splits each domain into numbered task statements. Topics stay as the study units (they carry the keywords, notes and links), but each one now names its task statement and each domain its weight, so the game's report reads like the real one. Network topics moved to domain 3, where the guide puts them (task 3.5).
+
+## 39. Study hints per topic, not per question
+
+The easy mode's **Dica** shows memory tricks and a mind map for the question's topic. Writing a hint for each of 201 questions (and every future one) would not scale and could easily leak the answer. A topic card works for any new question the classifier places, teaches the neighboring services that make the distractors plausible, and does not point at an option.
+
+## 40. Reading time never shrinks
+
+With the bank at 201 questions, the old formula left 17 s at level 10 in Avançado for a typical question that takes about 19 s just to read: players lost for not finishing the text, not for not knowing. The base times went up (Avançado 20 → 30 s, Fácil 30 → 45 s), reading is now counted at 15 characters per second instead of 25, and levels shorten only the thinking part. The game still speeds up with each level, and Avançado at high levels stays close to the real exam's pace (90 minutes for 65 questions).
+
+## 41. Film-like scenes for the big moments
+
+The boss arrival, the boss's defeat and the duel's special move are short scripted scenes instead of a banner: the screen dims, the question goes away and the moment plays out for a few seconds. They happen rarely (a boss every 15 hits, the special move once per match), so the pause feels like a reward, not a delay. The questions never run during a scene, so no time is lost.
+
+## 42. The duel follows the solo world
+
+Players asked for the same game in the duel, minus monsters and bosses. The duel gets the cheering visitor like the solo game, plus day, night and rain, but it stays in the Wild West town: a scenery change was tried and dropped, because the town is the duel's identity. Both screens must show the same thing without extra messages, so the visitor's rounds come from the round number (a pure function in `duel-rules.js`), and the weather comes from the room creator. The special move is decided by the referee and sent in the result, because only it knows both answers.
+
+## 43. Every broker at once, first copy wins
+
+Trying the brokers one after another made joining wait up to 8 s per broker that did not answer, and if the first broker failed for only one player, the two ended up on different brokers and never met. Now each browser connects to every broker in parallel, publishes through all of them and keeps the first copy of each message (messages carry an id). This costs one extra small message per broker, and gives the lowest latency of the relays and no single point of failure.
