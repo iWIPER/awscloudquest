@@ -178,9 +178,9 @@ With the bank at 201 questions, the old formula left 17 s at level 10 in Avança
 
 The boss arrival, the boss's defeat and the duel's special move are short scripted scenes instead of a banner: the screen dims, the question goes away and the moment plays out for a few seconds. They happen rarely (a boss every 15 hits, the special move once per match), so the pause feels like a reward, not a delay. The questions never run during a scene, so no time is lost.
 
-## 42. The duel follows the solo world
+## 42. The duel stays a duel
 
-Players asked for the same game in the duel, minus monsters and bosses. The duel gets the cheering visitor like the solo game, plus day, night and rain, but it stays in the Wild West town: a scenery change was tried and dropped, because the town is the duel's identity. Both screens must show the same thing without extra messages, so the visitor's rounds come from the round number (a pure function in `duel-rules.js`), and the weather comes from the room creator. The special move is decided by the referee and sent in the result, because only it knows both answers.
+A scenery change and the cheering visitor were tried in the duel and dropped: the Wild West town is the duel's identity, and a visitor walking between the two players got in the way of the showdown. The duel keeps day, night and rain (from the room creator) and the special move, which the referee decides and sends in the result, because only it knows both answers.
 
 ## 43. Every broker at once, first copy wins
 

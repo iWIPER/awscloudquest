@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- The cheering visitor tosses the hero a flower: the hero puts the weapon away for the visit, holds the flower, and takes the weapon back when the visitor leaves.
+
+### Removed
+
+- The cheering visitor no longer shows up in the duel: the duel is just the two players in the Wild West town.
+
+### Fixed
+
+- A player knocked down in the duel (special move or defeat) lay on top of their weapon; they now put it away before falling and take it back when they get up.
+- The boss silhouette walked in at the size of the previous monster during its dark arrival; it now has the boss's size from the start.
+- The alligator's speed badge covered its head; it now sits just above it.
+- Lines now match the character: "[o herói|a heroína]" for the visitor at 100 hits, and in the duel "Campeã", "a mais forte", "Mais rápida" and "está pronta" for a woman.
+
 ## [3.0.0] - 2026-10-27
 
 ### Added

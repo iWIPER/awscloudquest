@@ -170,7 +170,7 @@ The duel runs beside the solo game, which stays in its `idle` phase. `duel.js` t
 ```
 guest → join {name, hero, bank}            host → accept {to, name, hero, lives}  |  reject {to, reason}
 both  → ready (after "Pronto!")            host → start {countdown}   (once both are ready, or both asked for a rematch)
-host  → round {n, qid, order, seconds, lives, wins, sky, replay}
+host  → round {n, qid, order, seconds, lives, wins, sky}
 both  → answer {n, correct, ms}            host → result {n, result, lives, answers, special}
 host  → over {winner}                      both → rematch | ping | bye
 ```
@@ -181,13 +181,13 @@ host  → over {winner}                      both → rematch | ping | bye
 - Round time uses `rules.travelSeconds` with a level that goes up every `LEVEL_EVERY` rounds. The host closes a round `TIMEOUT_GRACE_MS` after its time, so a lagging guest still gets the full time.
 - `duelRules.applyResult` takes the lives down; `matchWinner` returns the winner, or `"draw"` when both reach zero in the same round.
 - Each round opens with a "ROUND N" sign for `ROUND_INTRO_MS`; the timer starts when the question appears on each screen.
-- The duel always stays in the Wild West town; day, night and rain follow the room creator. Before every `CHEER_EVERY`-th "ROUND N" sign, both screens show the cheering visitor (`duelRules.isCheerRound`, worked out from the round number, so no extra message). A replayed round skips the visitor.
+- The duel always stays in the Wild West town; day, night and rain follow the room creator. There are no monsters, bosses or visitor.
 - Special move: in rounds `SPECIAL_FROM` to `SPECIAL_TO` (4 to 7), the first hit where the other player was not right (`duelRules.isSpecialHit`) is flagged `special` in the `result` message, once per match. Both screens then play a short film instead of the shot (question hidden, black bars, run, knife strike, the other falls and gets up), and the host waits `SPECIAL_MS` instead of `RESULT_MS`.
 - The room creator picks 10 or 20 lives (`LIVES_OPTIONS`); `accept` and `start` carry the choice, and every `round` message carries the lives and round wins, so a player who missed a message is back in sync.
 
 **Presence.** Both sides send `ping` every `HEARTBEAT_MS`. Leaving sends `bye`, and closing the page tries to. A player silent for `PEER_SILENT_MS` (15 s) pauses the match: both screens show who dropped and a countdown of `RECONNECT_MS` (2 minutes). A browser that loses the relay reconnects by itself every 3 seconds. When the dropped player is heard again, the host starts the interrupted round over. If the time runs out, the room closes. A waiting room with nobody joining expires after `ROOM_TTL_MS` (5 minutes). Closing a room clears every timer and disconnects from the broker. Nothing is stored on the broker (QoS 0, no retained messages), so an abandoned room leaves nothing behind.
 
-**End of a match.** The loser drops to their knees, then falls (hero fates `kneel` and `fallen`). The winner's weapon is put away (`hero.celebrate`), they walk to a podium beside a flagpole and jump for `VICTORY_MS`. Then a curtain, like the solo GAME OVER, fades in "<NAME> VENCEU!" for `CURTAIN_MS`, and the end card shows a versus scoreboard with the matches each player won in the room. **Início** reuses the solo "Voltar ao início?" reminder to download the report.
+**End of a match.** The loser puts the weapon away, drops to their knees, then falls (hero fates `kneel` and `fallen`). The winner's weapon is put away (`hero.celebrate`), they walk to a podium beside a flagpole and jump for `VICTORY_MS`. Then a curtain, like the solo GAME OVER, fades in "<NAME> VENCEU!" for `CURTAIN_MS`, and the end card shows a versus scoreboard with the matches each player won in the room. **Início** reuses the solo "Voltar ao início?" reminder to download the report.
 
 **Report.** Each player logs their own rounds with the solo outcomes: `first` (answered right, even if slower), `lost` (wrong or out of time) and `skipped` (the rival won before they answered). The report adds `duel: {opponent, won, rounds, lives, score}`. `report.js` puts the result on top and relabels the outcomes for a duel. The history shows it with mode "Duelo".
 

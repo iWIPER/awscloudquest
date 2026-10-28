@@ -90,7 +90,7 @@ Tip: on a phone, use the browser's "Add to Home Screen" to open the game like an
 
 - Play a friend in real time: create a room, share the link, and the match starts when they join.
 - Same question for both, "Selecione DUAS" included; the first correct answer shoots the other player. 10 or 20 lives each.
-- Always in a Wild West town, without monsters or bosses: day, night and rain shared by both screens, and the visitor with the dog drops by every 7 rounds, like in the solo game.
+- Always in a Wild West town, with day, night and rain shared by both screens. No monsters, bosses, visitor or scenery changes: just the two players.
 - Once per match, in rounds 4 to 7, the first round only one player gets right becomes a short film: black bars, the winner runs over, strikes with a cartoon knife and the other falls to the ground.
 - "PROCURADO" posters, a fast showdown theme, a "ROUND N" presentation, taunt signs, the loser falling to their knees, a podium beside the Brazil flag, rematch with a running score, and a report for each player.
 
@@ -98,7 +98,7 @@ Tip: on a phone, use the browser's "Add to Home Screen" to open the game like an
 
 - Four sceneries that change every 15 hits: field, forest, desert and a city avenue with street lamps and traffic. A change is a short scene: the hero runs off, the place's name shows, the hero runs into the new place.
 - Day and night, rain with thunder, birds, bunnies, squirrels, deer, camels, and cars, taxis, vans and buses.
-- A visitor with a dog and a sign cheers you on at milestones, and they talk: your hero promises to protect the city and the visitor answers "Você é minha heroína!" while the dog barks.
+- A visitor with a dog and a sign cheers you on at milestones, and they talk: your hero puts the weapon away and promises to protect the city, and the visitor answers "Você é minha heroína!" (or "o meu herói!") and tosses them a flower while the dog barks.
 - "READY? / GO!" intro and a dark "GAME OVER" screen.
 - All sound is synthesized in code: effects, rain, a heartbeat when the screen turns red and music per scenery. Mute with one tap or `M`.
 
