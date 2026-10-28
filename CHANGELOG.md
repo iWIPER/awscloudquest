@@ -17,6 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - A player knocked down in the duel (special move or defeat) lay on top of their weapon; they now put it away before falling and take it back when they get up.
+- A knocked-down player seemed to float above the street; they now lie on the ground.
+- The special move's film bars covered the ground; only the top bar is left.
 - The boss silhouette walked in at the size of the previous monster during its dark arrival; it now has the boss's size from the start.
 - The alligator's speed badge covered its head; it now sits just above it.
 - Lines now match the character: "[o herói|a heroína]" for the visitor at 100 hits, and in the duel "Campeã", "a mais forte", "Mais rápida" and "está pronta" for a woman.
