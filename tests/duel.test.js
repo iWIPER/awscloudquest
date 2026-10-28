@@ -84,13 +84,6 @@ test("taunts and victory lines exist", () => {
   assert.ok(D.TAUNTS.includes(D.pick(D.TAUNTS)));
 });
 
-test("isCheerRound: the visitor comes before every CHEER_EVERY-th round, never with 0", () => {
-  assert.equal(D.isCheerRound(7, { CHEER_EVERY: 7 }), true);
-  assert.equal(D.isCheerRound(14, { CHEER_EVERY: 7 }), true);
-  assert.equal(D.isCheerRound(8, { CHEER_EVERY: 7 }), false);
-  assert.equal(D.isCheerRound(7, { CHEER_EVERY: 0 }), false);
-});
-
 test("isSpecialHit: once per match, rounds SPECIAL_FROM to SPECIAL_TO, only when just one player was right", () => {
   const duel = { SPECIAL_FROM: 4, SPECIAL_TO: 7 };
   const hit = { reason: "hit", winner: "host", losers: ["guest"] };

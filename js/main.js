@@ -262,7 +262,6 @@
     ui,
     sound,
     ambient,
-    visitor,
     field,
     onExit: () => game.goHome(),
     onReport(kind, report) {

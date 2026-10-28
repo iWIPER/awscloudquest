@@ -39,11 +39,6 @@
     return 1 + Math.floor((Math.max(1, round) - 1) / duel.LEVEL_EVERY);
   }
 
-  /** The cheering visitor stops by before every CHEER_EVERY-th round (never with 0). */
-  function isCheerRound(round, duel) {
-    return duel.CHEER_EVERY > 0 && round > 1 && round % duel.CHEER_EVERY === 0;
-  }
-
   /**
    * The special move replaces the shot once per match, in a round from
    * SPECIAL_FROM to SPECIAL_TO where only one player got it right (not when
@@ -111,19 +106,17 @@
     "HA HA HA! Sou mais forte!",
     "Hahaha! Essa foi fácil!",
     "Toma! Volta a estudar!",
-    "Rá! Mais rápido que você!",
+    "Rá! Mais [rápido|rápida] que você!",
     "Hehehe! Pode chorar!",
   ]);
 
+  // "[male|female]" forms: rules.gendered() keeps the one for the speaker.
   const VICTORY_LINES = Object.freeze([
-    "Eu venci! Sou o mais forte do mundo, yeah!",
-    "Campeão da nuvem! Ninguém me segura!",
+    "Eu venci! Sou [o mais forte|a mais forte] do mundo, yeah!",
+    "[Campeão|Campeã] da nuvem! Ninguém me segura!",
     "Venci! A AWS é minha casa!",
   ]);
 
-  /** Sign of the cheering visitor in the duel, and what each hero answers. */
-  const CHEERS = Object.freeze(["Que duelo incrível!", "Vai, vai, vai!", "Os dois são feras da nuvem!"]);
-  const HERO_LINES = Object.freeze(["Valeu! Eu vou vencer!", "Fica de olho, vou ganhar!", "Obrigado! Esse duelo é meu!"]);
 
   const pick = (list, rng = Math.random) => list[Math.floor(rng() * list.length)];
 
@@ -134,7 +127,6 @@
     roomFromHash,
     cleanName,
     levelForRound,
-    isCheerRound,
     isSpecialHit,
     decideRound,
     applyResult,
@@ -142,8 +134,6 @@
     outcomeFor,
     TAUNTS,
     VICTORY_LINES,
-    CHEERS,
-    HERO_LINES,
     pick,
   });
 

@@ -45,7 +45,7 @@
     '<path d="M16.4 16q4.7-1 9.2 1.5" stroke="#fff" stroke-width=".8" fill="none"/></g></svg>';
 
   function create(deps) {
-    const { config, questions, store, ui, sound, ambient, visitor, field, onExit, onReport } = deps;
+    const { config, questions, store, ui, sound, ambient, field, onExit, onReport } = deps;
     const D = NS.duelRules;
     const R = NS.rules;
     const Q = NS.questions;
@@ -121,6 +121,8 @@
     const rivalRole = () => D.other(state.role);
     const nameOf = (role) => (role === state.role ? state.name : state.peer ? state.peer.name : "Adversário");
     const isHost = () => state.role === "host";
+    /** True when that player plays the woman (for "[male|female]" lines). */
+    const isFemale = (role) => (role === state.role ? state.hero : state.peer && state.peer.hero) === "female";
 
     // ── Network ─────────────────────────────────────────────────────────
     let sent = 0;
@@ -241,7 +243,7 @@
       },
       ready() {
         state.ready[rivalRole()] = true;
-        status(state.ready[myRole()] ? "Os dois estão prontos!" : `${nameOf(rivalRole())} está pronto! Toque em Pronto.`);
+        status(state.ready[myRole()] ? "Os dois estão prontos!" : `${nameOf(rivalRole())} está ${R.gendered("[pronto|pronta]", isFemale(rivalRole()))}! Toque em Pronto.`);
         if (isHost()) startWhenReady();
       },
       reject(msg) {
@@ -334,7 +336,7 @@
       state.ready[myRole()] = true;
       $("btn-duel-ready").disabled = true;
       send("ready");
-      status(state.ready[rivalRole()] ? "Os dois estão prontos!" : `Esperando ${nameOf(rivalRole())} ficar pronto…`);
+      status(state.ready[rivalRole()] ? "Os dois estão prontos!" : `Esperando ${nameOf(rivalRole())} ficar ${R.gendered("[pronto|pronta]", isFemale(rivalRole()))}…`);
       if (isHost()) startWhenReady();
     }
 
@@ -482,7 +484,6 @@
         state.paused = { phase: state.phase };
         state.phase = "paused";
         clearRoundTimers();
-        endCheer();
         world().classList.remove("is-cinema");
         ui.clearBanner();
         ui.setDanger(false);
@@ -551,7 +552,6 @@
       for (const id of ["tag-me", "tag-rival", "podium"]) $(id).hidden = true;
       rivalEl.hidden = true;
       offPodium();
-      endCheer();
       world().classList.remove("is-cinema");
       me.reset();
       rival.reset();
@@ -670,17 +670,13 @@
       const level = D.levelForRound(n, DUEL);
       const seconds = Math.round(R.travelSeconds(question, level, config));
       // Lives and wins go along so a player who missed a message is back in sync.
-      const round = { n, qid: question.id, order, seconds, lives: state.lives, wins: state.wins, sky: sky(), replay };
+      const round = { n, qid: question.id, order, seconds, lives: state.lives, wins: state.wins, sky: sky() };
       send("round", round);
       beginRound({ ...round, question });
     }
 
-    /**
-     * Before the question, now and then the cheering visitor (both screens play
-     * the same steps, worked out from the round number; the duel always stays in
-     * the Wild West town). Then "ROUND N" (drum hit), then the question.
-     */
-    function beginRound({ n, question, order, seconds, lives, wins, replay }) {
+    /** "ROUND N" presentation (drum hit, question hidden), then the question. */
+    function beginRound({ n, question, order, seconds, lives, wins }) {
       clearRoundTimers();
       const valid = Array.isArray(order) && order.length === question.options.length && order.every((i) => question.options[i] !== undefined);
       const indexes = valid ? order : question.options.map((_, i) => i);
@@ -697,38 +693,12 @@
       ui.hide();
       ui.setEvent(true);
       ui.setDanger(false);
-      let at = 0;
-      if (!replay && D.isCheerRound(n, DUEL)) {
-        roundTimers.push(later(cheer, at));
-        at += visitor.TIMING.end;
-      }
-      roundTimers.push(
-        later(() => {
-          ui.banner(`ROUND ${n}`, "round");
-          sound.play("drum");
-        }, at)
-      );
-      roundTimers.push(later(() => revealRound(state.round), at + DUEL.ROUND_INTRO_MS));
+      ui.banner(`ROUND ${n}`, "round");
+      sound.play("drum");
+      roundTimers.push(later(() => revealRound(state.round), DUEL.ROUND_INTRO_MS));
     }
 
     const world = () => field.closest(".world");
-
-    /** The cheering visitor and the dog stop by; my hero answers, the visitor wishes both luck. */
-    function cheer() {
-      sound.setMood("happy");
-      const text = D.pick(D.CHEERS);
-      ui.announce(text);
-      const track = (fn, ms) => roundTimers.push(later(fn, ms));
-      visitor.play(text, track, () => sound.setMood(null), {
-        onHeroLine: () => fx.speech(geo().myCenter, geo().heroTop - 8, D.pick(D.HERO_LINES), 2600),
-        onReply: (head) => fx.speech(head.x, head.y, "Boa sorte aos dois!", 2400),
-      });
-    }
-
-    function endCheer() {
-      visitor.remove();
-      sound.setMood(null);
-    }
 
     function revealRound(round) {
       if (state.phase !== "intro" || state.round !== round) return;
@@ -884,7 +854,7 @@
           heroOf(target).flinch();
           fx.popText(centerOf(target), g.heroTop - 6, "AI!", "pop-attack");
           sound.play("ouch");
-          taunt(shooter, D.pick(D.TAUNTS));
+          taunt(shooter, R.gendered(D.pick(D.TAUNTS), isFemale(shooter)));
           later(() => sound.play("laugh"), 250);
         }, config.SHOT_MS);
         ui.announce(shooter === myRole() ? `Você acertou primeiro! ${nameOf(target)} perdeu uma vida.` : `${nameOf(shooter)} acertou primeiro. Você perdeu uma vida.`);
@@ -963,7 +933,7 @@
         runner.el.classList.remove("is-stabbing");
         runner.el.classList.add("is-running");
         run(0, SPECIAL.home - SPECIAL.back);
-        taunt(striker, D.pick(D.TAUNTS));
+        taunt(striker, R.gendered(D.pick(D.TAUNTS), isFemale(striker)));
         sound.play("laugh");
       }, SPECIAL.back);
       later(() => {
@@ -1029,7 +999,7 @@
         fx.confetti(g.width / 2, g.heroTop - 20, config.CONFETTI_COUNT * 2);
         sound.play(won === false ? "defeat" : "fanfare");
       }, 1700);
-      const line = draw ? "Empate! Os dois são fortes!" : D.pick(D.VICTORY_LINES);
+      const line = draw ? "Empate! Os dois são fortes!" : R.gendered(D.pick(D.VICTORY_LINES), isFemale(winner));
       later(() => fx.balloon(line, Math.max(8, g.heroTop - 110), "trophy"), 2600);
       later(() => fx.confetti(g.width / 2, g.heroTop - 20, config.CONFETTI_COUNT), 4600);
       later(() => showCurtain(winner), DUEL.VICTORY_MS);

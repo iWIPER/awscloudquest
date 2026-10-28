@@ -38,7 +38,7 @@ const context = await browser.newContext({ viewport: { width: 390, height: 700 }
 await context.addInitScript((mqtt) => {
   window.AwsCloudQuestDuelTest = { ...(mqtt ? {} : { transport: "local" }), COUNTDOWN: 2, RESULT_MS: 900, ROUND_INTRO_MS: 400, VICTORY_MS: 2500, CURTAIN_MS: 1500,
     LIVES: 3, LIVES_OPTIONS: [3, 6], HEARTBEAT_MS: 400, PEER_SILENT_MS: 2000, RECONNECT_MS: 30000,
-    CHEER_EVERY: 0, SPECIAL_MS: 7000 };
+    SPECIAL_MS: 7000 };
 }, useMqtt);
 
 const errors = [];
