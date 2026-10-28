@@ -200,3 +200,10 @@ test("travelSeconds: a \"choose two\" question gets MULTI_ANSWER_BONUS extra sec
   close(R.travelSeconds(double, 1, CONFIG) - R.travelSeconds(single, 1, CONFIG), CONFIG.MULTI_ANSWER_BONUS);
   close(R.travelSeconds(double, 7, CONFIG) - R.travelSeconds(single, 7, CONFIG), CONFIG.MULTI_ANSWER_BONUS);
 });
+
+test("gendered: keeps the male or the female form of each [male|female] pair", () => {
+  const text = "Você é [o herói|a heroína]! [Campeão|Campeã]!";
+  assert.equal(R.gendered(text, false), "Você é o herói! Campeão!");
+  assert.equal(R.gendered(text, true), "Você é a heroína! Campeã!");
+  assert.equal(R.gendered("Sem marcação.", true), "Sem marcação.");
+});

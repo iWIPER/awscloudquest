@@ -635,7 +635,7 @@ button { font: inherit; }
 .monster.monster-gator.is-enraged::before { top: 55%; height: 38%; }
 /* …and their speed badge right above the head, not floating high over them */
 .monster.monster-snake .m-speed { top: calc(27% - 26px); left: 28%; } /* the head is at the left, its top at 27% */
-.monster.monster-gator .m-speed { top: 38%; }
+.monster.monster-gator .m-speed { top: calc(43% - 26px); left: 40%; } /* the head (eye) starts at 44% */
 
 .m-ice {
   position: absolute;
@@ -3103,3 +3103,12 @@ legend.box-title {
   .monster.is-breaking .m-art { animation: none; }
 }
 #quit-confirm[hidden] { display: none; }
+
+/* The cheering visitor tosses the hero a flower */
+.rock-y.rock-flower {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fbd51a 0 30%, #ff6fae 32% 100%);
+  box-shadow: 0 0 0 2px #fff;
+}

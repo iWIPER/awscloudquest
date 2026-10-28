@@ -100,6 +100,14 @@
     return [first, ...config.CHEERS].sort((a, b) => a.at - b.at);
   }
 
+  /**
+   * Text for a character: each "[male|female]" pair keeps the form that fits
+   * ("Você é [o herói|a heroína]!", "[Campeão|Campeã] da nuvem!").
+   */
+  function gendered(text, female) {
+    return String(text).replace(/\[([^|\]]*)\|([^\]]*)\]/g, (_, male, fem) => (female ? fem : male));
+  }
+
   /** True when this number of correct answers starts a boss fight. */
   function isBossDue(correct, config) {
     return correct >= config.BOSS_FIRST && (correct - config.BOSS_FIRST) % config.BOSS_EVERY === 0;
@@ -130,6 +138,7 @@
     configFor,
     nextBoxAt,
     cheerMilestones,
+    gendered,
     isBossDue,
     sceneFor,
     bossStep,

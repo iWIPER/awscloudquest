@@ -184,7 +184,8 @@
     function render() {
       setStyle(deps.heroEl, "left", `${geo.heroLeft}px`);
       const cur = state.current;
-      const scale = cur ? scaleOf(cur.monster) : 1;
+      // During the boss arrival the current question is still the last monster's: size the boss already.
+      const scale = state.boss ? Monsters.boss.scale : cur ? scaleOf(cur.monster) : 1;
       setStyle(monsterEl, "width", `${geo.size * scale}px`);
       setStyle(monsterEl, "height", `${geo.monsterHeight * scale}px`);
       // Flying monsters hover this many px above the ground (art, speed badge, speed lines, ice).
@@ -425,19 +426,30 @@
       syncPowers();
       sound.setIntensity(0);
       sound.setMood("happy");
-      ui.announce(text);
-      // A short conversation: the hero promises to protect the city, the visitor thanks them.
+      ui.announce(R.gendered(text, deps.heroEl.dataset.variant === "female"));
+      // A short conversation: the hero puts the weapon away and promises to protect
+      // the city; the visitor thanks them and tosses them a flower.
       const heroine = deps.heroEl.dataset.variant === "female";
+      hero.setHands("empty");
       visitor.play(
-        text,
+        R.gendered(text, heroine),
         later,
         () => {
+          hero.setHands("weapon");
           sound.setMood(null);
           nextQuestion();
         },
         {
           onHeroLine: () => fx.speech(geo.heroLeft + hero.WIDTH / 2, heroTop() - 8, pick(HERO_LINES), 2600),
-          onReply: (head) => fx.speech(head.x, head.y, heroine ? "Você é minha heroína!" : "Você é o meu herói!", 2400),
+          onReply: (head) => {
+            fx.speech(head.x, head.y, R.gendered("Você é [o meu herói|minha heroína]!", heroine), 2400);
+            const toss = 750;
+            fx.rock(head.x - 30, head.y + 40, geo.heroLeft + 40, heroTop() + 24, toss, "flower");
+            later(() => {
+              hero.setHands("flower");
+              sound.play("equip");
+            }, toss);
+          },
         }
       );
     }

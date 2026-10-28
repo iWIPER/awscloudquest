@@ -114,6 +114,17 @@
   });
 
   /** Both arms raised, no weapon: the duel winner celebrating. */
+  // A flower in the hand (the cheering visitor gives it), or the hand alone (weapon put away).
+  const FLOWER = `
+    <path d="M39 37Q40 29 43 22" stroke="#3f9a2c" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    <path d="M41 30Q46 27 47 30Q44 32 41 30Z" fill="#4e9a33"/>
+    <g fill="#ff6fae"><circle cx="43" cy="17" r="3"/><circle cx="47.5" cy="20.5" r="3"/><circle cx="46" cy="25.5" r="3"/><circle cx="40.5" cy="25.5" r="3"/><circle cx="39" cy="20.5" r="3"/></g>
+    <circle cx="43" cy="21.5" r="2.4" fill="#fbd51a"/>`;
+  const HANDS = Object.freeze({
+    empty: (sleeve) => `${arm(sleeve)}${hand}`,
+    flower: (sleeve) => `${arm(sleeve)}${FLOWER}${hand}`,
+  });
+
   const cheerArms = (sleeve) =>
     `<path d="M15 35Q8 27 9 15" stroke="${sleeve}" stroke-width="6" fill="none" stroke-linecap="round"/>
      <path d="M33 35Q40 27 39 15" stroke="${sleeve}" stroke-width="6" fill="none" stroke-linecap="round"/>
@@ -154,10 +165,14 @@
    * Standalone SVG markup for a character holding a weapon (also used by the
    * character picker). With `cheer`, the weapon is put away and both arms go up.
    */
-  function artFor(variant, weapon = DEFAULT_WEAPON, cheer = false) {
+  function artFor(variant, weapon = DEFAULT_WEAPON, cheer = false, hands = "weapon") {
     const v = BODIES[variant] ? variant : DEFAULT_VARIANT;
     const w = WEAPONS[weapon] || WEAPONS[DEFAULT_WEAPON];
-    const arms = cheer ? cheerArms(SLEEVES[v]) : `<g class="h-arm">${w.art(SLEEVES[v])}</g>`;
+    const arms = cheer
+      ? cheerArms(SLEEVES[v])
+      : HANDS[hands]
+        ? HANDS[hands](SLEEVES[v])
+        : `<g class="h-arm">${w.art(SLEEVES[v])}</g>`;
     return `<svg class="h-svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}" aria-hidden="true">${BODIES[v]}${arms}</svg>`;
   }
 
@@ -166,11 +181,11 @@
 
   /** Creates the hero view inside `el`. */
   function create(el, variant = DEFAULT_VARIANT) {
-    let current = { variant: BODIES[variant] ? variant : DEFAULT_VARIANT, weapon: DEFAULT_WEAPON, cheer: false };
+    let current = { variant: BODIES[variant] ? variant : DEFAULT_VARIANT, weapon: DEFAULT_WEAPON, cheer: false, hands: "weapon" };
 
     function draw() {
       // Keep fate/blink classes: only the artwork is replaced.
-      el.innerHTML = artFor(current.variant, current.weapon, current.cheer) + COILS + WEB + STARS + KNIFE;
+      el.innerHTML = artFor(current.variant, current.weapon, current.cheer, current.hands) + COILS + WEB + STARS + KNIFE;
       el.dataset.variant = current.variant;
       el.dataset.weapon = current.weapon;
     }
@@ -191,11 +206,18 @@
         draw();
       },
       setWeapon(w) {
-        current = { ...current, weapon: WEAPONS[w] ? w : DEFAULT_WEAPON };
+        current = { ...current, weapon: WEAPONS[w] ? w : DEFAULT_WEAPON, hands: "weapon" };
         draw();
         restart("is-equipping");
       },
       weapon: () => current.weapon,
+      /** What the hand holds: "weapon" (normal), "empty" (weapon put away) or "flower". */
+      setHands(hands) {
+        const next = HANDS[hands] ? hands : "weapon";
+        if (current.hands === next) return;
+        current = { ...current, hands: next };
+        draw();
+      },
       /** Puts the weapon away and raises both arms (true), or back to normal (false). */
       celebrate(on) {
         if (current.cheer === on) return;
@@ -204,6 +226,8 @@
       },
       /** Puts the hero in an attack end state (kept on Game Over). */
       setFate(fate) {
+        // Knocked down in the duel: the weapon is put away first, so the hero never lies on it.
+        if (fate === "kneel" || fate === "fallen") this.setHands("empty");
         el.classList.add(`fate-${fate}`);
       },
       recoil() {
@@ -215,6 +239,7 @@
       },
       /** Back to normal; optionally blinking for `blinkMs`. */
       reset(blinkMs = 0) {
+        if (el.classList.contains("fate-kneel") || el.classList.contains("fate-fallen")) this.setHands("weapon");
         FATES.forEach((f) => el.classList.remove(`fate-${f}`));
         el.classList.remove("is-shooting", "is-blinking", "is-flinching", "is-stabbing");
         if (blinkMs > 0) {

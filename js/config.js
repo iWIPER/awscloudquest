@@ -93,7 +93,7 @@
     CHEERS: [                          // fixed milestones, in correct answers
       { at: 25, text: "Mandou bem! A cidade inteira está torcendo por você!" },
       { at: 50, text: "Imbatível! Os monstros já estão fugindo da cidade!" },
-      { at: 100, text: "Lendário! Você é o herói que a cidade precisava!" },
+      { at: 100, text: "Lendário! Você é [o herói|a heroína] que a cidade precisava!" }, // [male|female]
       { at: 200, text: "Extraordinário! Ninguém nunca chegou até aqui! A cidade está salva!" },
     ],
     CHEER_FIRST_TEXT: "Continue, você está indo bem! Você vai salvar a cidade!",
@@ -120,7 +120,6 @@
       TIMEOUT_GRACE_MS: 3000,     // the referee waits this long past the round time (public relays can lag 1–3 s)
       RESULT_MS: 2600,            // pause after a round result, before the next round
       ROUND_INTRO_MS: 2800,       // "ROUND N" presentation before each question
-      CHEER_EVERY: 7,             // the cheering visitor stops by before every 7th round (0: never)
       SPECIAL_FROM: 4,            // in rounds 4 to 7, the first round only one player gets right
       SPECIAL_TO: 7,              // ends with the special move (once per match; none if both right or both wrong)…
       SPECIAL_MS: 7400,           // …a short film that takes this long before the next round
